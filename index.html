@@ -18,9 +18,9 @@
             --bg-primary: #07090e;
             --bg-secondary: #0d121f;
             --bg-card: rgba(17, 24, 39, 0.7);
-            --bg-card-hover: rgba(26, 34, 52, 0.85);
+            --bg-card-hover: rgba(26, 34, 52, 0.9);
             --border-card: rgba(255, 255, 255, 0.08);
-            --border-card-hover: rgba(99, 102, 241, 0.4);
+            --border-card-hover: rgba(99, 102, 241, 0.45);
             
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
@@ -40,7 +40,7 @@
             --radius-full: 9999px;
             
             --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-            --shadow-hover: 0 20px 40px -15px rgba(99, 102, 241, 0.25);
+            --shadow-hover: 0 20px 40px -15px rgba(99, 102, 241, 0.3);
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -115,7 +115,7 @@
 
         /* Main Container */
         .container {
-            max-width: 1360px;
+            max-width: 1380px;
             margin: 0 auto;
             padding: 40px 24px 80px;
             position: relative;
@@ -125,7 +125,7 @@
         /* Header Area */
         header {
             text-align: center;
-            margin-bottom: 48px;
+            margin-bottom: 44px;
             padding-top: 20px;
         }
 
@@ -171,7 +171,7 @@
         .subtitle {
             font-size: clamp(1rem, 2vw, 1.2rem);
             color: var(--text-secondary);
-            max-width: 680px;
+            max-width: 720px;
             margin: 0 auto 32px;
             font-weight: 400;
         }
@@ -369,8 +369,8 @@
         /* Cards Grid */
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+            gap: 28px;
             transition: var(--transition);
         }
 
@@ -379,13 +379,13 @@
             background: var(--bg-card);
             border: 1px solid var(--border-card);
             border-radius: var(--radius-lg);
-            padding: 24px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
             box-shadow: var(--shadow-card);
             transition: var(--transition);
         }
@@ -400,6 +400,7 @@
             background: linear-gradient(90deg, transparent, var(--card-accent, #6366f1), transparent);
             opacity: 0;
             transition: var(--transition);
+            z-index: 2;
         }
 
         .tool-card:hover {
@@ -413,42 +414,82 @@
             opacity: 1;
         }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
+        /* Card Thumbnail Box */
+        .card-thumb-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9.5;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #090d16;
+            margin-bottom: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: block;
+            text-decoration: none;
         }
 
-        .icon-wrapper {
-            width: 52px;
-            height: 52px;
-            border-radius: var(--radius-md);
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .card-thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s ease;
+            display: block;
+        }
+
+        .tool-card:hover .card-thumb-img {
+            transform: scale(1.06);
+            filter: brightness(1.05);
+        }
+
+        .thumb-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, transparent 40%, rgba(7, 9, 14, 0.8) 100%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 12px;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .thumb-badge-top-left {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-sm);
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.7rem;
-            box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.04);
+            font-size: 1.3rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
             transition: var(--transition);
         }
-        .tool-card:hover .icon-wrapper {
-            transform: scale(1.08) rotate(3deg);
-            background: rgba(255, 255, 255, 0.1);
+        .tool-card:hover .thumb-badge-top-left {
+            transform: scale(1.1) rotate(4deg);
             border-color: var(--card-accent, #6366f1);
-            box-shadow: 0 0 16px var(--card-accent-glow, rgba(99, 102, 241, 0.3));
+            box-shadow: 0 0 14px var(--card-accent-glow, rgba(99, 102, 241, 0.4));
         }
 
-        .category-tag {
+        .thumb-badge-top-right {
+            position: absolute;
+            top: 10px;
+            right: 10px;
             font-size: 0.75rem;
             font-weight: 600;
             padding: 4px 10px;
             border-radius: var(--radius-full);
-            background: rgba(255, 255, 255, 0.06);
-            color: var(--text-secondary);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            letter-spacing: 0.02em;
+            background: rgba(15, 23, 42, 0.85);
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
 
         .card-body {
@@ -457,11 +498,11 @@
         }
 
         .tool-title {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 8px;
-            line-height: 1.35;
+            line-height: 1.4;
             transition: var(--transition);
         }
         .tool-card:hover .tool-title {
@@ -469,12 +510,12 @@
         }
 
         .tool-desc {
-            font-size: 0.88rem;
+            font-size: 0.875rem;
             color: var(--text-secondary);
-            line-height: 1.55;
+            line-height: 1.6;
             margin-bottom: 14px;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -487,10 +528,10 @@
         .badge-item {
             font-size: 0.75rem;
             color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.25);
+            background: rgba(0, 0, 0, 0.3);
             padding: 3px 8px;
             border-radius: var(--radius-sm);
-            border: 1px solid rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         /* Card Footer */
@@ -554,10 +595,12 @@
         .cards-grid.list-view .tool-card {
             flex-direction: row;
             align-items: center;
-            padding: 16px 24px;
+            padding: 14px 20px;
             gap: 20px;
         }
-        .cards-grid.list-view .card-header {
+        .cards-grid.list-view .card-thumb-wrapper {
+            width: 160px;
+            aspect-ratio: 16 / 10;
             margin-bottom: 0;
             flex-shrink: 0;
         }
@@ -565,11 +608,14 @@
             margin-bottom: 0;
             flex-grow: 1;
         }
+        .cards-grid.list-view .tool-desc {
+            -webkit-line-clamp: 1;
+        }
         .cards-grid.list-view .card-footer {
             border-top: none;
             padding-top: 0;
             flex-shrink: 0;
-            width: 180px;
+            width: 160px;
             justify-content: flex-end;
         }
         .cards-grid.list-view .file-info {
@@ -650,6 +696,9 @@
             .cards-grid.list-view .tool-card {
                 flex-direction: column;
                 align-items: stretch;
+            }
+            .cards-grid.list-view .card-thumb-wrapper {
+                width: 100%;
             }
             .cards-grid.list-view .card-footer {
                 width: 100%;
@@ -771,7 +820,8 @@
                 icon: "📊",
                 desc: "深度視覺化解析營運、投資、籌資三大活動現金流量，具備財務健康度量化評估與 AI 智能洞察建議。",
                 badges: ["財報分析", "現金流趨勢", "財務健康度", "圖表視覺化"],
-                fileName: "上市公司現金流量表智慧分析儀表板 v2.html"
+                fileName: "上市公司現金流量表智慧分析儀表板 v2.html",
+                thumbnail: "assets/thumbnails/thumb_cashflow-dashboard.png"
             },
             {
                 id: "stock-management",
@@ -781,7 +831,8 @@
                 icon: "📈",
                 desc: "全方位追蹤個人股票投資組合損益與資產分佈比例，支援 Google Sheets 雲端即時盤中股價連動。",
                 badges: ["投資組合", "損益即時算", "持股分佈", "Google Sheets連動"],
-                fileName: "personal_stock_asset_management (4).html"
+                fileName: "personal_stock_asset_management (4).html",
+                thumbnail: "assets/thumbnails/thumb_stock-management.png"
             },
             {
                 id: "travel-expense",
@@ -791,7 +842,8 @@
                 icon: "💼",
                 desc: "專為企業差旅設計之費用報銷審批工具，支援多幣別匯率自動換算、單據明細試算與格式化列印匯出。",
                 badges: ["差旅報銷", "匯率換算", "單據管理", "申請單列印"],
-                fileName: "travel-expense v2.html"
+                fileName: "travel-expense v2.html",
+                thumbnail: "assets/thumbnails/thumb_travel-expense.png"
             },
             {
                 id: "invoice-lottery",
@@ -801,7 +853,8 @@
                 icon: "🧾",
                 desc: "台灣統一發票極速對獎神器，支援末三碼快比對、多期別切換、中獎金額自動累計與歷史清單保存。",
                 badges: ["末三碼對獎", "期別切換", "中獎累計", "生活實用"],
-                fileName: "invoice_v3.html"
+                fileName: "invoice_v3.html",
+                thumbnail: "assets/thumbnails/thumb_invoice-lottery.png"
             },
             {
                 id: "privashield",
@@ -811,7 +864,8 @@
                 icon: "🛡️",
                 desc: "100% 瀏覽器本地端運算之資安防護工具，提供姓名、身分證、手機號碼等機敏個資遮罩與假名化替換。",
                 badges: ["本地去識別化", "個資假名化", "資安合規", "即時遮罩"],
-                fileName: "code_artifact v3.html"
+                fileName: "code_artifact v3.html",
+                thumbnail: "assets/thumbnails/thumb_privashield.png"
             },
             {
                 id: "cloud-sync",
@@ -821,7 +875,8 @@
                 icon: "⚡",
                 desc: "專為創意團隊打造的跨裝置任務看板介面，具備矩陣資料流動態視覺化與敏捷卡片狀態流轉模擬。",
                 badges: ["敏捷看板", "跨裝置同步", "狀態追蹤", "矩陣動效"],
-                fileName: "cloud_sync v2.html"
+                fileName: "cloud_sync v2.html",
+                thumbnail: "assets/thumbnails/thumb_cloud-sync.png"
             },
             {
                 id: "pro-clock-timer",
@@ -831,7 +886,8 @@
                 icon: "⏱️",
                 desc: "極簡高效之多功能時鐘與倒數計時工具，支援番茄工作法、全螢幕沉浸專注模式與提示聲響。",
                 badges: ["全螢幕時鐘", "番茄鐘", "倒數計時", "專注工具"],
-                fileName: "pro_countdown_timer_v4.html"
+                fileName: "pro_countdown_timer_v4.html",
+                thumbnail: "assets/thumbnails/thumb_pro-clock-timer.png"
             },
             {
                 id: "supercar-timer",
@@ -841,7 +897,8 @@
                 icon: "🏎️",
                 desc: "沉浸式超跑 HUD 數位儀表板計時介面，搭配轉速表風格計時動態刻度與賽車引擎聲浪音效氛圍。",
                 badges: ["超跑HUD", "科技儀表", "引擎聲浪", "賽車風格"],
-                fileName: "supercar_cockpit_countdown_timer.html"
+                fileName: "supercar_cockpit_countdown_timer.html",
+                thumbnail: "assets/thumbnails/thumb_supercar-timer.png"
             },
             {
                 id: "taiwan-tourism",
@@ -851,7 +908,8 @@
                 icon: "🗺️",
                 desc: "探索全台灣各縣市人氣景點與特色美食，提供互動地圖導覽、推薦行程規劃與客製化旅遊清單匯出。",
                 badges: ["互動地圖", "行程規劃", "景點導覽", "在地美食"],
-                fileName: "taiwan_tourism_map (2).html"
+                fileName: "taiwan_tourism_map (2).html",
+                thumbnail: "assets/thumbnails/thumb_taiwan-tourism.png"
             },
             {
                 id: "aquacoffee-tracker",
@@ -861,7 +919,8 @@
                 icon: "☕",
                 desc: "智慧計算個人每日健康補水目標與咖啡因攝取上限，搭配波浪動態視覺化與平衡狀態即時分析。",
                 badges: ["補水追蹤", "咖啡因計算", "健康波浪", "每日目標"],
-                fileName: "aquacoffee_hydro_coffee_tracker (1).html"
+                fileName: "aquacoffee_hydro_coffee_tracker (1).html",
+                thumbnail: "assets/thumbnails/thumb_aquacoffee-tracker.png"
             },
             {
                 id: "baby-tracker",
@@ -871,7 +930,8 @@
                 icon: "👶",
                 desc: "專為新手爸媽量身打造的育兒日誌，涵蓋餵奶、換尿布、睡眠作息記錄與 WHO 標準生長曲線對照。",
                 badges: ["育兒記錄", "生長曲線", "WHO標準", "護理數據"],
-                fileName: "育兒數據分析 v2.html"
+                fileName: "育兒數據分析 v2.html",
+                thumbnail: "assets/thumbnails/thumb_baby-tracker.png"
             },
             {
                 id: "daily-english",
@@ -881,7 +941,8 @@
                 icon: "🇬🇧",
                 desc: "每日精選生活實用英語金句，提供真人語音朗讀、重點生字深度解析與即時記憶隨堂測驗。",
                 badges: ["每日金句", "發音朗讀", "單字解析", "隨堂測驗"],
-                fileName: "daily_english_learning_web_app.html"
+                fileName: "daily_english_learning_web_app.html",
+                thumbnail: "assets/thumbnails/thumb_daily-english.png"
             },
             {
                 id: "wallpaper-music",
@@ -891,7 +952,8 @@
                 icon: "🎵",
                 desc: "高顏值桌面情境時鐘，整合多款精選動態壁紙與放鬆 Lo-Fi / 冥想背景音樂，打造沉浸式專注空間。",
                 badges: ["動態壁紙", "Lo-Fi音樂", "氛圍背景", "桌面時鐘"],
-                fileName: "wallpaper_digital_clock_music_player.html"
+                fileName: "wallpaper_digital_clock_music_player.html",
+                thumbnail: "assets/thumbnails/thumb_wallpaper-music.png"
             },
             {
                 id: "outrun-racer",
@@ -901,7 +963,8 @@
                 icon: "🕹️",
                 desc: "致敬 80 年代經典街機 OutRun 的純前端復古像素賽車，融合假 3D 彎道競速與 Synthwave 電子音樂。",
                 badges: ["復古街機", "假3D技術", "Synthwave", "像素賽車"],
-                fileName: "outrun_revival_classic_arcade_racer (12).html"
+                fileName: "outrun_revival_classic_arcade_racer (12).html",
+                thumbnail: "assets/thumbnails/thumb_outrun-racer.png"
             },
             {
                 id: "lottery-3d",
@@ -911,7 +974,8 @@
                 icon: "🎰",
                 desc: "3D 擬真物理球搖號選號器，支援十二生肖與星座幸運選號、包牌策略試算與歷史開獎號碼對獎。",
                 badges: ["3D擬真搖號", "幸運選號", "包牌試算", "開獎對比"],
-                fileName: "lottery.html"
+                fileName: "lottery.html",
+                thumbnail: "assets/thumbnails/thumb_lottery-3d.png"
             },
             {
                 id: "lucky-draw",
@@ -921,7 +985,8 @@
                 icon: "🎁",
                 desc: "活動與尾牙必備抽獎神器，支援名單批次匯入、不重複抽獎防呆機制、酷炫動態特效與得獎名單匯出。",
                 badges: ["尾牙抽獎", "名單匯入", "防重複機制", "名單導出"],
-                fileName: "lucky_draw_v1.html"
+                fileName: "lucky_draw_v1.html",
+                thumbnail: "assets/thumbnails/thumb_lucky-draw.png"
             }
         ];
 
@@ -955,7 +1020,7 @@
             document.getElementById('countEdu').textContent = counts.edu;
         }
 
-        // Render Tool Cards
+        // Render Tool Cards with Visual Thumbnails
         function renderCards() {
             const filteredTools = toolsData.filter(tool => {
                 const matchCategory = currentCategory === 'all' || tool.category === currentCategory;
@@ -978,10 +1043,14 @@
                 const encodedUrl = encodeURI(tool.fileName);
                 return `
                     <article class="tool-card cat-${tool.category}" data-id="${tool.id}">
-                        <div class="card-header">
-                            <div class="icon-wrapper" aria-hidden="true">${tool.icon}</div>
-                            <span class="category-tag">${tool.categoryName}</span>
-                        </div>
+                        <!-- Visual Thumbnail Preview -->
+                        <a href="${encodedUrl}" target="_blank" rel="noopener noreferrer" class="card-thumb-wrapper" title="點擊預覽 ${tool.title}">
+                            <img class="card-thumb-img" src="${tool.thumbnail}" alt="${tool.title} 縮圖" loading="lazy" onerror="this.style.display='none'" />
+                            <div class="thumb-overlay"></div>
+                            <div class="thumb-badge-top-left" aria-hidden="true">${tool.icon}</div>
+                            <span class="thumb-badge-top-right">${tool.categoryName}</span>
+                        </a>
+
                         <div class="card-body">
                             <h2 class="tool-title">${tool.title}</h2>
                             <p class="tool-desc">${tool.desc}</p>
@@ -989,6 +1058,7 @@
                                 ${tool.badges.map(badge => `<span class="badge-item"># ${badge}</span>`).join('')}
                             </div>
                         </div>
+
                         <div class="card-footer">
                             <span class="file-info" title="${tool.fileName}">${tool.fileName}</span>
                             <a href="${encodedUrl}" target="_blank" rel="noopener noreferrer" class="btn-launch" title="在新視窗開啟 ${tool.title}">
