@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily English - 每日一句學英語</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js for Learning Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-nav {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .word-highlight {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-bottom: 2px dashed rgba(99, 102, 241, 0.6);
+        }
+        .word-highlight:hover {
+            background-color: rgba(99, 102, 241, 0.2);
+            border-bottom-color: #818cf8;
+            color: #a5b4fc;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-effect {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Word Detail Modal -->
+    <div id="word-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="glass-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative border border-slate-700 animate-in fade-in zoom-in duration-200">
+            <button onclick="closeWordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div id="word-modal-content">
+                <!-- Content injected dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Header -->
+    <header class="glass-nav sticky top-0 z-40 w-full px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-language text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent leading-tight">Daily English</h1>
+                <p class="text-xs text-slate-400">每日一句 · 智能英文學習夥伴</p>
+            </div>
+        </div>
+
+        <!-- Top Bar Stats & Settings -->
+        <div class="flex items-center gap-2 sm:gap-4">
+            <!-- Streak Badge -->
+            <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-400 text-xs sm:text-sm font-semibold" title="連續學習天數">
+                <i class="fa-solid fa-fire text-amber-500 animate-pulse"></i>
+                <span id="header-streak-count">0</span> 天連續
+            </div>
+
+            <!-- Daily Target Progress -->
+            <div class="hidden md:flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-indigo-300 text-xs sm:text-sm">
+                <i class="fa-solid fa-bullseye text-indigo-400"></i>
+                <span>今日目標: <strong id="header-goal-status" class="text-white">0/100%</strong></span>
+            </div>
+
+            <!-- API Status Badge -->
+            <button onclick="switchTab('settings')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <span id="api-status-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span id="api-status-text" class="hidden sm:inline">預設模式</span>
+                <i class="fa-solid fa-key text-xs text-slate-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-slate-900/90 border-b border-slate-800 px-4 lg:px-8 py-2 overflow-x-auto">
+        <div class="max-w-7xl mx-auto flex items-center justify-start md:justify-center gap-1 sm:gap-2 min-w-max">
+            <button onclick="switchTab('daily')" id="nav-daily" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
+                <i class="fa-solid fa-calendar-day"></i> 今日句子
+            </button>
+            <button onclick="switchTab('notebook')" id="nav-notebook" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-book-bookmark"></i> 單字語句本
+                <span id="badge-notebook-count" class="ml-1 px-1.5 py-0.5 text-xs bg-indigo-500/20 text-indigo-300 rounded-full">0</span>
+            </button>
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-chart-line"></i> 學習紀錄 & 目標
+            </button>
+            <button onclick="switchTab('ai-practice')" id="nav-ai-practice" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-robot"></i> AI 口語與文法對練
+            </button>
+            <button onclick="switchTab('reminders')" id="nav-reminders" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-bell"></i> 學習提醒
+            </button>
+            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-sliders"></i> API & 詳細設定
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 overflow-y-auto">
+
+        <!-- ==================== TAB 1: DAILY SENTENCE ==================== -->
+        <section id="tab-daily" class="tab-content space-y-6">
+            <!-- Top Controls Row -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs uppercase tracking-wider font-semibold px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        <i class="fa-solid fa-sparkles mr-1"></i> Today's Quote
+                    </span>
+                    <span id="daily-date-tag" class="text-xs text-slate-400">2026-08-17</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <select id="select-category" onchange="generateNewSentence()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="business">職場商務 (Business)</option>
+                        <option value="daily" selected>日常口語 (Daily Conversation)</option>
+                        <option value="travel">旅遊出行 (Travel)</option>
+                        <option value="inspiration">勵志名言 (Inspirational)</option>
+                        <option value="slang">地道流行語 (Slang & Idioms)</option>
+                    </select>
+
+                    <button onclick="generateNewSentence()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition active:scale-95">
+                        <i class="fa-solid fa-arrows-rotate"></i> 換一句
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Daily Sentence Card -->
+            <div class="glass-card rounded-3xl p-6 sm:p-10 border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <!-- Sentence Display -->
+                <div class="space-y-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-2">
+                            <h2 id="sentence-en" class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-snug">
+                                Loading sentence...
+                            </h2>
+                            <p id="sentence-ipa" class="text-sm font-mono text-indigo-300/80">
+                                / ... /
+                            </p>
+                        </div>
+                        <button onclick="toggleBookmarkCurrentSentence()" id="btn-bookmark-sentence" class="p-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition border border-slate-700/60 flex-shrink-0" title="收藏句子">
+                            <i class="fa-regular fa-bookmark text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Chinese Translation -->
+                    <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-base sm:text-lg text-slate-200">
+                        <span id="sentence-zh" class="font-medium">加載中...</span>
+                    </div>
+
+                    <!-- World Accent & Realistic Voice Selector -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="text-xs text-slate-400 font-medium flex items-center gap-1.5 mb-1">
+                                <i class="fa-solid fa-earth-americas text-indigo-400"></i> 世界口音腔調 (Global Accent):
+                            </label>
+                            <select id="quick-accent-select" onchange="changeGlobalAccent(this.value)" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="en-US">🇺🇸 美式英語 (US Standard)</option>
+                                <option value="en-GB">🇬🇧 英式英語 (UK Received Pronunciation)</option>
+                                <option value="en-AU">🇦🇺 澳洲英語 (Australian English)</option>
+                                <option value="en-IN">🇮🇳 印度英語 (Indian English)</option>
+                                <option value="en-CA">🇨🇦 加拿大英語 (Canadian English)</option>
+                                <option value="en-IE">🇮🇪 愛爾蘭英語 (Irish English)</option>
+                                <option value="en-ZA">🇿🇦 南非英語 (South African English)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 font-medium flex items-center gap-1.5 mb-1">
+                                <i class="fa-solid fa-user-tie text-emerald-400"></i> 真實人聲發音員 (Real Human Speaker):
+                            </label>
+                            <select id="quick-voice-select" onchange="changeCharacterVoice(this.value)" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="">載入真實發音員中...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Audio Control Buttons -->
+                    <div class="flex flex-wrap items-center gap-3 pt-2">
+                        <button onclick="playSentenceAudio()" id="btn-play-audio" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/25 transition active:scale-95">
+                            <i class="fa-solid fa-volume-high"></i> <span id="btn-play-text">播放真實發音</span>
+                        </button>
+                        
+                        <!-- Multi-Speed Selector -->
+                        <div class="flex items-center gap-1.5 bg-slate-800 px-3 py-2 rounded-xl border border-slate-700">
+                            <i class="fa-solid fa-gauge-high text-amber-400 text-xs sm:text-sm"></i>
+                            <label for="quick-speed-select" class="text-xs text-slate-300 font-medium hidden sm:inline">語速:</label>
+                            <select id="quick-speed-select" onchange="changePlaybackSpeed(this.value)" class="bg-slate-900 border border-slate-700 text-amber-300 font-semibold text-xs sm:text-sm rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                                <option value="0.25">0.25x (極慢)</option>
+                                <option value="0.5">0.5x (特慢)</option>
+                                <option value="0.75">0.75x (慢速)</option>
+                                <option value="1">1.0x (標準)</option>
+                                <option value="1.25">1.25x (稍快)</option>
+                                <option value="1.5">1.5x (快速)</option>
+                                <option value="1.75">1.75x (特快)</option>
+                                <option value="2">2.0x (極快)</option>
+                            </select>
+                        </div>
+
+                        <button onclick="recordAndEvaluate()" id="btn-record" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 text-sm font-medium flex items-center gap-2 border border-slate-700 transition">
+                            <i class="fa-solid fa-microphone"></i> 口語跟讀評測
+                        </button>
+                    </div>
+
+                    <!-- Recording Visualizer / Status -->
+                    <div id="recording-status" class="hidden p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></div>
+                            <span id="recording-text">正在錄音中...請朗讀上面的句子</span>
+                        </div>
+                        <button onclick="stopRecording()" class="px-3 py-1 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-500">完成</button>
+                    </div>
+
+                    <!-- Pronunciation Feedback Box -->
+                    <div id="pronunciation-score-box" class="hidden p-4 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 text-indigo-200 text-sm space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold flex items-center gap-2">
+                                <i class="fa-solid fa-award text-amber-400"></i> 發音評測結果:
+                            </span>
+                            <span id="pronunciation-score" class="text-base font-bold text-emerald-400">92 分</span>
+                        </div>
+                        <p id="pronunciation-transcript" class="text-xs text-slate-300 italic"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breakdown & Analysis Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Key Vocabulary List -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 lg:col-span-2 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-key text-indigo-400"></i> 重點單字與短語解析
+                        </h3>
+                        <span class="text-xs text-slate-400">點擊單字可加入個人筆記</span>
+                    </div>
+
+                    <div id="vocab-breakdown-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Dynamic Vocab Cards -->
+                    </div>
+                </div>
+
+                <!-- Grammar & Usage Tips Card -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-amber-400"></i> 句型與文法解構
+                        </h3>
+                        <p id="grammar-tip" class="text-sm text-slate-300 leading-relaxed">
+                            加載中...
+                        </p>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <button onclick="markSentenceAsLearned()" id="btn-mark-learned" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+                            <i class="fa-solid fa-check-circle"></i> 標記為今日已學完 (+10分)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: VOCABULARY & SENTENCE NOTEBOOK ==================== -->
+        <section id="tab-notebook" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">單字語句本 (Notebook)</h2>
+                    <p class="text-xs text-slate-400">複習並管理你所收藏的單字與名言句子</p>
+                </div>
+
+                <!-- Sub Tab Controls & Search -->
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div class="relative flex-1 sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-slate-500"></i>
+                        <input type="text" id="notebook-search" oninput="renderNotebook()" placeholder="搜尋單字或句子..." class="w-full pl-8 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <button onclick="openFlashcardModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition">
+                        <i class="fa-solid fa-clone"></i> 閃卡單字卡複習
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category Switcher -->
+            <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                <button onclick="setNotebookFilter('all')" id="filter-all" class="notebook-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white">全部收藏</button>
+                <button onclick="setNotebookFilter('words')" id="filter-words" class="notebook-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">重點單字</button>
+                <button onclick="setNotebookFilter('sentences')" id="filter-sentences" class="notebook-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">精選句子</button>
+            </div>
+
+            <!-- Notebook Grid List -->
+            <div id="notebook-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Dynamically Rendered Saved Items -->
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: ANALYTICS & GOALS ==================== -->
+        <section id="tab-analytics" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">學習紀錄與目標管理</h2>
+                    <p class="text-xs text-slate-400">追蹤你的學習進度、習慣與日累積量</p>
+                </div>
+            </div>
+
+            <!-- Top Key Metrics Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-card rounded-2xl p-5 border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">連續學習天數</span>
+                        <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400"><i class="fa-solid fa-fire text-lg"></i></div>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="stat-streak" class="text-3xl font-extrabold text-white">0</span>
+                        <span class="text-xs text-slate-400">天</span>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-5 border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">總學習句子</span>
+                        <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><i class="fa-solid fa-book text-lg"></i></div>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="stat-total-sentences" class="text-3xl font-extrabold text-white">0</span>
+                        <span class="text-xs text-slate-400">句</span>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-5 border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">筆記單字總數</span>
+                        <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-bookmark text-lg"></i></div>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="stat-vocab-saved" class="text-3xl font-extrabold text-white">0</span>
+                        <span class="text-xs text-slate-400">字</span>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-5 border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">口語平均得分</span>
+                        <div class="p-2 rounded-xl bg-violet-500/10 text-violet-400"><i class="fa-solid fa-microphone text-lg"></i></div>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="stat-avg-score" class="text-3xl font-extrabold text-white">88</span>
+                        <span class="text-xs text-slate-400">分</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Weekly Learning Chart -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 lg:col-span-2 space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-indigo-400"></i> 本周學習趨勢 (句子與單字)
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Daily Goal Setting Panel -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye text-indigo-400"></i> 個人每日學習目標
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 mb-1 block">每日學習句子數目標</label>
+                            <input type="number" id="input-goal-sentences" min="1" max="20" value="3" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100">
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 mb-1 block">每日單字記憶目標</label>
+                            <input type="number" id="input-goal-words" min="1" max="50" value="10" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100">
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 mb-1 block">口語跟讀練習次數</label>
+                            <input type="number" id="input-goal-speaking" min="1" max="10" value="2" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100">
+                        </div>
+
+                        <button onclick="saveGoalSettings()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition">
+                            儲存目標設定
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: AI PRACTICE & SHADOWING ==================== -->
+        <section id="tab-ai-practice" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">AI 智能對練與文法助教</h2>
+                    <p class="text-xs text-slate-400">利用 Gemini 延伸對話、造句練習與文法除錯</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Panel: Mode Selection -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <h3 class="text-base font-bold text-white">選擇練習模式</h3>
+
+                    <div class="space-y-2">
+                        <button onclick="setAiMode('roleplay')" id="ai-mode-roleplay" class="w-full text-left p-3 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 font-medium text-sm flex items-center gap-3">
+                            <i class="fa-solid fa-comments text-lg"></i>
+                            <div>
+                                <div class="font-bold">今日句子情境延伸對話</div>
+                                <div class="text-xs text-slate-400 font-normal">與 AI 進行 1-on-1 口語角色扮演</div>
+                            </div>
+                        </button>
+
+                        <button onclick="setAiMode('make-sentence')" id="ai-mode-make-sentence" class="w-full text-left p-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 font-medium text-sm flex items-center gap-3">
+                            <i class="fa-solid fa-pen-nib text-lg"></i>
+                            <div>
+                                <div class="font-bold">單字造句診斷</div>
+                                <div class="text-xs text-slate-400 font-normal">輸入自造句子，由 AI 提供改進建議</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 space-y-2">
+                        <div class="font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-indigo-400"></i> 小提示
+                        </div>
+                        <p>可以在「API 設定」輸入個人的 Gemini API Key 以獲得更優質、快速的AI教學回應。</p>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Chat Interface -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 lg:col-span-2 flex flex-col h-[520px]">
+                    <!-- Chat Header -->
+                    <div class="pb-3 border-b border-slate-800 flex items-center justify-between">
+                        <span id="chat-title" class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-indigo-400"></i> Gemini English Tutor
+                        </span>
+                        <button onclick="clearChatHistory()" class="text-xs text-slate-400 hover:text-slate-200">
+                            <i class="fa-solid fa-trash-can mr-1"></i> 清除紀錄
+                        </button>
+                    </div>
+
+                    <!-- Chat Message Area -->
+                    <div id="chat-box" class="flex-1 overflow-y-auto py-4 space-y-4 pr-2">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">AI</div>
+                            <div class="p-3.5 rounded-2xl bg-slate-800 text-xs sm:text-sm text-slate-200 max-w-[85%] leading-relaxed">
+                                Hello! 我是你的英文 AI 助教。讓我們基於今天的每日句子開展情境對話吧！準備好了嗎？
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="pt-3 border-t border-slate-800 flex items-center gap-2">
+                        <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="輸入你的英文回答或句子..." class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs sm:text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="sendChatMessage()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+                            <span>發送</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 5: REMINDERS ==================== -->
+        <section id="tab-reminders" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">學習提醒與推播通知</h2>
+                    <p class="text-xs text-slate-400">設定每日定時學習提醒，保持連勝好習慣</p>
+                </div>
+            </div>
+
+            <div class="max-w-2xl mx-auto glass-card rounded-2xl p-6 sm:p-8 border border-slate-800 space-y-6">
+                <!-- Permission Alert Box -->
+                <div class="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-bell-concierge text-indigo-400 text-2xl"></i>
+                        <div>
+                            <div class="text-sm font-bold text-white">瀏覽器推播權限</div>
+                            <div id="notification-permission-text" class="text-xs text-slate-400">點擊右側按鈕開啟推播通知</div>
+                        </div>
+                    </div>
+                    <button onclick="requestNotificationPermission()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">
+                        開啟權限
+                    </button>
+                </div>
+
+                <!-- Reminder Schedule Settings -->
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">提醒時段設定</h3>
+
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-sun text-amber-400"></i>
+                            <div>
+                                <div class="text-sm font-medium text-slate-200">早晨句霸 (Morning)</div>
+                                <div class="text-xs text-slate-400">08:00 AM 提醒今日精選句子</div>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="remind-morning" checked class="w-5 h-5 accent-indigo-600 rounded">
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-utensils text-emerald-400"></i>
+                            <div>
+                                <div class="text-sm font-medium text-slate-200">午餐單字複習 (Noon)</div>
+                                <div class="text-xs text-slate-400">12:30 PM 提醒複習閃卡單字</div>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="remind-noon" checked class="w-5 h-5 accent-indigo-600 rounded">
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-moon text-indigo-400"></i>
+                            <div>
+                                <div class="text-sm font-medium text-slate-200">睡前達標補救 (Night)</div>
+                                <div class="text-xs text-slate-400">21:00 PM 檢查今日學習目標是否完成</div>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="remind-night" checked class="w-5 h-5 accent-indigo-600 rounded">
+                    </div>
+                </div>
+
+                <button onclick="testNotificationPush()" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-slate-700 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> 發送測試推播通知
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 6: SETTINGS & API CONFIG ==================== -->
+        <section id="tab-settings" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">API 設定與詳細偏好</h2>
+                    <p class="text-xs text-slate-400">自訂發音速度、腔調、語音引擎與 Gemini API Key</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Gemini API Setting -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-key text-indigo-400"></i> Google Gemini API 設定
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        提供自訂 API Key 可獲得個性化的句子生成、詳細文法診斷與 AI 口語助手服務。
+                    </p>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold text-slate-300">Gemini API Key</label>
+                        <div class="relative">
+                            <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full pr-10 pl-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs sm:text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300">
+                                <i class="fa-solid fa-eye text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex items-center gap-3">
+                        <button onclick="saveApiKey()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition">
+                            儲存金鑰
+                        </button>
+                        <button onclick="testApiKeyConnection()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700 transition">
+                            測試連線
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Speech & Audio Settings -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> 語音朗讀引擎與真實人聲設定
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-1">TTS 朗讀引擎模式 (Audio Engine)</label>
+                            <select id="select-audio-engine" onchange="saveAudioPreferences()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2">
+                                <option value="gemini-ai">✨ Gemini AI 超真實人聲 (Gemini Neural Voice)</option>
+                                <option value="web-speech">🎙️ 系統原生自然高音質發音員 (Natural System Speech)</option>
+                            </select>
+                            <span class="text-[11px] text-slate-400 mt-1 block">提示：Gemini AI 模式使用神經網路生成如真人般的自然語調與呼吸聲。</span>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-1">預設世界腔調 (Default Global Accent)</label>
+                            <select id="select-voice-accent" onchange="filterVoicesByAccent()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2">
+                                <option value="en-US" selected>🇺🇸 美式英語 (US Standard)</option>
+                                <option value="en-GB">🇬🇧 英式英語 (UK Received Pronunciation)</option>
+                                <option value="en-AU">🇦🇺 澳洲英語 (Australian English)</option>
+                                <option value="en-IN">🇮🇳 印度英語 (Indian English)</option>
+                                <option value="en-CA">🇨🇦 加拿大英語 (Canadian English)</option>
+                                <option value="en-IE">🇮🇪 愛爾蘭英語 (Irish English)</option>
+                                <option value="en-ZA">🇿🇦 南非英語 (South African English)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-1">真實發音員角色 (Human Speaker Voice)</label>
+                            <select id="select-voice-character" onchange="saveAudioPreferences()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2">
+                                <option value="">載入真實聲音角色中...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-1">朗讀速度 (Playback Speed)</label>
+                            <select id="select-voice-speed" onchange="changePlaybackSpeed(this.value)" class="w-full bg-slate-900 border border-slate-700 text-amber-300 font-semibold text-xs sm:text-sm rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="0.25">0.25x (極慢速 - 仔細聽音節細節)</option>
+                                <option value="0.5">0.5x (特慢速 - 適合初學者)</option>
+                                <option value="0.75">0.75x (慢速 - 語音跟讀練習)</option>
+                                <option value="1" selected>1.0x (標準語速 - 母語自然節奏)</option>
+                                <option value="1.25">1.25x (稍快速 - 提升聽力敏捷度)</option>
+                                <option value="1.5">1.5x (快速 - 高階聽力挑戰)</option>
+                                <option value="1.75">1.75x (特快速 - 母語快口常態)</option>
+                                <option value="2">2.0x (極快速 - 極限聽力訓練)</option>
+                            </select>
+                            <span class="text-[11px] text-slate-400 mt-1 block">提供從 0.25x 到 2.0x 共 8 種多元語速選項，滿足不同學習階段需求。</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Flashcard Modal -->
+    <div id="flashcard-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-card w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-slate-700 flex flex-col items-center space-y-6">
+            <button onclick="closeFlashcardModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                Flashcard Review · <span id="flashcard-counter">1 / 5</span>
+            </div>
+
+            <!-- Flip Card Container -->
+            <div id="flashcard-card" onclick="flipFlashcard()" class="w-full h-64 bg-slate-900 border border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-500 transition shadow-inner relative group">
+                <div class="text-xs text-slate-500 absolute top-3 right-3">點擊翻面</div>
+                <div id="flashcard-front" class="space-y-2">
+                    <div id="flashcard-word" class="text-3xl font-extrabold text-white">Word</div>
+                    <div id="flashcard-ipa" class="text-sm font-mono text-indigo-300">/ IPA /</div>
+                </div>
+                <div id="flashcard-back" class="hidden space-y-2">
+                    <div id="flashcard-meaning" class="text-xl font-bold text-emerald-400">中文翻譯</div>
+                    <div id="flashcard-example" class="text-xs text-slate-300 italic max-w-xs">"Example sentence goes here"</div>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-4 w-full">
+                <button onclick="nextFlashcard(false)" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 text-sm font-bold border border-slate-700">
+                    不熟悉 (Needs Practice)
+                </button>
+                <button onclick="nextFlashcard(true)" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30">
+                    已精通 (Mastered)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default Pre-stored Dataset for Daily Sentences
+        const DEFAULT_SENTENCES = [
+            {
+                id: "s1",
+                category: "daily",
+                en: "Consistency is not about perfection; it is about refusing to give up.",
+                zh: "持之以恆不在於完美無瑕，而在於永不放棄。",
+                ipa: "/kənˈsɪstənsi ɪz nɑːt əˈbaʊt pərˈfekʃn/",
+                grammar: "關係代詞與對比句型: 'not about... it is about...' 常用於對比兩個不同的核心價值概念。",
+                vocab: [
+                    { word: "Consistency", pos: "n.", meaning: "一致性、持之以恆", ipa: "/kənˈsɪstənsi/" },
+                    { word: "Perfection", pos: "n.", meaning: "完美", ipa: "/pərˈfekʃn/" },
+                    { word: "Refuse", pos: "v.", meaning: "拒絕", ipa: "/rɪˈfjuːz/" }
+                ]
+            },
+            {
+                id: "s2",
+                category: "business",
+                en: "Let's schedule a follow-up meeting next week to align on the project deliverables.",
+                zh: "我們安排下週開複討會議，以確保專案交付物達成共識。",
+                ipa: "/lɛts ˈskɛdʒuːl ə ˈfɑːloʊ ʌp ˈmiːtɪŋ/",
+                grammar: "動詞短語: 'align on...' 表示對某事達成看法或目標一致。",
+                vocab: [
+                    { word: "Deliverables", pos: "n.", meaning: "可交付成果、成果物", ipa: "/dɪˈlɪvərəblz/" },
+                    { word: "Align", pos: "v.", meaning: "對齊、達成共識", ipa: "/əˈlaɪn/" },
+                    { word: "Schedule", pos: "v.", meaning: "安排時間", ipa: "/ˈskɛdʒuːl/" }
+                ]
+            },
+            {
+                id: "s3",
+                category: "travel",
+                en: "Could you recommend some authentic local dishes that aren't too spicy?",
+                zh: "你能推薦一些不太辣的道地在地美食嗎？",
+                ipa: "/kʊd juː ˌrɛkəˈmɛnd sʌm ɔːˈθɛntɪk/",
+                grammar: "委婉請求句型: 'Could you recommend...?' 比 'Can you' 更為禮貌。",
+                vocab: [
+                    { word: "Authentic", pos: "adj.", meaning: "正宗的、道地的", ipa: "/ɔːˈθɛntɪk/" },
+                    { word: "Recommend", pos: "v.", meaning: "推薦", ipa: "/ˌrɛkəˈmɛnd/" }
+                ]
+            }
+        ];
+
+        // Gemini Neural Voices Preset (Realistic Human Voices)
+        const GEMINI_NEURAL_VOICES = [
+            { id: "Zephyr", name: "Zephyr 👩 (明亮自然美音主播)", gender: "female", accent: "en-US", voiceName: "Zephyr" },
+            { id: "Kore", name: "Kore 👩 (穩重專業標準美音)", gender: "female", accent: "en-US", voiceName: "Kore" },
+            { id: "Charon", name: "Charon 👨 (沉穩知識型英音男聲)", gender: "male", accent: "en-GB", voiceName: "Charon" },
+            { id: "Puck", name: "Puck 👨 (輕快活力商務男音)", gender: "male", accent: "en-US", voiceName: "Puck" },
+            { id: "Fenrir", name: "Fenrir 👨 (自信清晰敘事音)", gender: "male", accent: "en-US", voiceName: "Fenrir" },
+            { id: "Leda", name: "Leda 👩 (親切溫和口語導師)", gender: "female", accent: "en-US", voiceName: "Leda" },
+            { id: "Aoede", name: "Aoede 👩 (清亮優雅倫敦音)", gender: "female", accent: "en-GB", voiceName: "Aoede" },
+            { id: "Sulafat", name: "Sulafat 👩 (溫暖清晰澳式女聲)", gender: "female", accent: "en-AU", voiceName: "Sulafat" },
+            { id: "Vindemiatrix", name: "Vindemiatrix 👩 (柔和耐心教育專家)", gender: "female", accent: "en-US", voiceName: "Vindemiatrix" },
+            { id: "Orus", name: "Orus 👨 (清晰堅定播音男聲)", gender: "male", accent: "en-US", voiceName: "Orus" }
+        ];
+
+        // List of quirky/novelty synthesis voices to filter out completely
+        const UNWANTED_NOVELTY_VOICES = [
+            'fred', 'albert', 'zarvox', 'cellos', 'bells', 'trinoids', 'whisper', 
+            'bad news', 'good news', 'organ', 'hysterical', 'deranged', 'boing', 
+            'bubbles', 'yawn', 'pipe organ', 'robot', 'bad_news', 'good_news'
+        ];
+
+        // State Storage
+        let appState = {
+            apiKey: "",
+            currentSentence: DEFAULT_SENTENCES[0],
+            notebook: [], // Array of saved words and sentences
+            learnedSentences: [],
+            streakDays: 1,
+            goals: { sentences: 3, words: 10, speaking: 2 },
+            audioPreferences: { 
+                engine: 'gemini-ai', // 'gemini-ai' or 'web-speech'
+                accent: 'en-US', 
+                speed: 1.0, 
+                voiceName: 'Zephyr' 
+            },
+            aiMode: 'roleplay',
+            flashcardIndex: 0,
+            notebookFilter: 'all'
+        };
+
+        let availableVoices = [];
+
+        window.onload = function() {
+            loadLocalState();
+            setupWeeklyChart();
+            renderDailySentence(appState.currentSentence);
+            updateHeaderStats();
+            renderNotebook();
+            initVoices();
+            syncSpeedSelectors();
+        };
+
+        function syncSpeedSelectors() {
+            const speed = appState.audioPreferences.speed || 1.0;
+            const quickSelect = document.getElementById('quick-speed-select');
+            const settingsSelect = document.getElementById('select-voice-speed');
+            if (quickSelect) quickSelect.value = speed;
+            if (settingsSelect) settingsSelect.value = speed;
+        }
+
+        function changePlaybackSpeed(speedVal) {
+            const speed = parseFloat(speedVal);
+            appState.audioPreferences.speed = speed;
+            syncSpeedSelectors();
+            saveLocalState();
+            showToast(`朗讀速度已切換為 ${speed}x`, "info");
+        }
+
+        function initVoices() {
+            if (!('speechSynthesis' in window)) {
+                populateVoiceSelects();
+                return;
+            }
+            
+            const load = () => {
+                // Filter out non-English and unwanted novelty/robotic voices
+                availableVoices = window.speechSynthesis.getVoices().filter(v => {
+                    if (!v.lang.toLowerCase().startsWith('en')) return false;
+                    const nameLower = v.name.toLowerCase();
+                    return !UNWANTED_NOVELTY_VOICES.some(bad => nameLower.includes(bad));
+                });
+                populateVoiceSelects();
+            };
+
+            load();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = load;
+            }
+        }
+
+        function populateVoiceSelects() {
+            const quickSelect = document.getElementById('quick-voice-select');
+            const settingsSelect = document.getElementById('select-voice-character');
+            const quickAccent = document.getElementById('quick-accent-select');
+            const settingsAccent = document.getElementById('select-voice-accent');
+            const selectedAccent = appState.audioPreferences.accent || 'en-US';
+
+            if (quickAccent) quickAccent.value = selectedAccent;
+            if (settingsAccent) settingsAccent.value = selectedAccent;
+
+            if (!quickSelect || !settingsSelect) return;
+
+            quickSelect.innerHTML = '';
+            settingsSelect.innerHTML = '';
+
+            const isGeminiMode = appState.audioPreferences.engine === 'gemini-ai';
+
+            if (isGeminiMode) {
+                // Populate Gemini Ultra-Realistic Neural Voices
+                const filteredGemini = GEMINI_NEURAL_VOICES.filter(v => 
+                    v.accent.toLowerCase() === selectedAccent.toLowerCase() ||
+                    (selectedAccent === 'en-US' && v.accent === 'en-US')
+                );
+                
+                const listToUse = filteredGemini.length > 0 ? filteredGemini : GEMINI_NEURAL_VOICES;
+
+                listToUse.forEach(v => {
+                    const label = `✨ [AI 真實人聲] ${v.name}`;
+                    const opt1 = new Option(label, v.voiceName);
+                    const opt2 = new Option(label, v.voiceName);
+                    quickSelect.add(opt1);
+                    settingsSelect.add(opt2);
+                });
+
+                if (appState.audioPreferences.voiceName) {
+                    quickSelect.value = appState.audioPreferences.voiceName;
+                    settingsSelect.value = appState.audioPreferences.voiceName;
+                }
+                return;
+            }
+
+            // Web Speech Native Voices (Filtered for Natural Voices)
+            let filtered = availableVoices.filter(v => {
+                const targetCode = selectedAccent.toLowerCase().replace('-', '_');
+                return v.lang.toLowerCase().includes(targetCode) || v.lang.toLowerCase().includes(selectedAccent.toLowerCase());
+            });
+
+            if (filtered.length === 0) filtered = availableVoices;
+
+            if (filtered.length === 0) {
+                const opt = new Option("🎙️ 系統標準預設發音員", "default");
+                quickSelect.add(opt);
+                settingsSelect.add(opt.cloneNode(true));
+                return;
+            }
+
+            filtered.forEach((voice) => {
+                let tag = "🎙️ [發音員] ";
+                const nameLower = voice.name.toLowerCase();
+                if (nameLower.includes('natural') || nameLower.includes('neural') || nameLower.includes('online')) {
+                    tag = "🌟 [高音質真人] ";
+                } else if (nameLower.includes('female') || nameLower.includes('samantha') || nameLower.includes('victoria') || nameLower.includes('karen') || nameLower.includes('siri')) {
+                    tag = "👩‍🏫 [女聲] ";
+                } else if (nameLower.includes('male') || nameLower.includes('alex') || nameLower.includes('david') || nameLower.includes('daniel') || nameLower.includes('george')) {
+                    tag = "👨‍🏫 [男聲] ";
+                }
+
+                const label = `${tag}${voice.name} (${voice.lang})`;
+                const opt1 = new Option(label, voice.name);
+                const opt2 = new Option(label, voice.name);
+
+                quickSelect.add(opt1);
+                settingsSelect.add(opt2);
+            });
+
+            if (appState.audioPreferences.voiceName) {
+                quickSelect.value = appState.audioPreferences.voiceName;
+                settingsSelect.value = appState.audioPreferences.voiceName;
+            }
+        }
+
+        function changeGlobalAccent(accentCode) {
+            appState.audioPreferences.accent = accentCode;
+            const settingsAccent = document.getElementById('select-voice-accent');
+            if (settingsAccent) settingsAccent.value = accentCode;
+            
+            // Auto pick first suitable voice for this accent
+            const matchedVoice = GEMINI_NEURAL_VOICES.find(v => v.accent === accentCode);
+            if (matchedVoice && appState.audioPreferences.engine === 'gemini-ai') {
+                appState.audioPreferences.voiceName = matchedVoice.voiceName;
+            }
+
+            saveAudioPreferences();
+            populateVoiceSelects();
+            showToast(`已切換口音腔調`, "info");
+        }
+
+        function changeCharacterVoice(voiceName) {
+            appState.audioPreferences.voiceName = voiceName;
+            const settingsSelect = document.getElementById('select-voice-character');
+            if (settingsSelect) settingsSelect.value = voiceName;
+            saveAudioPreferences();
+            showToast(`已設定真實發音員角色`, "info");
+        }
+
+        function filterVoicesByAccent() {
+            const accent = document.getElementById('select-voice-accent').value;
+            changeGlobalAccent(accent);
+        }
+
+        // Local Storage Sync (In-Memory Fallback)
+        function loadLocalState() {
+            try {
+                const saved = localStorage.getItem('daily_english_app_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState = { ...appState, ...parsed };
+                    if (appState.apiKey) {
+                        document.getElementById('input-api-key').value = appState.apiKey;
+                        updateApiStatusBadge(true);
+                    }
+                    if (appState.audioPreferences.engine && document.getElementById('select-audio-engine')) {
+                        document.getElementById('select-audio-engine').value = appState.audioPreferences.engine;
+                    }
+                }
+            } catch (e) {
+                console.log("Using default in-memory state.");
+            }
+        }
+
+        function saveLocalState() {
+            try {
+                localStorage.setItem('daily_english_app_state', JSON.stringify(appState));
+            } catch (e) {}
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-400', 'bg-indigo-500/10', 'border', 'border-indigo-500/20');
+                btn.classList.add('text-slate-400');
+            });
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-indigo-400', 'bg-indigo-500/10', 'border', 'border-indigo-500/20');
+            }
+        }
+
+        function renderDailySentence(sentenceObj) {
+            appState.currentSentence = sentenceObj;
+            document.getElementById('sentence-en').innerText = sentenceObj.en;
+            document.getElementById('sentence-zh').innerText = sentenceObj.zh;
+            document.getElementById('sentence-ipa').innerText = sentenceObj.ipa || '';
+            document.getElementById('grammar-tip').innerText = sentenceObj.grammar || '無特定文法說明';
+
+            // Render Vocab
+            const vocabContainer = document.getElementById('vocab-breakdown-list');
+            vocabContainer.innerHTML = '';
+
+            sentenceObj.vocab.forEach(v => {
+                const isSaved = appState.notebook.some(item => item.word === v.word);
+                const card = document.createElement('div');
+                card.className = "p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white text-sm">${v.word}</span>
+                            <span class="text-xs font-mono text-indigo-400">${v.pos}</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-0.5">${v.meaning}</div>
+                    </div>
+                    <button onclick="toggleSaveWord('${v.word}', '${v.pos}', '${v.meaning}', '${v.ipa}')" class="p-2 rounded-lg ${isSaved ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-slate-300'}">
+                        <i class="fa-${isSaved ? 'solid' : 'regular'} fa-star text-sm"></i>
+                    </button>
+                `;
+                vocabContainer.appendChild(card);
+            });
+
+            // Update Bookmark state
+            const isSentenceSaved = appState.notebook.some(item => item.sentence === sentenceObj.en);
+            const btnBookmark = document.getElementById('btn-bookmark-sentence');
+            btnBookmark.innerHTML = `<i class="fa-${isSentenceSaved ? 'solid text-amber-400' : 'regular'} fa-bookmark text-xl"></i>`;
+
+            saveLocalState();
+        }
+
+        async function generateNewSentence() {
+            const category = document.getElementById('select-category').value;
+            showToast("正在生成新的精選句子...", "info");
+
+            if (appState.apiKey) {
+                try {
+                    const prompt = `Generate a single ${category} English learning sentence for ESL students. Return JSON with format: {"en": "...", "zh": "...", "ipa": "/.../", "grammar": "...", "grammar": "...", "vocab": [{"word": "...", "pos": "...", "meaning": "...", "ipa": "..."}]}`;
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${appState.apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0].content.parts[0].text) {
+                        const generated = JSON.parse(data.candidates[0].content.parts[0].text);
+                        generated.id = "gen_" + Date.now();
+                        generated.category = category;
+                        renderDailySentence(generated);
+                        showToast("已成功載入 AI 生成句子！", "success");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Gemini fetch failed, fallback to defaults", e);
+                }
+            }
+
+            // Fallback selection
+            const filtered = DEFAULT_SENTENCES.filter(s => s.category === category);
+            const nextSentence = filtered.length > 0 ? filtered[Math.floor(Math.random() * filtered.length)] : DEFAULT_SENTENCES[0];
+            renderDailySentence(nextSentence);
+        }
+
+        async function playSentenceAudio(speedMultiplier = null) {
+            const speed = speedMultiplier || appState.audioPreferences.speed || 1.0;
+            const text = appState.currentSentence.en;
+            const selectedVoice = appState.audioPreferences.voiceName || 'Zephyr';
+            const selectedAccent = appState.audioPreferences.accent || 'en-US';
+
+            // Check if user selected Gemini AI Ultra-Realistic TTS
+            if (appState.audioPreferences.engine === 'gemini-ai') {
+                const btnText = document.getElementById('btn-play-text');
+                if (btnText) btnText.innerText = "生成真人音訊中...";
+
+                try {
+                    const accentNameMap = {
+                        'en-US': 'American',
+                        'en-GB': 'British',
+                        'en-AU': 'Australian',
+                        'en-IN': 'Indian',
+                        'en-CA': 'Canadian',
+                        'en-IE': 'Irish',
+                        'en-ZA': 'South African'
+                    };
+                    const accentName = accentNameMap[selectedAccent] || 'American';
+                    const promptText = `Speak naturally in clear, natural ${accentName} English as an English tutor: ${text}`;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: promptText }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: { voiceName: selectedVoice }
+                                }
+                            }
+                        }
+                    };
+
+                    const apiKey = appState.apiKey || "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioDataBase64 = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType || '';
+
+                    if (audioDataBase64) {
+                        let sampleRate = 24000;
+                        const match = mimeType.match(/rate=(\d+)/);
+                        if (match && match[1]) sampleRate = parseInt(match[1], 10);
+
+                        const pcmData = new Int16Array(base64ToArrayBuffer(audioDataBase64));
+                        const wavBlob = pcmToWav(pcmData, sampleRate);
+                        const audioUrl = URL.createObjectURL(wavBlob);
+
+                        const audio = new Audio(audioUrl);
+                        audio.playbackRate = speed;
+                        audio.play();
+
+                        if (btnText) btnText.innerText = "播放真實發音";
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("Gemini Neural TTS unavailable, fallback to system natural speaker:", err);
+                }
+                if (btnText) btnText.innerText = "播放真實發音";
+            }
+
+            // Fallback: Web Speech API with filtered natural voice
+            if (!('speechSynthesis' in window)) {
+                showToast("您的瀏覽器不支援語音朗讀功能", "error");
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = speed;
+
+            if (appState.audioPreferences.voiceName && availableVoices.length > 0) {
+                const found = availableVoices.find(v => v.name === appState.audioPreferences.voiceName);
+                if (found) utterance.voice = found;
+            } else if (selectedAccent) {
+                utterance.lang = selectedAccent;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Convert base64 PCM16 array buffer to WAV Blob
+        function pcmToWav(pcm16Data, sampleRate = 24000) {
+            const buffer = new ArrayBuffer(44 + pcm16Data.length * 2);
+            const view = new DataView(buffer);
+
+            const writeString = (v, offset, str) => {
+                for (let i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i));
+            };
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcm16Data.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, 1, true); // Mono
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcm16Data.length * 2, true);
+
+            let offset = 44;
+            for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
+                view.setInt16(offset, pcm16Data[i], true);
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function playSentenceSlowAudio() {
+            playSentenceAudio(0.75);
+        }
+
+        let recognition = null;
+        function recordAndEvaluate() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToast("您的瀏覽器不支援語音辨識評測", "error");
+                return;
+            }
+
+            document.getElementById('recording-status').classList.remove('hidden');
+            recognition = new SpeechRecognition();
+            recognition.lang = appState.audioPreferences.accent || 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('recording-status').classList.add('hidden');
+                
+                // Compare transcript with target
+                const target = appState.currentSentence.en.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                const spoken = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                
+                let score = 90;
+                if (spoken === target) score = 100;
+                else score = Math.max(60, 100 - Math.abs(spoken.length - target.length) * 3);
+
+                document.getElementById('pronunciation-score-box').classList.remove('hidden');
+                document.getElementById('pronunciation-score').innerText = `${score} 分`;
+                document.getElementById('pronunciation-transcript').innerText = `辨識語音: "${transcript}"`;
+
+                // Add score to analytics
+                showToast(`發音評測完成：獲得 ${score} 分！`, "success");
+            };
+
+            recognition.onerror = function() {
+                document.getElementById('recording-status').classList.add('hidden');
+                showToast("語音辨識失敗，請重試", "error");
+            };
+
+            recognition.start();
+        }
+
+        function stopRecording() {
+            if (recognition) recognition.stop();
+            document.getElementById('recording-status').classList.add('hidden');
+        }
+
+        function toggleSaveWord(word, pos, meaning, ipa) {
+            const idx = appState.notebook.findIndex(i => i.word === word);
+            if (idx > -1) {
+                appState.notebook.splice(idx, 1);
+                showToast(`已從筆記移出: ${word}`, "info");
+            } else {
+                appState.notebook.push({ type: 'word', word, pos, meaning, ipa, date: new Date().toISOString() });
+                showToast(`已收藏單字: ${word}`, "success");
+            }
+            renderDailySentence(appState.currentSentence);
+            renderNotebook();
+            updateHeaderStats();
+        }
+
+        function toggleBookmarkCurrentSentence() {
+            const sen = appState.currentSentence.en;
+            const idx = appState.notebook.findIndex(i => i.sentence === sen);
+            if (idx > -1) {
+                appState.notebook.splice(idx, 1);
+                showToast("已取消收藏句子", "info");
+            } else {
+                appState.notebook.push({
+                    type: 'sentence',
+                    sentence: sen,
+                    zh: appState.currentSentence.zh,
+                    date: new Date().toISOString()
+                });
+                showToast("已加入句子收藏本！", "success");
+            }
+            renderDailySentence(appState.currentSentence);
+            renderNotebook();
+            updateHeaderStats();
+        }
+
+        function renderNotebook() {
+            const grid = document.getElementById('notebook-grid');
+            const search = document.getElementById('notebook-search').value.toLowerCase();
+            grid.innerHTML = '';
+
+            let filtered = appState.notebook.filter(item => {
+                if (appState.notebookFilter === 'words' && item.type !== 'word') return false;
+                if (appState.notebookFilter === 'sentences' && item.type !== 'sentence') return false;
+                if (search) {
+                    const text = (item.word || item.sentence || '') + (item.meaning || item.zh || '');
+                    return text.toLowerCase().includes(search);
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-sm">筆記本空空如也，快去點擊收藏吧！</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "glass-card rounded-2xl p-5 border border-slate-800 space-y-3 relative group";
+
+                if (item.type === 'word') {
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">單字</span>
+                            <button onclick="toggleSaveWord('${item.word}')" class="text-slate-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-white">${item.word}</div>
+                            <div class="text-xs font-mono text-indigo-300">${item.ipa || ''}</div>
+                        </div>
+                        <div class="text-xs text-slate-300">${item.pos || ''} ${item.meaning}</div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">精選句子</span>
+                            <button onclick="removeSentenceFromNotebook('${item.sentence}')" class="text-slate-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div class="text-sm font-semibold text-white leading-snug">"${item.sentence}"</div>
+                        <div class="text-xs text-slate-400">${item.zh}</div>
+                    `;
+                }
+                grid.appendChild(card);
+            });
+
+            document.getElementById('badge-notebook-count').innerText = appState.notebook.length;
+        }
+
+        function setNotebookFilter(type) {
+            appState.notebookFilter = type;
+            document.querySelectorAll('.notebook-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-slate-800', 'text-slate-400');
+            });
+            document.getElementById(`filter-${type}`).classList.add('bg-indigo-600', 'text-white');
+            renderNotebook();
+        }
+
+        function removeSentenceFromNotebook(sen) {
+            const idx = appState.notebook.findIndex(i => i.sentence === sen);
+            if (idx > -1) appState.notebook.splice(idx, 1);
+            renderNotebook();
+            updateHeaderStats();
+        }
+
+        function openFlashcardModal() {
+            const words = appState.notebook.filter(i => i.type === 'word');
+            if (words.length === 0) {
+                showToast("筆記本中尚無收藏單字可供複習！", "info");
+                return;
+            }
+            appState.flashcardIndex = 0;
+            document.getElementById('flashcard-modal').classList.remove('hidden');
+            renderFlashcard();
+        }
+
+        function closeFlashcardModal() {
+            document.getElementById('flashcard-modal').classList.add('hidden');
+        }
+
+        function renderFlashcard() {
+            const words = appState.notebook.filter(i => i.type === 'word');
+            const current = words[appState.flashcardIndex];
+            document.getElementById('flashcard-counter').innerText = `${appState.flashcardIndex + 1} / ${words.length}`;
+            document.getElementById('flashcard-word').innerText = current.word;
+            document.getElementById('flashcard-ipa').innerText = current.ipa || '';
+            document.getElementById('flashcard-meaning').innerText = `${current.pos || ''} ${current.meaning}`;
+            
+            // Reset card side
+            document.getElementById('flashcard-front').classList.remove('hidden');
+            document.getElementById('flashcard-back').classList.add('hidden');
+        }
+
+        function flipFlashcard() {
+            const front = document.getElementById('flashcard-front');
+            const back = document.getElementById('flashcard-back');
+            front.classList.toggle('hidden');
+            back.classList.toggle('hidden');
+        }
+
+        function nextFlashcard(mastered) {
+            const words = appState.notebook.filter(i => i.type === 'word');
+            appState.flashcardIndex++;
+            if (appState.flashcardIndex >= words.length) {
+                showToast("恭喜！已完成本輪閃卡複習！", "success");
+                closeFlashcardModal();
+            } else {
+                renderFlashcard();
+            }
+        }
+
+        function markSentenceAsLearned() {
+            if (!appState.learnedSentences.includes(appState.currentSentence.id)) {
+                appState.learnedSentences.push(appState.currentSentence.id);
+                showToast("已完成今日句子學習！得分 +10", "success");
+                updateHeaderStats();
+            } else {
+                showToast("今日句子已完成過囉！", "info");
+            }
+        }
+
+        function updateHeaderStats() {
+            document.getElementById('header-streak-count').innerText = appState.streakDays;
+            document.getElementById('stat-streak').innerText = appState.streakDays;
+            document.getElementById('stat-total-sentences').innerText = appState.learnedSentences.length;
+            document.getElementById('stat-vocab-saved').innerText = appState.notebook.filter(i => i.type === 'word').length;
+
+            const goalPercent = Math.min(100, Math.round((appState.learnedSentences.length / appState.goals.sentences) * 100));
+            document.getElementById('header-goal-status').innerText = `${goalPercent}%`;
+            saveLocalState();
+        }
+
+        function saveGoalSettings() {
+            appState.goals.sentences = parseInt(document.getElementById('input-goal-sentences').value) || 3;
+            appState.goals.words = parseInt(document.getElementById('input-goal-words').value) || 10;
+            appState.goals.speaking = parseInt(document.getElementById('input-goal-speaking').value) || 2;
+            showToast("目標設定已更新！", "success");
+            updateHeaderStats();
+        }
+
+        function setupWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['週一', '週二', '週三', '週四', '週五', '週六', '週日'],
+                    datasets: [{
+                        label: '學習句子',
+                        data: [2, 3, 1, 4, 2, 5, 3],
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6
+                    }, {
+                        label: '複習單字',
+                        data: [8, 12, 5, 15, 10, 18, 14],
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function setAiMode(mode) {
+            appState.aiMode = mode;
+            document.querySelectorAll('#tab-ai-practice button').forEach(b => b.classList.remove('bg-indigo-600/20', 'border-indigo-500/40'));
+            showToast(`已切換至 ${mode === 'roleplay' ? '情境延伸對話' : '造句診斷'} 模式`, "info");
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            appendChatMessage('user', message);
+            input.value = '';
+
+            if (appState.apiKey) {
+                try {
+                    const prompt = `Act as an encouraging English tutor. Current topic sentence: "${appState.currentSentence.en}". Mode: ${appState.aiMode}. User says: "${message}". Provide feedback, correct grammar errors if any, and respond in natural simple English.`;
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${appState.apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await response.json();
+                    const reply = data.candidates[0].content.parts[0].text;
+                    appendChatMessage('ai', reply);
+                    return;
+                } catch (e) {
+                    console.error("AI chat error", e);
+                }
+            }
+
+            // Fallback smart reply
+            setTimeout(() => {
+                appendChatMessage('ai', `Great expression! You used "${message}". Keep going! Can you tell me more using today's key words?`);
+            }, 800);
+        }
+
+        function appendChatMessage(sender, text) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = `flex items-start gap-3 ${sender === 'user' ? 'justify-end' : ''}`;
+            div.innerHTML = `
+                ${sender === 'ai' ? '<div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">AI</div>' : ''}
+                <div class="p-3.5 rounded-2xl ${sender === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-200'} text-xs sm:text-sm max-w-[85%] leading-relaxed">
+                    ${text}
+                </div>
+            `;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function clearChatHistory() {
+            document.getElementById('chat-box').innerHTML = '';
+            showToast("已清除對話紀錄", "info");
+        }
+
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                showToast("此瀏覽器不支援桌面推播功能", "error");
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    document.getElementById('notification-permission-text').innerText = "已開啓推播通知權限";
+                    showToast("推播權限已成功開啟！", "success");
+                }
+            });
+        }
+
+        function testNotificationPush() {
+            if (Notification.permission === "granted") {
+                new Notification("Daily English 學習提醒", {
+                    body: `今日一句：${appState.currentSentence.en}`,
+                    icon: "https://placehold.co/128x128/6366f1/ffffff?text=DE"
+                });
+            } else {
+                showToast("請先點擊上方開啟推播權限", "info");
+            }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('input-api-key').value.trim();
+            appState.apiKey = key;
+            saveLocalState();
+            updateApiStatusBadge(!!key);
+            showToast("Gemini API 金鑰已儲存！", "success");
+        }
+
+        async function testApiKeyConnection() {
+            const key = document.getElementById('input-api-key').value.trim();
+            if (!key) {
+                showToast("請先輸入 API Key", "info");
+                return;
+            }
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "Hello" }] }] })
+                });
+                if (res.ok) {
+                    showToast("API Key 連線測試成功！", "success");
+                    updateApiStatusBadge(true);
+                } else {
+                    showToast("API 連線失敗，請檢查金鑰權限", "error");
+                }
+            } catch (e) {
+                showToast("API 請求發生錯誤", "error");
+            }
+        }
+
+        function updateApiStatusBadge(hasKey) {
+            const dot = document.getElementById('api-status-dot');
+            const text = document.getElementById('api-status-text');
+            if (hasKey) {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                text.innerText = "Gemini AI 已連線";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400";
+                text.innerText = "預設模式";
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('input-api-key');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function saveAudioPreferences() {
+            if (document.getElementById('select-audio-engine')) {
+                appState.audioPreferences.engine = document.getElementById('select-audio-engine').value;
+            }
+            if (document.getElementById('select-voice-accent')) {
+                appState.audioPreferences.accent = document.getElementById('select-voice-accent').value;
+            }
+            if (document.getElementById('select-voice-speed')) {
+                appState.audioPreferences.speed = parseFloat(document.getElementById('select-voice-speed').value);
+            }
+            if (document.getElementById('select-voice-character')) {
+                appState.audioPreferences.voiceName = document.getElementById('select-voice-character').value;
+            }
+            saveLocalState();
+            populateVoiceSelects();
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: "bg-emerald-600 text-white",
+                error: "bg-rose-600 text-white",
+                info: "bg-indigo-600 text-white"
+            };
+
+            toast.className = `px-4 py-3 rounded-xl shadow-xl font-medium text-xs sm:text-sm flex items-center gap-2 pointer-events-auto border border-white/10 ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid fa-${type === 'success' ? 'circle-check' : type === 'error' ? 'circle-exclamation' : 'circle-info'}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

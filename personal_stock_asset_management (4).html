@@ -1,0 +1,3368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人股票資產管理網站 v1.2.1 (含 Google Sheets 盤中股價同步)</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f3ff',
+              100: '#e0e7ff',
+              600: '#2563eb',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            },
+            twGain: '#dc2626', // Taiwan Stock Red for Gain
+            twLoss: '#16a34a', // Taiwan Stock Green for Loss
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- External Libraries: PapaParse, Decimal.js, Chart.js, Lucide Icons -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .mask-text {
+      font-family: monospace;
+      letter-spacing: 2px;
+      user-select: none;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes progressCountdown {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+    .animate-progress {
+      animation: progressCountdown 10s linear forwards;
+    }
+    .paused {
+      animation-play-state: paused !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- Integrated Top Header with Sticky Nav Bar -->
+  <header class="sticky top-0 z-30 bg-brand-900 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="bg-blue-600 p-2 rounded-xl text-white shadow-sm flex items-center justify-center">
+            <i data-lucide="trending-up" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide">個人股票資產管理</h1>
+            <span class="text-[11px] text-blue-200 block font-medium">v1.2.1 盤中股價自動更新系統</span>
+          </div>
+        </div>
+
+        <!-- Right Action Controls -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- Live Price Sync Status Badge & Refresh Button -->
+          <button id="livePriceSyncBtn" onclick="triggerManualPriceSync()" class="flex items-center space-x-1 bg-blue-800/80 hover:bg-blue-700 text-blue-100 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-blue-700/60" title="點擊即時同步 Google Sheets 盤中股價">
+            <i id="livePriceSyncIcon" data-lucide="refresh-cw" class="w-3.5 h-3.5 text-blue-300"></i>
+            <span id="livePriceSyncStatusText" class="hidden sm:inline text-[11px]">股價: 未同步</span>
+          </button>
+
+          <!-- Data Source Badge -->
+          <span id="sourceBadge" class="hidden md:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-800/80 text-blue-100 border border-blue-700/60">
+            <i data-lucide="database" class="w-3 h-3 mr-1 text-blue-300"></i>
+            <span id="sourceBadgeText">內建 CSV</span>
+          </span>
+
+          <!-- Quote Modal Trigger Button -->
+          <button onclick="openQuoteModal(true)" class="flex items-center space-x-1.5 bg-blue-800/80 hover:bg-blue-700 text-blue-100 px-2.5 py-1.5 rounded-lg text-xs font-medium transition border border-blue-700/60" title="今日投資心法">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-300"></i>
+            <span class="hidden md:inline">投資心法</span>
+          </button>
+
+          <!-- Privacy Mask Toggle Button -->
+          <button id="privacyToggleBtn" onclick="togglePrivacyMask()" class="flex items-center space-x-1.5 bg-blue-800 hover:bg-blue-700 text-blue-100 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-700/60 shadow-sm">
+            <i id="privacyIcon" data-lucide="eye-off" class="w-4 h-4 text-blue-200"></i>
+            <span id="privacyText">隱私遮罩: 開</span>
+          </button>
+
+          <!-- Quick Lock Action -->
+          <button onclick="lockAndLeave()" class="p-1.5 bg-blue-800/60 hover:bg-red-700 text-blue-200 hover:text-white rounded-lg transition border border-blue-700/60" title="離開並鎖定 (即刻隱私遮罩)">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Control Bar: Holder Selector & Market Selector -->
+    <div class="bg-brand-800/95 border-t border-blue-800/80 px-4 sm:px-6 lg:px-8 py-2">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        
+        <!-- Global Holder Switcher -->
+        <div class="flex items-center space-x-2">
+          <label for="holderSelect" class="text-xs text-blue-200 font-medium whitespace-nowrap flex items-center">
+            <i data-lucide="users" class="w-3.5 h-3.5 mr-1 text-blue-300"></i>持有人：
+          </label>
+          <select id="holderSelect" onchange="onHolderChange(this.value)" class="bg-brand-900 border border-blue-600/80 text-white text-xs rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-400 focus:outline-none w-full sm:w-auto font-medium cursor-pointer shadow-inner">
+            <option value="ALL">全家總覽</option>
+          </select>
+        </div>
+
+        <!-- Market Switcher -->
+        <div class="flex items-center bg-brand-900 p-0.5 rounded-lg border border-blue-700/80 text-xs font-medium self-start sm:self-auto">
+          <button id="marketBtn-ALL" onclick="onMarketChange('ALL')" class="px-3 py-1 rounded-md transition text-white bg-blue-600 shadow-sm">全部庫存</button>
+          <button id="marketBtn-TW" onclick="onMarketChange('TW')" class="px-3 py-1 rounded-md transition text-blue-200 hover:text-white">台股庫存</button>
+          <button id="marketBtn-US" onclick="onMarketChange('US')" class="px-3 py-1 rounded-md transition text-blue-200 hover:text-white">美股庫存</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Sticky Navigation Tabs Bar -->
+    <nav class="bg-white border-b border-slate-200 text-slate-800 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-2 sm:space-x-6 overflow-x-auto py-1 no-scrollbar">
+          <button id="tab-dashboard" onclick="switchTab('dashboard')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-brand-900 text-brand-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>資產總覽</span>
+          </button>
+          <button id="tab-holdings" onclick="switchTab('holdings')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="pie-chart" class="w-4 h-4"></i>
+            <span>目前持股</span>
+          </button>
+          <button id="tab-transactions" onclick="switchTab('transactions')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+            <span>交易紀錄</span>
+          </button>
+          <button id="tab-strategy" onclick="switchTab('strategy')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="target" class="w-4 h-4"></i>
+            <span>策略復盤</span>
+          </button>
+          <button id="tab-dreams" onclick="switchTab('dreams')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="compass" class="w-4 h-4 text-amber-500"></i>
+            <span>夢想清單</span>
+            <span id="dreamCountBadge" class="ml-1 px-1.5 py-0.2 text-[10px] bg-amber-100 text-amber-800 font-bold rounded-full">0</span>
+          </button>
+          <button id="tab-paper" onclick="switchTab('paper')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="flask-conical" class="w-4 h-4 text-purple-600"></i>
+            <span>模擬交易</span>
+          </button>
+          <button id="tab-dataCheck" onclick="switchTab('dataCheck')" class="tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>資料檢查與設定</span>
+            <span id="errorBadgeCount" class="hidden ml-1 px-1.5 py-0.2 text-[10px] bg-amber-500 text-white rounded-full">0</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Live Price Non-blocking Warning Banner -->
+    <div id="livePriceSyncWarning" class="hidden mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-center justify-between shadow-sm" aria-live="polite">
+      <div class="flex items-center space-x-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 shrink-0"></i>
+        <span id="livePriceSyncWarningMsg">股價同步失敗，目前使用最後一次成功資料。</span>
+      </div>
+      <button onclick="triggerManualPriceSync()" class="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded font-bold transition">重試同步</button>
+    </div>
+
+    <!-- Notice Banner for US Stock Filter -->
+    <div id="usMarketNotice" class="hidden mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3 text-amber-800 shadow-sm">
+      <i data-lucide="info" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+      <div>
+        <h4 class="font-bold text-sm">第一階段尚未支援美股資料</h4>
+        <p class="text-xs text-amber-700 mt-1">目前系統聚焦於台股（TW）資產計算。切換至美股庫存時，不會產生假數字或混入台股資料。</p>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 1: DASHBOARD ================= -->
+    <div id="view-dashboard" class="space-y-6">
+      
+      <!-- Primary Financial Summary Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- Card 1: Today Profit & Return -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span class="text-xs font-semibold text-slate-500 flex items-center">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1 text-blue-600"></i>今日損益
+            </span>
+            <div id="todayPriceDateTag" class="text-[11px] font-medium text-slate-400 text-right">
+              <div>最新交易日: --</div>
+              <div>比較基準: --</div>
+            </div>
+          </div>
+          <div class="my-3">
+            <div id="todayProfitVal" class="text-2xl font-extrabold text-slate-900">NT$ --</div>
+            <div class="flex items-center space-x-2 mt-1">
+              <span id="todayReturnVal" class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">0.00%</span>
+              <span id="todayStatusNote" class="text-[11px] text-slate-400">使用最近交易日收盤資料</span>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
+            <span id="livePriceSyncInfoNote">上次同步: 未同步</span>
+            <span id="livePriceDelayNote" class="text-slate-400">延遲約 -- 分</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Overall Profit & Return -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span class="text-xs font-semibold text-slate-500 flex items-center">
+              <i data-lucide="line-chart" class="w-3.5 h-3.5 mr-1 text-blue-600"></i>整體損益
+            </span>
+            <span class="text-[11px] font-medium text-slate-400">總資產 − 累積淨投入</span>
+          </div>
+          <div class="my-3">
+            <div id="overallProfitVal" class="text-2xl font-extrabold text-slate-900">NT$ --</div>
+            <div class="flex items-center space-x-2 mt-1">
+              <span id="overallReturnVal" class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">0.00%</span>
+              <span class="text-[11px] text-slate-400">總報酬率</span>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 flex justify-between">
+            <span>累積淨投入：<strong id="cumulativeInputVal" class="text-slate-700">NT$ --</strong></span>
+          </div>
+        </div>
+
+        <!-- Card 3: Market Value & Remaining Cost -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span class="text-xs font-semibold text-slate-500 flex items-center">
+              <i data-lucide="wallet" class="w-3.5 h-3.5 mr-1 text-blue-600"></i>股票市值與持股成本
+            </span>
+            <span class="text-[11px] font-medium text-slate-400">現有庫存</span>
+          </div>
+          <div class="my-3">
+            <div id="stockMarketVal" class="text-2xl font-extrabold text-slate-900">NT$ --</div>
+            <div class="text-xs text-slate-500 mt-1 flex items-center space-x-1">
+              <span>剩餘持股成本：</span>
+              <span id="stockRemainingCostVal" class="font-bold text-slate-700">NT$ --</span>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 flex justify-between">
+            <span>現金餘額：<strong id="cashBalanceVal" class="text-slate-700">NT$ --</strong></span>
+            <span>總資產：<strong id="totalAssetVal" class="text-brand-900 font-bold">NT$ --</strong></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dashboard Focus Dream Compact Card -->
+      <div id="dashboardFocusDreamCard" class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent rounded-xl border border-amber-200/80 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow">
+            <span id="focusDreamIconDisplay">🎯</span>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] uppercase tracking-wider font-extrabold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">焦點夢想進度</span>
+              <span id="focusDreamHolderBadge" class="text-xs text-slate-500 font-medium">--</span>
+            </div>
+            <h3 id="focusDreamTitle" class="text-sm font-bold text-slate-900 mt-0.5">載入夢想中...</h3>
+          </div>
+        </div>
+
+        <div class="flex-grow max-w-md space-y-1">
+          <div class="flex justify-between text-xs font-semibold">
+            <span class="text-slate-600">帳面總收益進度</span>
+            <span id="focusDreamBookPct" class="text-amber-700">0.0%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="focusDreamBookBar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-slate-500">
+            <span>已落袋進度：<strong id="focusDreamRealizedPct" class="text-slate-700">0.0%</strong></span>
+            <span id="focusDreamNextMilestone" class="text-amber-800 font-medium">下一里程碑：25%</span>
+          </div>
+        </div>
+
+        <button onclick="switchTab('dreams')" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap self-end md:self-center">
+          查看夢想清單 →
+        </button>
+      </div>
+
+      <!-- Gain/Loss Breakdown & Donut Chart Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Profit vs Loss Breakdown Card -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center mb-4">
+            <i data-lucide="bar-chart-3" class="w-4 h-4 mr-1.5 text-blue-600"></i>持股盈虧狀況統計
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Gain Card -->
+            <div class="bg-red-50/70 border border-red-200/80 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-red-700 flex items-center">
+                  <i data-lucide="trending-up" class="w-4 h-4 mr-1"></i>獲利持股
+                </span>
+                <span id="gainStockCount" class="text-xs font-extrabold px-2 py-0.5 bg-red-100 text-red-800 rounded-full">0 檔</span>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-slate-500">未實現獲利金額</div>
+                <div id="gainAmount" class="text-xl font-bold text-red-600 mt-0.5">NT$ 0</div>
+              </div>
+              <div class="mt-3 pt-2 border-t border-red-100 flex items-center justify-between text-xs">
+                <span class="text-slate-600">獲利市值占比</span>
+                <span id="gainRatio" class="font-bold text-red-700">0.00%</span>
+              </div>
+            </div>
+
+            <!-- Loss Card -->
+            <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-emerald-700 flex items-center">
+                  <i data-lucide="trending-down" class="w-4 h-4 mr-1"></i>虧損持股
+                </span>
+                <span id="lossStockCount" class="text-xs font-extrabold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">0 檔</span>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-slate-500">未實現虧損金額</div>
+                <div id="lossAmount" class="text-xl font-bold text-emerald-600 mt-0.5">NT$ 0</div>
+              </div>
+              <div class="mt-3 pt-2 border-t border-emerald-100 flex items-center justify-between text-xs">
+                <span class="text-slate-600">虧損市值占比</span>
+                <span id="lossRatio" class="font-bold text-emerald-700">0.00%</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Neutral & Missing Price Note -->
+          <div class="mt-4 text-xs text-slate-500 bg-slate-50 rounded-lg p-2.5 border border-slate-100 flex flex-wrap gap-4 justify-between">
+            <span>損益兩平持股：<strong id="neutralStockCount" class="text-slate-700">0 檔</strong></span>
+            <span>待補股價持股：<strong id="missingPriceStockCount" class="text-amber-600">0 檔</strong></span>
+            <span class="text-slate-400">註：損益兩平與缺價持股不列入獲利/虧損</span>
+          </div>
+        </div>
+
+        <!-- Profit/Loss Donut Chart Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center mb-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 mr-1.5 text-blue-600"></i>盈虧市值占比圖
+          </h3>
+          <div class="relative flex-grow flex items-center justify-center my-2 min-h-[180px]">
+            <canvas id="profitLossChart" class="max-h-48"></canvas>
+          </div>
+          <div id="chartLegendText" class="text-center text-xs text-slate-500">
+            按未實現損益歸類庫存市值
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Secondary Dashboard Widgets -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">累積已實現損益</div>
+          <div id="realizedProfitVal" class="text-lg font-bold text-slate-800 mt-1">NT$ 0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">未實現損益合計</div>
+          <div id="unrealizedProfitVal" class="text-lg font-bold text-slate-800 mt-1">NT$ 0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">累積領取股息</div>
+          <div id="cumulativeDividendsVal" class="text-lg font-bold text-blue-700 mt-1">NT$ 0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">有效持股總檔數</div>
+          <div id="activeHoldingCountVal" class="text-lg font-bold text-slate-800 mt-1">0 檔</div>
+        </div>
+      </div>
+
+      <!-- Top Holdings & Asset Allocation Chart Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+            <i data-lucide="donut" class="w-4 h-4 mr-1.5 text-blue-600"></i>持股市值配置
+          </h3>
+          <div class="relative h-60 flex items-center justify-center">
+            <canvas id="stockAllocationChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
+              <i data-lucide="trophy" class="w-3.5 h-3.5 mr-1 text-red-500"></i>未實現獲利前三名
+            </h4>
+            <div id="topGainersList" class="space-y-2 text-xs"></div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 mr-1 text-emerald-500"></i>未實現虧損前三名
+            </h4>
+            <div id="topLosersList" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW 2: HOLDINGS ================= -->
+    <div id="view-holdings" class="hidden space-y-4">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div class="relative flex-grow max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="holdingSearchInput" oninput="renderHoldingsView()" placeholder="搜尋股票代號或名稱..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="holdingFilterProfit" onchange="renderHoldingsView()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700">
+            <option value="ALL">全部損益狀態</option>
+            <option value="GAIN">獲利持股</option>
+            <option value="LOSS">虧損持股</option>
+            <option value="EVEN">損益兩平</option>
+          </select>
+
+          <select id="holdingSortBy" onchange="renderHoldingsView()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700">
+            <option value="marketValue">按市值排序 (高→低)</option>
+            <option value="unrealizedPL">按未實現損益排序</option>
+            <option value="shares">按持有股數排序</option>
+            <option value="symbol">按股票代號排序</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-4">股票 / 市場</th>
+                <th class="py-3 px-4">持有人</th>
+                <th class="py-3 px-4 text-right">持有股數</th>
+                <th class="py-3 px-4 text-right">平均成本</th>
+                <th class="py-3 px-4 text-right">剩餘總成本</th>
+                <th class="py-3 px-4 text-right">最新股價</th>
+                <th class="py-3 px-4 text-right">目前市值</th>
+                <th class="py-3 px-4 text-right">未實現損益</th>
+                <th class="py-3 px-4 text-right">報酬率</th>
+                <th class="py-3 px-4 text-center">來源/操作</th>
+              </tr>
+            </thead>
+            <tbody id="holdingsTableBody" class="divide-y divide-slate-100 text-slate-800 font-medium"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 3: TRANSACTIONS ================= -->
+    <div id="view-transactions" class="hidden space-y-4">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div class="relative flex-grow max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="txSearchInput" oninput="renderTransactionsView()" placeholder="搜尋股票、策略、交易理由或備註..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="txFilterType" onchange="renderTransactionsView()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700">
+            <option value="ALL">全部紀錄類型</option>
+            <option value="買入">買入</option>
+            <option value="賣出">賣出</option>
+            <option value="股價更新">股價更新</option>
+            <option value="股息">股息</option>
+            <option value="入金">入金</option>
+            <option value="出金">出金</option>
+            <option value="費用">費用</option>
+          </select>
+
+          <select id="txFilterStatus" onchange="renderTransactionsView()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700">
+            <option value="ALL">全部資料狀態</option>
+            <option value="有效">有效</option>
+            <option value="待確認">待確認</option>
+            <option value="待補資料">待補資料</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-3">紀錄ID</th>
+                <th class="py-3 px-3">日期</th>
+                <th class="py-3 px-3">持有人</th>
+                <th class="py-3 px-3">帳戶</th>
+                <th class="py-3 px-3">股票代號/名稱</th>
+                <th class="py-3 px-3">類型</th>
+                <th class="py-3 px-3 text-right">股數</th>
+                <th class="py-3 px-3 text-right">單價</th>
+                <th class="py-3 px-3 text-right">手續費/稅</th>
+                <th class="py-3 px-3">策略 / 備註</th>
+                <th class="py-3 px-3 text-center">狀態</th>
+              </tr>
+            </thead>
+            <tbody id="txTableBody" class="divide-y divide-slate-100 text-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 4: STRATEGY REVIEW ================= -->
+    <div id="view-strategy" class="hidden space-y-6">
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="info" class="w-4 h-4 text-blue-600 shrink-0"></i>
+          <span><strong>免責聲明：</strong> 本頁面僅整理個人歷史交易紀錄與策略統計結果，不構成任何投資建議。</span>
+        </div>
+      </div>
+      <div id="strategyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </div>
+
+    <!-- ================= VIEW 5: DREAMS LIST ================= -->
+    <div id="view-dreams" class="hidden space-y-6">
+      <!-- Dreams Header Action Bar -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 flex items-center">
+            <i data-lucide="compass" class="w-5 h-5 text-amber-500 mr-2"></i>夢想清單與儲蓄目標
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">將投資收益對照現實人生夢想，保持中性理性的投資進度追蹤。</p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button onclick="openDreamModal()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>新增夢想</span>
+          </button>
+          <button onclick="exportDreamsCSV()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition border border-slate-300">
+            匯出 CSV
+          </button>
+          <input type="file" id="dreamFileInput" accept=".csv" class="hidden" onchange="importDreamsCSV(event)">
+          <button onclick="document.getElementById('dreamFileInput').click()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition border border-slate-300">
+            匯入 CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Focus Dream Main Dashboard Component -->
+      <div id="dreamFocusLargeCard" class="bg-white rounded-xl border border-amber-200 shadow-sm p-6 space-y-4"></div>
+
+      <!-- Other Dreams Grid -->
+      <div>
+        <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+          <i data-lucide="list" class="w-4 h-4 mr-1.5 text-slate-600"></i>所有夢想項目
+        </h3>
+        <div id="dreamsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Dream Neutral Disclaimer -->
+      <div class="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-xs text-amber-900">
+        <strong>固定提示：</strong> 夢想進度是投資成果的對照，不代表應為了加速達標而提高投資風險。
+      </div>
+    </div>
+
+    <!-- ================= VIEW 6: PAPER TRADING ================= -->
+    <div id="view-paper" class="hidden space-y-6">
+      <!-- Paper Trading Notice -->
+      <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 text-xs text-purple-900 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="flask-conical" class="w-4 h-4 text-purple-600 shrink-0"></i>
+          <span><strong>模擬交易沙盒：</strong> 模擬資料與正式資產完全隔離（`dataMode === "PAPER"`），不會影響真實損益與夢想進度。</span>
+        </div>
+      </div>
+
+      <!-- Portfolio Control Bar -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <span class="text-xs font-bold text-slate-600 whitespace-nowrap">模擬組合：</span>
+          <select id="paperPortfolioSelect" onchange="onPaperPortfolioChange(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg px-3 py-1.5 font-bold focus:ring-2 focus:ring-purple-500">
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button onclick="openPaperOrderModal()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>新增模擬單</span>
+          </button>
+          <button onclick="exportPaperCSV()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium border border-slate-300">
+            匯出 CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Paper Portfolio Overview Metrics -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">虛擬總資產</div>
+          <div id="paperTotalAssets" class="text-xl font-bold text-slate-900 mt-1">NT$ 1,000,000</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">虛擬現金餘額</div>
+          <div id="paperCashBalance" class="text-xl font-bold text-slate-800 mt-1">NT$ 1,000,000</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">模擬持股市值</div>
+          <div id="paperMarketValue" class="text-xl font-bold text-purple-700 mt-1">NT$ 0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">模擬總損益 (報酬率)</div>
+          <div id="paperTotalPL" class="text-xl font-bold text-slate-800 mt-1">NT$ 0 (0.00%)</div>
+        </div>
+      </div>
+
+      <!-- Discipline Checks Card Grid -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center">
+          <i data-lucide="shield-alert" class="w-4 h-4 mr-1.5 text-purple-600"></i>策略紀律與風險檢核 (中性提示)
+        </h3>
+        <div id="paperDisciplineCheckGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs"></div>
+      </div>
+
+      <!-- Paper Orders Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">模擬交易流水帳</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">單號</th>
+                <th class="py-2.5 px-3">日期</th>
+                <th class="py-2.5 px-3">股票</th>
+                <th class="py-2.5 px-3">類型</th>
+                <th class="py-2.5 px-3 text-right">股數</th>
+                <th class="py-2.5 px-3 text-right">單價</th>
+                <th class="py-2.5 px-3">停損/目標價</th>
+                <th class="py-2.5 px-3">策略理由</th>
+                <th class="py-2.5 px-3 text-center">狀態</th>
+              </tr>
+            </thead>
+            <tbody id="paperTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 7: DATA CHECK & SETTINGS ================= -->
+    <div id="view-dataCheck" class="hidden space-y-6">
+      
+      <!-- New Section: Google Sheets Live Price Sync Settings -->
+      <div class="bg-white rounded-xl p-5 border border-blue-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center">
+              <i data-lucide="radio" class="w-4 h-4 mr-1.5 text-blue-600 animate-pulse"></i>Google Sheets 盤中股價自動更新 (公開報價源)
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">獨立同步公開市場價格，完全與個人私人交易資產資料隔離。</p>
+          </div>
+          <button onclick="triggerManualPriceSync()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>立即更新股價</span>
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-700">Google Sheets 股價 CSV 網址</label>
+          <div class="flex gap-2">
+            <input type="url" id="livePriceUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../pub?gid=...&single=true&output=csv" class="flex-grow px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+            <button onclick="saveLivePriceUrlAndSync()" class="px-4 py-1.5 bg-brand-900 text-white rounded-lg text-xs font-bold hover:bg-brand-800 whitespace-nowrap shadow-sm">儲存並即時同步</button>
+          </div>
+        </div>
+
+        <!-- Live Price Source & Quality Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs pt-1">
+          <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+            <span class="text-slate-500 block">持股總檔數</span>
+            <span id="priceStatTotal" class="text-base font-bold text-slate-800">0 檔</span>
+          </div>
+          <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
+            <span class="text-emerald-700 block">Google 即時股價</span>
+            <span id="priceStatLive" class="text-base font-bold text-emerald-700">0 檔</span>
+          </div>
+          <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            <span class="text-slate-600 block">快取備份股價</span>
+            <span id="priceStatCache" class="text-base font-bold text-slate-700">0 檔</span>
+          </div>
+          <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100">
+            <span class="text-amber-800 block">交易歷史股價</span>
+            <span id="priceStatCsv" class="text-base font-bold text-amber-800">0 檔</span>
+          </div>
+          <div class="bg-red-50 p-2.5 rounded-lg border border-red-100">
+            <span class="text-red-700 block">完全缺價/待補</span>
+            <span id="priceStatMissing" class="text-base font-bold text-red-600">0 檔</span>
+          </div>
+        </div>
+
+        <!-- Collapsible Tutorial Accordion -->
+        <details class="group bg-slate-50 rounded-xl border border-slate-200">
+          <summary class="flex justify-between items-center font-bold text-xs text-slate-800 p-3.5 cursor-pointer select-none">
+            <span class="flex items-center"><i data-lucide="help-circle" class="w-4 h-4 mr-1.5 text-blue-600"></i>如何設定免費的 Google Sheets 盤中股價自動更新工作表？ (教學與公式範例)</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="p-4 pt-1 text-xs text-slate-700 space-y-3 border-t border-slate-200/80 leading-relaxed">
+            <p><strong>步驟 1：</strong> 在您的 Google Sheets 建立一個獨立的「股價報價」工作表（請勿與私人交易紀錄寫在一起）。</p>
+            <p><strong>步驟 2：</strong> 在第一列標題填入以下 11 個固定欄位：</p>
+            <div class="bg-slate-900 text-slate-100 p-2.5 rounded-lg font-mono text-[11px] overflow-x-auto">
+              市場,股票代號,股票名稱,GoogleTicker,最新股價,前一交易日股價,最新交易時間,最新交易日,比較基準日,延遲分鐘,資料狀態
+            </div>
+            <p><strong>步驟 3：</strong> 貼上以下自動公式 (假設 B 欄為股票代號且格式設為「純文字」)：</p>
+            <ul class="list-disc pl-5 space-y-1 font-mono text-[11px] text-blue-900 bg-blue-50/80 p-3 rounded-lg border border-blue-100">
+              <li>D2 (GoogleTicker): <code class="text-red-700">="TPE:"&B2</code> (上櫃股票可改為 <code class="text-red-700">="TWO:"&B2</code>)</li>
+              <li>E2 (最新股價): <code class="text-red-700">=IFERROR(GOOGLEFINANCE(D2,"price"),"")</code></li>
+              <li>F2 (前一交易日股價): <code class="text-red-700">=IFERROR(GOOGLEFINANCE(D2,"closeyest"),"")</code></li>
+              <li>G2 (最新交易時間): <code class="text-red-700">=IFERROR(GOOGLEFINANCE(D2,"tradetime"),"")</code></li>
+              <li>J2 (延遲分鐘): <code class="text-red-700">=IFERROR(GOOGLEFINANCE(D2,"datadelay"),"")</code></li>
+              <li>K2 (資料狀態): <code class="text-red-700">=IF(E2="","無法取得",IF(NOW()-G2>1,"使用最近交易日資料","正常"))</code></li>
+            </ul>
+            <p><strong>步驟 4：</strong> 點擊「檔案 → 共用 → 發布到網路」，選擇「股價報價」工作表與「CSV 格式」，複製生成的網址貼至上方點擊儲存即可。</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center">
+          <i data-lucide="check-circle" class="w-4 h-4 mr-1.5 text-emerald-600"></i>CSV 資料品質與驗證統計
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <span class="text-slate-500 block">總紀錄數</span>
+            <span id="qcTotalRows" class="text-lg font-bold text-slate-800">0</span>
+          </div>
+          <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+            <span class="text-emerald-700 block">有效紀錄</span>
+            <span id="qcValidRows" class="text-lg font-bold text-emerald-700">0</span>
+          </div>
+          <div class="bg-amber-50 p-3 rounded-lg border border-amber-100">
+            <span class="text-amber-700 block">待確認</span>
+            <span id="qcPendingRows" class="text-lg font-bold text-amber-700">0</span>
+          </div>
+          <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
+            <span class="text-orange-700 block">待補資料</span>
+            <span id="qcMissingDataRows" class="text-lg font-bold text-orange-700">0</span>
+          </div>
+          <div class="bg-red-50 p-3 rounded-lg border border-red-100">
+            <span class="text-red-700 block">重複 ID</span>
+            <span id="qcDuplicateIds" class="text-lg font-bold text-red-700">0</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <span class="text-slate-500 block">驗證錯誤/異常</span>
+            <span id="qcErrorRows" class="text-lg font-bold text-red-600">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">待確認與異常資料清單</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">CSV列號</th>
+                <th class="py-2.5 px-3">紀錄ID</th>
+                <th class="py-2.5 px-3">日期</th>
+                <th class="py-2.5 px-3">持有人</th>
+                <th class="py-2.5 px-3">股票/項目</th>
+                <th class="py-2.5 px-3">原始狀態</th>
+                <th class="py-2.5 px-3">異常說明 / 提示</th>
+              </tr>
+            </thead>
+            <tbody id="qcIssuesTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center">
+          <i data-lucide="settings" class="w-4 h-4 mr-1.5 text-blue-600"></i>交易資料來源與安全設定
+        </h3>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold text-slate-800">1. 網站內建 CSV 資料庫</span>
+            <p class="text-[11px] text-slate-500">內建 110 筆原始流水帳（含本人、太太、女兒獨立資料）。</p>
+          </div>
+          <button onclick="useBuiltinCSV()" class="px-3 py-1.5 bg-brand-900 text-white rounded-lg text-xs font-semibold hover:bg-brand-800">載入內建</button>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold text-slate-800">2. 本機 CSV 檔案上傳</span>
+            <p class="text-[11px] text-slate-500">僅在您的瀏覽器本機解析，絕不傳輸至任何雲端伺服器。</p>
+          </div>
+          <input type="file" id="localFileInput" accept=".csv" class="hidden" onchange="handleLocalFileUpload(event)">
+          <button onclick="document.getElementById('localFileInput').click()" class="px-3 py-1.5 bg-slate-700 text-white rounded-lg text-xs font-semibold hover:bg-slate-800">選擇檔案</button>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div>
+            <span class="text-xs font-bold text-slate-800">3. Google Sheets 私人交易 CSV 同步網址</span>
+            <p class="text-[11px] text-slate-500">貼上發布至網路的交易紀錄 CSV 連結以進行遠端同步。</p>
+          </div>
+          <div class="flex gap-2">
+            <input type="url" id="googleSheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" class="flex-grow px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button onclick="syncGoogleSheetsCSV()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 whitespace-nowrap">同步連線</button>
+          </div>
+        </div>
+
+        <!-- Local Data Protection Mode -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <span class="text-xs font-bold text-slate-800 block">4. 本機快取與保護模式</span>
+          <div class="flex items-center space-x-4 text-xs">
+            <label class="flex items-center space-x-1 cursor-pointer">
+              <input type="radio" name="storageMode" value="SESSION" checked onchange="setStorageMode('SESSION')">
+              <span>不保存模式 (僅存在目前工作階段)</span>
+            </label>
+            <label class="flex items-center space-x-1 cursor-pointer">
+              <input type="radio" name="storageMode" value="ENCRYPTED" onchange="setStorageMode('ENCRYPTED')">
+              <span>加密快取模式 (Web Crypto AES-GCM)</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW 8: VIEW ALL QUOTES ================= -->
+    <div id="view-quotes" class="hidden space-y-6">
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center">
+              <i data-lucide="book-open" class="w-5 h-5 text-blue-600 mr-2"></i>投資心法全集
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">匯集大師經典投資哲學，協助建立理性與紀律思考框架。</p>
+          </div>
+          
+          <button onclick="switchTab('dashboard')" class="text-xs text-blue-600 font-bold hover:underline">
+            ← 返回資產總覽
+          </button>
+        </div>
+
+        <!-- Filter Tags -->
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="font-bold text-slate-500">主題篩選：</span>
+          <button onclick="filterQuotesByTag('ALL')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-blue-600 text-white font-medium">全部</button>
+          <button onclick="filterQuotesByTag('耐心')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">耐心</button>
+          <button onclick="filterQuotesByTag('人性')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">人性</button>
+          <button onclick="filterQuotesByTag('風險')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">風險</button>
+          <button onclick="filterQuotesByTag('價值')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">價值</button>
+          <button onclick="filterQuotesByTag('研究')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">研究</button>
+          <button onclick="filterQuotesByTag('反思')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">反思</button>
+          <button onclick="filterQuotesByTag('長期紀律')" class="quote-tag-btn px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">長期紀律</button>
+        </div>
+      </div>
+
+      <div id="quotesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+  </main>
+
+  <!-- REFINED QUOTE POPUP MODAL -->
+  <div id="quoteModal" role="dialog" aria-modal="true" aria-labelledby="quoteDialogTitle" aria-describedby="quoteDialogContent" 
+       onmousedown="handleQuoteOverlayClick(event)" 
+       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/75 backdrop-blur-md transition-opacity duration-300">
+    
+    <div id="quoteModalContainer" onmousedown="event.stopPropagation()" 
+         class="relative bg-white text-slate-900 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] overflow-y-auto border border-slate-100/80 p-6 sm:p-12 md:p-14 flex flex-col justify-between space-y-6 sm:space-y-8 my-auto">
+      
+      <!-- Top Progress Countdown Bar -->
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-slate-100 overflow-hidden rounded-t-3xl">
+        <div id="quoteProgressBar" class="h-full bg-amber-500 w-full transition-all duration-300"></div>
+      </div>
+
+      <!-- Header Row: Label & Close Button -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-bold tracking-wide border border-amber-200/60">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1.5 text-amber-600"></i>
+            <span id="quoteDialogTitle">今日投資心法</span>
+          </span>
+          <span id="quoteTagBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+            <!-- Dynamic Tag -->
+          </span>
+        </div>
+
+        <button onclick="closeQuoteModal()" 
+                aria-label="關閉投資心法" 
+                class="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Quote Content Focus Area -->
+      <div id="quoteDialogContent" class="space-y-4 sm:space-y-6 my-auto max-w-3xl mx-auto w-full text-center sm:text-left">
+        <blockquote id="quoteEnText" class="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-snug sm:leading-tight tracking-tight italic select-text" style="font-size: clamp(1.5rem, 3.5vw, 2.5rem); text-wrap: balance;">
+          <!-- English Quote -->
+        </blockquote>
+
+        <p id="quoteZhText" class="text-sm sm:text-base md:text-lg text-slate-600 leading-relaxed font-medium bg-slate-50/80 p-4 sm:p-6 rounded-2xl border border-slate-100 select-text">
+          <!-- Chinese Translation -->
+        </p>
+
+        <div class="pt-2 text-right">
+          <span id="quoteAuthor" class="text-sm sm:text-base font-bold text-slate-800 tracking-wide select-text">
+            <!-- Author: e.g. — Warren Buffett -->
+          </span>
+        </div>
+      </div>
+
+      <!-- Bottom Controls: Timer & Pause Toggle -->
+      <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <div class="flex items-center space-x-2">
+          <span id="quoteCountdownText" class="font-medium">10 秒後自動關閉</span>
+          <span class="text-slate-300">|</span>
+          <button id="quotePauseBtn" onclick="toggleQuotePause()" class="text-amber-700 font-bold hover:underline focus:outline-none min-h-[44px] min-w-[44px] inline-flex items-center justify-center">
+            暫停
+          </button>
+        </div>
+        <span id="quotePauseBadge" class="hidden text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
+          已暫停倒數
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Dream Form Modal -->
+  <div id="dreamModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <h3 id="dreamModalTitle" class="text-sm font-bold text-slate-900">新增夢想項目</h3>
+        <button onclick="closeDreamModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <form id="dreamForm" onsubmit="handleDreamSubmit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="dreamFormId">
+        
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">夢想名稱</label>
+          <input type="text" id="dreamFormName" required placeholder="例：購屋頭期款、家庭環島夢想" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">持有人</label>
+            <select id="dreamFormHolder" required class="w-full px-3 py-1.5 border border-slate-300 rounded-lg"></select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">圖示 Emoji</label>
+            <input type="text" id="dreamFormIcon" value="🎯" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-center">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">類別</label>
+            <input type="text" id="dreamFormCategory" placeholder="房產/旅遊/教育" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">目標類型</label>
+            <select id="dreamFormType" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+              <option value="頭期款">頭期款</option>
+              <option value="完整價格">完整價格</option>
+              <option value="自訂金額">自訂金額</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">目標金額 (NT$)</label>
+          <input type="number" id="dreamFormAmount" required min="1" placeholder="例：2000000" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">關聯帳戶</label>
+          <select id="dreamFormAccount" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg"></select>
+        </div>
+
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" onclick="closeDreamModal()" class="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg">儲存夢想</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Paper Order Form Modal -->
+  <div id="paperOrderModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+        <h3 class="text-sm font-bold text-slate-900">新增模擬交易單</h3>
+        <button onclick="closePaperOrderModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <form id="paperOrderForm" onsubmit="handlePaperOrderSubmit(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">股票代號</label>
+            <input type="text" id="paperFormSymbol" required placeholder="例：2330" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">股票名稱</label>
+            <input type="text" id="paperFormName" required placeholder="例：台積電" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">類型</label>
+            <select id="paperFormType" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+              <option value="買入">買入</option>
+              <option value="賣出">賣出</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">成交股數</label>
+            <input type="number" id="paperFormShares" required min="1" placeholder="1000" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">模擬單價</label>
+            <input type="number" id="paperFormPrice" required step="0.1" placeholder="950" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">預設停損價</label>
+            <input type="number" id="paperFormStopLoss" step="0.1" placeholder="900" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">預設目標價</label>
+            <input type="number" id="paperFormTarget" step="0.1" placeholder="1100" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">策略與買進理由 (必填以通過紀律檢查)</label>
+          <textarea id="paperFormReason" required rows="2" placeholder="詳細說明模擬決策邏輯..." class="w-full px-3 py-1.5 border border-slate-300 rounded-lg"></textarea>
+        </div>
+
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" onclick="closePaperOrderModal()" class="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg">建立模擬單</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Universal Copyright Footer -->
+  <footer class="mt-12 py-6 text-center text-xs text-slate-400 border-t border-slate-200">
+    © 2026 Jack Chen. All rights reserved.
+  </footer>
+
+  <script>
+    /* =====================================================================
+       1. EMBEDDED BUILT-IN CSV DATASET (110 records, 22 columns)
+       ===================================================================== */
+    const BUILTIN_CSV_DATA = `紀錄ID,日期,持有人,帳戶,市場,股票代號,股票名稱,紀錄類型,成交股數,單價,手續費,交易稅,現金金額,幣別,匯率,類別,策略,交易理由,交易檢討,備註,資料狀態,異常說明
+TX001,2026-01-02,本人,富邦證券,TW,,,入金,,,,1000000,TWD,1,,,期初資金注入,,資金到位,有效,
+TX002,2026-01-02,太太,國泰證券,TW,,,入金,,,,800000,TWD,1,,,期初資金注入,,資金到位,有效,
+TX003,2026-01-02,女兒,元大證券,TW,,,入金,,,,300000,TWD,1,,,壓歲錢儲蓄,,資金到位,有效,
+TX004,2026-01-05,本人,富邦證券,TW,2330,台積電,買入,1000,900,1283,0,,TWD,1,半導體,核心配置,看好先進製程成長,,首批試買,有效,
+TX005,2026-01-05,太太,國泰證券,TW,2330,台積電,買入,500,900,641,0,,TWD,1,半導體,核心配置,長期持有,,定期佈局,有效,
+TX006,2026-01-06,本人,富邦證券,TW,2317,鴻海,買入,2000,170,485,0,,TWD,1,電子製造,波段操作,AI伺服器出貨量增,,突破買進,有效,
+TX007,2026-01-06,女兒,元大證券,TW,0050,元大台灣50,買入,1000,160,228,0,,TWD,1,指數型,長期定期定額,大盤追蹤,,定期定額,有效,
+TX008,2026-01-08,本人,富邦證券,TW,2454,聯發科,買入,500,1100,784,0,,TWD,1,半導體,波段操作,旗艦晶片拉貨強勁,,拉回承接,有效,
+TX009,2026-01-09,太太,國泰證券,TW,0056,元大高股息,買入,5000,36,257,0,,TWD,1,高股息,高股息領息,穩定現金流,,核心領息,有效,
+TX010,2026-01-12,本人,富邦證券,TW,00878,國泰永續高股息,買入,10000,21.5,306,0,,TWD,1,高股息,高股息領息,季配息配置,,領息策略,有效,
+TX011,2026-01-15,女兒,元大證券,TW,00929,復華台灣科技優息,買入,5000,18.5,132,0,,TWD,1,高股息,高股息領息,月配息再投資,,月配息,有效,
+TX012,2026-01-16,本人,富邦證券,TW,2308,台達電,買入,1000,360,513,0,,TWD,1,電子零組件,核心配置,綠能與電源管理受惠,,價值投資,有效,
+TX013,2026-01-20,太太,國泰證券,TW,2881,富邦金,買入,3000,80,342,0,,TWD,1,金融保暖,核心配置,金融股獲利回升,,穩健配息,有效,
+TX014,2026-01-22,本人,富邦證券,TW,2882,國泰金,買入,4000,58,331,0,,TWD,1,金融保暖,核心配置,殖利率吸引力高,,穩健配息,有效,
+TX015,2026-01-26,太太,國泰證券,TW,2382,廣達,買入,1000,250,356,0,,TWD,1,電腦周邊,波段操作,AI伺服器組裝大廠,,順勢跟進,有效,
+TX016,2026-02-02,女兒,元大證券,TW,3008,大立光,買入,100,2600,371,0,,TWD,1,光學零組件,波段操作,潛望鏡鏡頭升級趨勢,,零股買進,有效,
+TX017,2026-02-05,本人,富邦證券,TW,2330,台積電,買入,500,920,656,0,,TWD,1,半導體,核心配置,加碼優質股,,拉回加碼,有效,
+TX018,2026-02-10,太太,國泰證券,TW,2317,鴻海,買入,1000,175,250,0,,TWD,1,電子製造,波段操作,業績好轉,,隨勢加碼,有效,
+TX019,2026-02-12,本人,富邦證券,TW,2454,聯發科,賣出,200,1180,168,708,,TWD,1,半導體,波段操作,達短線停利獲利目標,賣早了一點但有獲利,部分停利,有效,
+TX020,2026-02-15,太太,國泰證券,TW,0056,元大高股息,股息,,,,,,12500,TWD,1,高股息,高股息領息,收到現金股息,,現金入帳,有效,
+TX021,2026-02-20,女兒,元大證券,TW,00929,復華台灣科技優息,股息,,,,,,1000,TWD,1,高股息,高股息領息,月月配入帳,,現金入帳,有效,
+TX022,2026-02-25,本人,富邦證券,TW,2308,台達電,賣出,300,380,162,342,,TWD,1,電子零組件,核心配置,調節資金比重,紀律執行停利,部分獲利入袋,有效,
+TX023,2026-03-02,本人,富邦證券,TW,,,入金,,,,500000,TWD,1,,,定期補充投資資金,,資金到位,有效,
+TX024,2026-03-05,太太,國泰證券,TW,2881,富邦金,買入,2000,82,234,0,,TWD,1,金融保暖,核心配置,看好壽險投報率提升,,加碼買進,有效,
+TX025,2026-03-10,女兒,元大證券,TW,0050,元大台灣50,買入,500,165,118,0,,TWD,1,指數型,長期定期定額,月配額扣款,,定期扣款,有效,
+TX026,2026-03-15,本人,富邦證券,TW,2330,台積電,股息,,,,,,9000,TWD,1,半導體,核心配置,季配息發放,,現金入帳,有效,
+TX027,2026-03-18,太太,國泰證券,TW,2330,台積電,股息,,,,,,3000,TWD,1,半導體,核心配置,季配息發放,,現金入帳,有效,
+TX028,2026-03-20,本人,富邦證券,TW,00878,國泰永續高股息,買入,5000,22,157,0,,TWD,1,高股息,高股息領息,領息再投資,,除息前加碼,有效,
+TX029,2026-03-25,女兒,元大證券,TW,3008,大立光,賣出,50,2750,196,413,,TWD,1,光學零組件,波段操作,獲利達標獲利結算,執行波段紀律,部分獲利,有效,
+TX030,2026-04-02,本人,富邦證券,TW,2382,廣達,買入,1500,260,556,0,,TWD,1,電腦周邊,波段操作,營收創新高衝刺,,突破追價,有效,
+TX031,2026-04-08,太太,國泰證券,TW,2882,國泰金,買入,2000,60,171,0,,TWD,1,金融保暖,核心配置,殖利率保護性好,,低點逢低買,有效,
+TX032,2026-04-12,本人,富邦證券,TW,2317,鴻海,賣出,1000,182,260,546,,TWD,1,電子製造,波段操作,目標價達成停利,紀律分批賣出,獲利落袋,有效,
+TX033,2026-04-15,女兒,元大證券,TW,00929,復華台灣科技優息,股息,,,,,,1000,TWD,1,高股息,高股息領息,月配息入帳,,現金入帳,有效,
+TX034,2026-04-20,本人,富邦證券,TW,2454,聯發科,買入,300,1150,493,0,,TWD,1,半導體,波段操作,財報亮眼逢低回補,,拉回逢低買,有效,
+TX035,2026-04-25,太太,國泰證券,TW,2382,廣達,賣出,500,270,192,405,,TWD,1,電腦周邊,波段操作,拉高獲利入袋,獲利轉入金融,獲利結算,有效,
+TX036,2026-05-04,本人,富邦證券,TW,2330,台積電,買入,500,940,670,0,,TWD,1,半導體,核心配置,法說會釋正面訊號,,看好買進,有效,
+TX037,2026-05-08,女兒,元大證券,TW,0050,元大台灣50,股息,,,,,,1500,TWD,1,指數型,長期定期定額,半年配息入帳,,現金入帳,有效,
+TX038,2026-05-12,太太,國泰證券,TW,0056,元大高股息,買入,3000,37.5,160,0,,TWD,1,高股息,高股息領息,除息後甜甜價,,逢低增持,有效,
+TX039,2026-05-15,本人,富邦證券,TW,00878,國泰永續高股息,股息,,,,,,7500,TWD,1,高股息,高股息領息,季配息發放,,現金入帳,有效,
+TX040,2026-05-20,女兒,元大證券,TW,00929,復華台灣科技優息,買入,3000,19,81,0,,TWD,1,高股息,高股息領息,儲蓄股再加碼,,定期買進,有效,
+TX041,2026-05-25,本人,富邦證券,TW,2308,台達電,買入,500,375,267,0,,TWD,1,電子零組件,核心配置,長線趨勢明確,,震盪拉回買,有效,
+TX042,2026-06-02,太太,國泰證券,TW,2881,富邦金,股息,,,,,,10000,TWD,1,金融保暖,核心配置,年度現金股利,,現金入帳,有效,
+TX043,2026-06-05,本人,富邦證券,TW,2882,國泰金,股息,,,,,,8000,TWD,1,金融保暖,核心配置,年度現金股利,,現金入帳,有效,
+TX044,2026-06-10,女兒,元大證券,TW,00929,復華台灣科技優息,股息,,,,,,1600,TWD,1,高股息,高股息領息,月配息入帳,,現金入帳,有效,
+TX045,2026-06-15,本人,富邦證券,TW,2330,台積電,股息,,,,,,12000,TWD,1,半導體,核心配置,季配息入帳,,現金入帳,有效,
+TX046,2026-06-18,太太,國泰證券,TW,2330,台積電,股息,,,,,,3000,TWD,1,半導體,核心配置,季配息入帳,,現金入帳,有效,
+TX047,2026-06-22,本人,富邦證券,TW,2382,廣達,賣出,1000,280,399,840,,TWD,1,電腦周邊,波段操作,滿足波段獲利目標,執行停利紀律,獲利結算,有效,
+TX048,2026-06-25,太太,國泰證券,TW,2317,鴻海,賣出,1000,188,268,564,,TWD,1,電子製造,波段操作,到達波段高點,停利出場,獲利結算,有效,
+TX049,2026-07-02,本人,富邦證券,TW,,,出金,,,,100000,TWD,1,,,家庭旅遊消費預算,,資金提領,有效,
+TX050,2026-07-06,女兒,元大證券,TW,0050,元大台灣50,買入,500,170,121,0,,TWD,1,指數型,長期定期定額,定期定額買進,,儲蓄累積,有效,
+TX051,2026-07-10,本人,富邦證券,TW,2454,聯發科,賣出,600,1230,1052,2214,,TWD,1,半導體,波段操作,高檔震盪獲利入袋,漂亮波段操作,全面結算,有效,
+TX052,2026-07-15,太太,國泰證券,TW,0056,元大高股息,股息,,,,,,16000,TWD,1,高股息,高股息領息,季配息入帳,,現金入帳,有效,
+TX053,2026-07-20,女兒,元大證券,TW,00929,復華台灣科技優息,股息,,,,,,2200,TWD,1,高股息,高股息領息,月配息入帳,,現金入帳,有效,
+TX054,2026-07-24,本人,富邦證券,TW,00878,國泰永續高股息,買入,5000,22.5,160,0,,TWD,1,高股息,高股息領息,定期定額持續累積,,穩定配置,有效,
+TX055,2026-07-28,太太,國泰證券,TW,2882,國泰金,買入,1000,61,87,0,,TWD,1,金融保暖,核心配置,除息後補買,,長期增持,有效,
+TX056,2026-08-03,本人,富邦證券,TW,2330,台積電,買入,500,950,677,0,,TWD,1,半導體,核心配置,長期價值看好,,震盪加碼,有效,
+TX057,2026-08-05,女兒,元大證券,TW,3008,大立光,買入,50,2700,192,0,,TWD,1,光學零組件,波段操作,逢低小量加碼,,零股加碼,有效,
+PR001,2026-08-07,,,TW,2330,台積電,股價更新,,950,0,0,,TWD,1,半導體,,,前一交易日股價收盤價,前一收盤,有效,
+PR002,2026-08-07,,,TW,2317,鴻海,股價更新,,180,0,0,,TWD,1,電子製造,,,前一交易日股價收盤價,前一收盤,有效,
+PR003,2026-08-07,,,TW,2454,聯發科,股價更新,,1200,0,0,,TWD,1,半導體,,,前一交易日股價收盤價,前一收盤,有效,
+PR004,2026-08-07,,,TW,2308,台達電,股價更新,,390,0,0,,TWD,1,電子零組件,,,前一交易日股價收盤價,前一收盤,有效,
+PR005,2026-08-07,,,TW,2881,富邦金,股價更新,,85,0,0,,TWD,1,金融保暖,,,前一交易日股價收盤價,前一收盤,有效,
+PR006,2026-08-07,,,TW,2882,國泰金,股價更新,,62,0,0,,TWD,1,金融保暖,,,前一交易日股價收盤價,前一收盤,有效,
+PR007,2026-08-07,,,TW,2382,廣達,股價更新,,270,0,0,,TWD,1,電腦周邊,,,前一交易日股價收盤價,前一收盤,有效,
+PR008,2026-08-07,,,TW,3008,大立光,股價更新,,2800,0,0,,TWD,1,光學零組件,,,前一交易日股價收盤價,前一收盤,有效,
+PR009,2026-08-07,,,TW,0050,元大台灣50,股價更新,,170,0,0,,TWD,1,指數型,,,前一交易日股價收盤價,前一收盤,有效,
+PR010,2026-08-07,,,TW,0056,元大高股息,股價更新,,38.5,0,0,,TWD,1,高股息,,,前一交易日股價收盤價,前一收盤,有效,
+PR011,2026-08-07,,,TW,00878,國泰永續高股息,股價更新,,22.8,0,0,,TWD,1,高股息,,,前一交易日股價收盤價,前一收盤,有效,
+PR012,2026-08-07,,,TW,00929,復華台灣科技優息,股價更新,,19.5,0,0,,TWD,1,高股息,,,前一交易日股價收盤價,前一收盤,有效,
+PR013,2026-08-10,,,TW,2330,台積電,股價更新,,965,0,0,,TWD,1,半導體,,,最新市場收盤價,最新價,有效,
+PR014,2026-08-10,,,TW,2317,鴻海,股價更新,,185,0,0,,TWD,1,電子製造,,,最新市場收盤價,最新價,有效,
+PR015,2026-08-10,,,TW,2454,聯發科,股價更新,,1220,0,0,,TWD,1,半導體,,,最新市場收盤價,最新價,有效,
+PR016,2026-08-10,,,TW,2308,台達電,股價更新,,402,0,0,,TWD,1,電子零組件,,,最新市場收盤價,最新價,有效,
+PR017,2026-08-10,,,TW,2881,富邦金,股價更新,,86.5,0,0,,TWD,1,金融保暖,,,最新市場收盤價,最新價,有效,
+PR018,2026-08-10,,,TW,2882,國泰金,股價更新,,63.2,0,0,,TWD,1,金融保暖,,,最新市場收盤價,最新價,有效,
+PR019,2026-08-10,,,TW,2382,廣達,股價更新,,275,0,0,,TWD,1,電腦周邊,,,最新市場收盤價,最新價,有效,
+PR020,2026-08-10,,,TW,3008,大立光,股價更新,,2850,0,0,,TWD,1,光學零組件,,,最新市場收盤價,最新價,有效,
+PR021,2026-08-10,,,TW,0050,元大台灣50,股價更新,,173.5,0,0,,TWD,1,指數型,,,最新市場收盤價,最新價,有效,
+PR022,2026-08-10,,,TW,0056,元大高股息,股價更新,,39.2,0,0,,TWD,1,高股息,,,最新市場收盤價,最新價,有效,
+PR023,2026-08-10,,,TW,00878,國泰永續高股息,股價更新,,23.1,0,0,,TWD,1,高股息,,,最新市場收盤價,最新價,有效,
+PR024,2026-08-10,,,TW,00929,復華台灣科技優息,股價更新,,19.8,0,0,,TWD,1,高股息,,,最新市場收盤價,最新價,有效,
+CK001,2026-08-01,本人,富邦證券,TW,2330,台積電,買入,500,910,0,0,,TWD,1,半導體,波段操作,,,待確認,補交割憑證確認手續費
+CK002,2026-08-02,太太,國泰證券,TW,2881,富邦金,買入,1000,81,0,0,,TWD,1,金融保暖,核心配置,,,待確認,核對對帳單單價
+CK003,2026-08-03,女兒,元大證券,TW,0050,元大台灣50,買入,200,168,0,0,,TWD,1,指數型,長期定期定額,,,待確認,確認扣款細節
+CK004,2026-08-04,本人,富邦證券,TW,2308,台達電,買入,200,370,0,0,,TWD,1,電子零組件,核心配置,,,待確認,核對買進時間
+CK005,2026-08-05,太太,國泰證券,TW,2382,廣達,買入,500,265,0,0,,TWD,1,電腦周邊,波段操作,,,待確認,補載券商手續費
+CK006,2026-08-06,女兒,元大證券,TW,00929,復華台灣科技優息,買入,1000,19.1,0,0,,TWD,1,高股息,高股息領息,,,待確認,核對款項劃撥
+CK007,2026-08-07,本人,富邦證券,TW,00878,國泰永續高股息,買入,2000,22.6,0,0,,TWD,1,高股息,高股息領息,,,待確認,確認成交資訊
+CK008,2026-08-08,太太,國泰證券,TW,2317,鴻海,買入,500,178,0,0,,TWD,1,電子製造,波段操作,,,待確認,核對圈存帳號
+MS001,2026-08-09,本人,富邦證券,TW,2454,聯發科,買入,100,,0,0,,TWD,1,半導體,波段操作,,,待補資料,缺少成交單價與手續費`;
+
+    /* =====================================================================
+       2. FIXED 21 INVESTMENT QUOTES DATASET
+       ===================================================================== */
+    const INVESTMENT_QUOTES = [
+      { id: "q1", author: "Warren Buffett", textEn: "“Price is what you give; value is what you get.”", textZh: "不要只看成交價格，真正重要的是你用這筆錢換到了多少長期價值。", url: "https://www.berkshirehathaway.com/letters/1983.html", tag: "價值" },
+      { id: "q2", author: "Warren Buffett", textEn: "“We simply attempt to be fearful when others are greedy and to be greedy only when others are fearful.”", textZh: "群體情緒最亢奮時要更謹慎，市場恐慌時則應冷靜評估，而不是跟著逃跑。", url: "https://www.berkshirehathaway.com/letters/1986.html", tag: "人性" },
+      { id: "q3", author: "Warren Buffett", textEn: "“Our favorite holding period is forever.”", textZh: "如果企業品質與買進理由沒有改變，不必因短期波動頻繁進出。", url: "https://www.berkshirehathaway.com/letters/1988.html", tag: "長期紀律" },
+      { id: "q4", author: "Warren Buffett", textEn: "“Time is the friend of the wonderful business, the enemy of the mediocre.”", textZh: "時間會放大好公司的優勢，也會讓品質不佳的投資逐漸暴露問題。", url: "https://www.berkshirehathaway.com/letters/1989.html", tag: "價值" },
+      { id: "q5", author: "Warren Buffett", textEn: "“You pay a very high price in the stock market for a cheery consensus.”", textZh: "當所有人都一致樂觀時，價格通常已反映大量好消息，追高前要更小心。", url: "https://www.berkshirehathaway.com/letters/1997.html", tag: "人性" },
+      { id: "q6", author: "Howard Marks", textEn: "“There’s no right answer here. Just a choice.”", textZh: "投資沒有適合所有人的唯一答案，選擇必須符合自己的能力、目標與風險承受度。", url: "https://www.oaktreecapital.com/insights/memo/fewer-losers-or-more-winners", tag: "風險" },
+      { id: "q7", author: "Howard Marks", textEn: "“Risk cannot be eliminated; it just gets transferred and spread.”", textZh: "看似消失的風險通常只是換了位置，任何策略都要先弄清楚風險最後由誰承擔。", url: "https://www.oaktreecapital.com/docs/default-source/memos/2007-09-10-now-its-all-bad.pdf", tag: "風險" },
+      { id: "q8", author: "Howard Marks", textEn: "“The pendulum-like fluctuation between optimism and pessimism remains one of the most dependable features of the investment world.”", textZh: "市場情緒總在樂觀與悲觀之間擺動，別把眼前氣氛誤認為永遠不會改變。", url: "https://www.oaktreecapital.com/insights/memo/the-best-of", tag: "人性" },
+      { id: "q9", author: "Howard Marks", textEn: "“An understanding of how investors’ minds work is essential.”", textZh: "除了研究公司，也要理解群眾與自己的情緒，因為人性會直接影響買賣決定。", url: "https://www.oaktreecapital.com/docs/default-source/memos/on-the-couch.pdf", tag: "人性" },
+      { id: "q10", author: "Ray Dalio", textEn: "“Pain + Reflection = Progress.”", textZh: "虧損本身不會自動帶來成長，願意回顧原因並修正流程，經驗才會真正留下來。", url: "https://www.principles.com/principles/4a903526-2db6-4a0a-9b71-889868f0f475/", tag: "反思" },
+      { id: "q11", author: "Ray Dalio", textEn: "“Weigh second- and third-order consequences.”", textZh: "不要只看交易立即可能賺多少，也要想後續風險、資金占用與錯誤決策的連鎖影響。", url: "https://www.principles.com/principles/4a903526-2db6-4a0a-9b71-889868f0f475/", tag: "風險" },
+      { id: "q12", author: "Ray Dalio", textEn: "“Own your outcomes.”", textZh: "結果不如預期時，先檢查自己的判斷與流程，而不是只責怪市場。", url: "https://www.principles.com/principles/4a903526-2db6-4a0a-9b71-889868f0f475/", tag: "反思" },
+      { id: "q13", author: "Peter Lynch", textEn: "“So you better understand what you own.”", textZh: "買進前要能說清楚公司做什麼、為什麼值得持有，以及什麼情況會推翻原本判斷。", url: "https://www.fidelity.com/bin-public/060_www_fidelity_com/documents/learning-center/110322%20rewards%20exclusive_UnderstandtheChange-Transcript_%20F.pdf", tag: "研究" },
+      { id: "q14", author: "Peter Lynch", textEn: "“Invest in what you know.”", textZh: "熟悉產品只是研究起點，不是直接買進的理由；仍要確認財務、價格與風險。", url: "https://www.fidelity.com/research/scorecard/pdf/Fundamental%20vs%20Technical.pdf", tag: "研究" },
+      { id: "q15", author: "Peter Lynch", textEn: "“If you can’t convince an 8-year-old why you own this thing, you probably shouldn’t own it.”", textZh: "投資理由若複雜到自己都說不清楚，通常代表理解還不夠完整。", url: "https://www.fidelity.com/bin-public/060_www_fidelity_com/documents/learning-center/Presentation_Investing%20legends.pdf", tag: "研究" },
+      { id: "q16", author: "Jesse Livermore", textEn: "“Men who can both be right and sit tight are uncommon.”", textZh: "判斷方向正確還不夠，耐心等待投資邏輯發展也是紀律的一部分。", url: "https://www.gutenberg.org/files/60979/60979-h/60979-h.htm", tag: "耐心" },
+      { id: "q17", author: "Jesse Livermore", textEn: "“The market does not beat them. They beat themselves.”", textZh: "很多虧損不是市場刻意造成，而是來自衝動、恐懼、貪婪與失去原定紀律。", url: "https://www.gutenberg.org/files/60979/60979-h/60979-h.htm", tag: "人性" },
+      { id: "q18", author: "John C. Bogle", textEn: "“Stay the course.”", textZh: "建立符合自身目標的計畫後，不要因短期雜訊與恐慌頻繁改變方向。", url: "https://boglecenter.net/bogleheads-on-investing-with-john-bogle-episode-1/", tag: "長期紀律" },
+      { id: "q19", author: "Sir John Templeton", textEn: "“The four most dangerous words in investing are: ‘This time it’s different.’”", textZh: "每次泡沫都有新的故事；相信環境不同以前，先檢查是否只是替高價與過度樂觀找理由。", url: "https://www.oaktreecapital.com/insights/memo/is-it-a-bubble", tag: "人性" },
+      { id: "q20", author: "Charlie Munger", textEn: "“None of this is easy.”", textZh: "投資沒有穩賺捷徑；承認困難，才能願意研究、等待並控制風險。", url: "https://www.oaktreecapital.com/insights/memo/the-best-of", tag: "耐心" },
+      { id: "q21", author: "Benjamin Graham", textEn: "“In the short run, the stock market is a voting machine. But in the long run, it is a weighing machine.”", textZh: "短期價格受人氣與情緒推動，長期仍要回到企業獲利能力與實際價值。", url: "https://global.morningstar.com/en-gb/markets/stock-market-is-both-voting-and-weighing-machine", tag: "價值" }
+    ];
+
+    /* =====================================================================
+       3. GLOBAL APP STATE & LIVE PRICE ENGINE CONSTANTS
+       ===================================================================== */
+    let rawCsvRecords = [];
+    let activeSourceType = 'BUILTIN'; 
+    let currentHolderFilter = 'ALL';  
+    let currentMarketFilter = 'ALL';  
+    let privacyMaskEnabled = true;    // PRESET ON by default
+    let activeTab = 'dashboard';
+    let storageMode = 'SESSION'; // SESSION or ENCRYPTED
+
+    // Chart instances
+    let profitLossChartInstance = null;
+    let stockAllocationChartInstance = null;
+
+    // Dreams & Paper Trading States
+    let dreamsList = [];
+    let paperPortfolios = [];
+    let currentPaperPortfolioId = 'p1';
+    let paperOrders = [];
+
+    // Quote Queue & Modal State
+    let quoteTimer = null;
+    let quoteTimeRemaining = 10;
+    let isQuotePaused = false;
+    let lastActiveElement = null;
+
+    // Google Sheets Live Price Engine State
+    let livePriceUrl = localStorage.getItem('v12_live_price_url') || '';
+    let livePriceMap = {}; // Key: `${market}:${symbol}`, Value: LivePriceEntry
+    let liveSyncConfig = {
+      isSyncing: false,
+      lastSyncTime: null,
+      lastSyncStatus: 'NOT_SET', // 'NOT_SET' | 'LIVE' | 'CACHE' | 'PARTIAL' | 'ERROR'
+      lastErrorMessage: '',
+      delayMins: '--',
+      marketStatus: '最近交易日收盤'
+    };
+    let activeAbortController = null;
+    let liveSyncTimer = null;
+
+    // Normalizers
+    function normalizeMarket(m) {
+      if (!m) return 'TW';
+      const s = String(m).trim().toUpperCase();
+      if (s === '台股' || s === 'TAIWAN' || s === 'TPE' || s === 'TWO' || s === 'TW') return 'TW';
+      if (s === '美股' || s === 'US' || s === 'USA') return 'US';
+      return s;
+    }
+
+    function normalizeSymbol(s) {
+      if (s === null || s === undefined) return '';
+      return String(s).trim();
+    }
+
+    /* =====================================================================
+       4. GOOGLE SHEETS LIVE PRICE ENGINE
+       ===================================================================== */
+    function initLivePriceEngine() {
+      const savedUrl = localStorage.getItem('v12_live_price_url');
+      if (savedUrl) {
+        livePriceUrl = savedUrl;
+        document.getElementById('livePriceUrlInput').value = savedUrl;
+      }
+
+      // Load Cached Live Prices from LocalStorage
+      const cachedData = localStorage.getItem('v12_live_price_cache');
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          Object.keys(parsed).forEach(key => {
+            livePriceMap[key] = {
+              ...parsed[key],
+              priceSource: 'GOOGLE_SHEETS_CACHE'
+            };
+          });
+          liveSyncConfig.lastSyncStatus = 'CACHE';
+        } catch (e) {
+          console.warn('Failed to parse cached live prices', e);
+        }
+      }
+
+      if (livePriceUrl) {
+        syncLivePrices(false);
+      }
+
+      if (liveSyncTimer) clearInterval(liveSyncTimer);
+      liveSyncTimer = setInterval(() => {
+        checkMarketHoursAndAutoSync();
+      }, 60000);
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && livePriceUrl) {
+          syncLivePrices(false);
+        }
+      });
+
+      window.addEventListener('online', () => {
+        if (livePriceUrl) syncLivePrices(false);
+      });
+    }
+
+    function isTaipeiMarketOpen() {
+      try {
+        const taipeiStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" });
+        const taipeiDate = new Date(taipeiStr);
+        const day = taipeiDate.getDay();
+        if (day === 0 || day === 6) return false;
+
+        const hours = taipeiDate.getHours();
+        const mins = taipeiDate.getMinutes();
+        const totalMins = hours * 60 + mins;
+
+        return totalMins >= 540 && totalMins <= 810;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    let lastAutoSyncTs = 0;
+    function checkMarketHoursAndAutoSync() {
+      if (!livePriceUrl) return;
+
+      const isMarketOpen = isTaipeiMarketOpen();
+      liveSyncConfig.marketStatus = isMarketOpen ? '盤中即時報價' : '最近交易日收盤';
+
+      if (isMarketOpen && (Date.now() - lastAutoSyncTs >= 300000)) {
+        syncLivePrices(false);
+      }
+    }
+
+    async function syncLivePrices(isManual = false) {
+      if (!livePriceUrl) {
+        liveSyncConfig.lastSyncStatus = 'NOT_SET';
+        updateLivePriceSyncUI();
+        return;
+      }
+
+      if (activeAbortController) {
+        activeAbortController.abort();
+      }
+
+      activeAbortController = new AbortController();
+      const signal = activeAbortController.signal;
+
+      liveSyncConfig.isSyncing = true;
+      updateLivePriceSyncUI();
+
+      const timeoutId = setTimeout(() => {
+        if (activeAbortController) activeAbortController.abort();
+      }, 15000);
+
+      try {
+        const separator = livePriceUrl.includes('?') ? '&' : '?';
+        const requestUrl = `${livePriceUrl}${separator}_ts=${Date.now()}`;
+
+        const response = await fetch(requestUrl, {
+          signal,
+          cache: 'no-store'
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP 狀態 ${response.status}`);
+        }
+
+        const csvText = await response.text();
+
+        if (csvText.includes('<!DOCTYPE html>') || csvText.includes('<html')) {
+          throw new Error('網址回傳 HTML 登入頁，請確認 Google Sheets 已「發布到網路」並選擇 CSV 格式。');
+        }
+
+        const parsed = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: h => h.trim()
+        });
+
+        if (!parsed.data || parsed.data.length === 0) {
+          throw new Error('股價 CSV 內容空白');
+        }
+
+        let updatedCount = 0;
+        const newLiveMap = {};
+
+        parsed.data.forEach(row => {
+          const m = normalizeMarket(row['市場'] || 'TW');
+          const s = normalizeSymbol(row['股票代號']);
+          const rawPrice = row['最新股價'];
+          const rawPrevPrice = row['前一交易日股價'];
+
+          if (!s) return;
+
+          const decPrice = toDec(rawPrice);
+          if (decPrice.lte(0)) return;
+
+          const decPrevPrice = toDec(rawPrevPrice);
+
+          const key = `${m}:${s}`;
+          newLiveMap[key] = {
+            market: m,
+            symbol: s,
+            stockName: (row['股票名稱'] || s).trim(),
+            googleTicker: (row['GoogleTicker'] || '').trim(),
+            latestPrice: decPrice,
+            prevPrice: decPrevPrice.gt(0) ? decPrevPrice : null,
+            tradeTime: (row['最新交易時間'] || '').trim(),
+            latestDate: (row['最新交易日'] || '').trim(),
+            prevDate: (row['比較基準日'] || '').trim(),
+            delayMins: (row['延遲分鐘'] || '20').trim(),
+            status: (row['資料狀態'] || '正常').trim(),
+            priceSource: 'GOOGLE_SHEETS_LIVE'
+          };
+          updatedCount++;
+        });
+
+        if (updatedCount === 0) {
+          throw new Error('無法從 Google Sheets 解析出有效股票價格');
+        }
+
+        Object.keys(newLiveMap).forEach(k => {
+          livePriceMap[k] = newLiveMap[k];
+        });
+
+        const cacheToStore = {};
+        Object.keys(livePriceMap).forEach(k => {
+          const item = livePriceMap[k];
+          cacheToStore[k] = {
+            market: item.market,
+            symbol: item.symbol,
+            stockName: item.stockName,
+            latestPrice: item.latestPrice.toNumber(),
+            prevPrice: item.prevPrice ? item.prevPrice.toNumber() : null,
+            tradeTime: item.tradeTime,
+            latestDate: item.latestDate,
+            prevDate: item.prevDate,
+            delayMins: item.delayMins,
+            status: item.status
+          };
+        });
+        localStorage.setItem('v12_live_price_cache', JSON.stringify(cacheToStore));
+
+        lastAutoSyncTs = Date.now();
+        liveSyncConfig.isSyncing = false;
+        liveSyncConfig.lastSyncTime = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+        liveSyncConfig.lastSyncStatus = 'LIVE';
+        liveSyncConfig.lastErrorMessage = '';
+
+        hidePriceSyncWarning();
+        updateLivePriceSyncUI();
+        refreshAllViews();
+
+        if (isManual) {
+          alert(`Google Sheets 盤中股價同步成功！共更新 ${updatedCount} 檔股票報價。`);
+        }
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        liveSyncConfig.isSyncing = false;
+        
+        if (err.name === 'AbortError') return;
+
+        liveSyncConfig.lastSyncStatus = Object.keys(livePriceMap).length > 0 ? 'CACHE' : 'ERROR';
+        liveSyncConfig.lastErrorMessage = err.message || '連線逾時或網路錯誤';
+
+        showPriceSyncWarning(`股價同步失敗 (${liveSyncConfig.lastErrorMessage})，目前保留最後有效資料。`);
+        updateLivePriceSyncUI();
+        refreshAllViews();
+
+        if (isManual) {
+          alert(`股價同步失敗：${liveSyncConfig.lastErrorMessage}\n系統已使用快取備份股價，不影響資產與歷史持股。`);
+        }
+      }
+    }
+
+    function saveLivePriceUrlAndSync() {
+      const url = document.getElementById('livePriceUrlInput').value.trim();
+      livePriceUrl = url;
+      localStorage.setItem('v12_live_price_url', url);
+      syncLivePrices(true);
+    }
+
+    function triggerManualPriceSync() {
+      if (!livePriceUrl) {
+        alert('請先至「資料檢查與設定」頁面貼上您的 Google Sheets 股價 CSV 網址。');
+        switchTab('dataCheck');
+        return;
+      }
+      syncLivePrices(true);
+    }
+
+    function showPriceSyncWarning(msg) {
+      const el = document.getElementById('livePriceSyncWarning');
+      const msgEl = document.getElementById('livePriceSyncWarningMsg');
+      if (el && msgEl) {
+        msgEl.innerText = msg;
+        el.classList.remove('hidden');
+      }
+    }
+
+    function hidePriceSyncWarning() {
+      const el = document.getElementById('livePriceSyncWarning');
+      if (el) el.classList.add('hidden');
+    }
+
+    function updateLivePriceSyncUI() {
+      const icon = document.getElementById('livePriceSyncIcon');
+      const statusText = document.getElementById('livePriceSyncStatusText');
+
+      if (liveSyncConfig.isSyncing) {
+        if (icon) icon.className = 'w-3.5 h-3.5 text-amber-300 animate-spin';
+        if (statusText) statusText.innerText = '同步中...';
+      } else if (liveSyncConfig.lastSyncStatus === 'LIVE') {
+        if (icon) icon.className = 'w-3.5 h-3.5 text-emerald-400';
+        if (statusText) statusText.innerText = `已更新 (${liveSyncConfig.lastSyncTime || ''})`;
+      } else if (liveSyncConfig.lastSyncStatus === 'CACHE') {
+        if (icon) icon.className = 'w-3.5 h-3.5 text-amber-300';
+        if (statusText) statusText.innerText = '使用快取報價';
+      } else if (liveSyncConfig.lastSyncStatus === 'ERROR') {
+        if (icon) icon.className = 'w-3.5 h-3.5 text-red-400';
+        if (statusText) statusText.innerText = '同步失敗';
+      } else {
+        if (icon) icon.className = 'w-3.5 h-3.5 text-blue-300';
+        if (statusText) statusText.innerText = '股價: 未同步';
+      }
+    }
+
+    /* =====================================================================
+       5. FINANCIAL CALCULATION ENGINE (Decimal.js based)
+       ===================================================================== */
+    function toDec(val) {
+      if (val === null || val === undefined || val === '') return new Decimal(0);
+      try {
+        return new Decimal(val);
+      } catch (e) {
+        return new Decimal(0);
+      }
+    }
+
+    function fmtMoney(decVal, forceShow = false) {
+      if (privacyMaskEnabled && !forceShow) return 'NT$ ****';
+      const num = decVal instanceof Decimal ? decVal.toNumber() : Number(decVal || 0);
+      return 'NT$ ' + num.toLocaleString('zh-TW', { maximumFractionDigits: 0 });
+    }
+
+    function fmtPercent(decVal, forceShow = false) {
+      if (privacyMaskEnabled && !forceShow) return '*** %';
+      const num = decVal instanceof Decimal ? decVal.toNumber() : Number(decVal || 0);
+      const sign = num > 0 ? '+' : '';
+      return `${sign}${num.toFixed(2)}%`;
+    }
+
+    function fmtPrice(decVal) {
+      const num = decVal instanceof Decimal ? decVal.toNumber() : Number(decVal || 0);
+      return num.toLocaleString('zh-TW', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    }
+
+    function calculatePortfolioState(records, selectedHolder, selectedMarket) {
+      let validRecords = records.filter(r => r.dataStatus === '有效' && r.isValidRecord);
+
+      if (selectedMarket !== 'ALL') {
+        const normSelectedMarket = normalizeMarket(selectedMarket);
+        validRecords = validRecords.filter(r => normalizeMarket(r.market) === normSelectedMarket);
+      }
+
+      validRecords.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.rowIndex - b.rowIndex;
+      });
+
+      const csvPriceHistory = {};
+      records.filter(r => r.dataStatus === '有效' && r.isValidRecord && r.recordType === '股價更新').forEach(r => {
+        const normM = normalizeMarket(r.market);
+        const normS = normalizeSymbol(r.symbol);
+        if (!normS) return;
+
+        const key = `${normM}:${normS}`;
+        if (!csvPriceHistory[key]) {
+          csvPriceHistory[key] = [];
+        }
+        csvPriceHistory[key].push({
+          date: r.date,
+          price: toDec(r.price),
+          rowIndex: r.rowIndex
+        });
+      });
+
+      const csvPriceLookup = {};
+      Object.keys(csvPriceHistory).forEach(key => {
+        const list = csvPriceHistory[key];
+        list.sort((a, b) => {
+          if (a.date !== b.date) return b.date.localeCompare(a.date);
+          return b.rowIndex - a.rowIndex;
+        });
+
+        const distinctDates = [];
+        const pricesByDate = {};
+
+        list.forEach(item => {
+          if (!pricesByDate[item.date]) {
+            distinctDates.push(item.date);
+            pricesByDate[item.date] = item.price;
+          }
+        });
+
+        csvPriceLookup[key] = {
+          latestPrice: distinctDates.length > 0 ? pricesByDate[distinctDates[0]] : null,
+          latestDate: distinctDates.length > 0 ? distinctDates[0] : null,
+          prevPrice: distinctDates.length > 1 ? pricesByDate[distinctDates[1]] : null,
+          prevDate: distinctDates.length > 1 ? distinctDates[1] : null
+        };
+      });
+
+      const allHolders = Array.from(new Set(records.map(r => r.holder).filter(Boolean)));
+      const holdersToCalculate = selectedHolder === 'ALL' ? allHolders : [selectedHolder];
+
+      const memberResults = {};
+
+      holdersToCalculate.forEach(h => {
+        const holderRecords = validRecords.filter(r => r.holder === h && r.recordType !== '股價更新');
+
+        let cashBalance = new Decimal(0);
+        let cumulativeInflow = new Decimal(0);
+        let cumulativeOutflow = new Decimal(0);
+        let realizedPL = new Decimal(0);
+        let cumulativeDividends = new Decimal(0);
+        let extraFees = new Decimal(0);
+
+        const holdingsMap = {};
+
+        holderRecords.forEach(r => {
+          const symbol = normalizeSymbol(r.symbol);
+          const type = r.recordType;
+
+          if (type === '入金') {
+            const amt = toDec(r.cashAmount);
+            cashBalance = cashBalance.plus(amt);
+            cumulativeInflow = cumulativeInflow.plus(amt);
+          } else if (type === '出金') {
+            const amt = toDec(r.cashAmount);
+            cashBalance = cashBalance.minus(amt);
+            cumulativeOutflow = cumulativeOutflow.plus(amt);
+          } else if (type === '費用') {
+            const amt = toDec(r.cashAmount);
+            cashBalance = cashBalance.minus(amt);
+            extraFees = extraFees.plus(amt);
+          } else if (type === '股息') {
+            const amt = toDec(r.cashAmount);
+            cashBalance = cashBalance.plus(amt);
+            cumulativeDividends = cumulativeDividends.plus(amt);
+          } else if (type === '買入') {
+            const shares = toDec(r.shares);
+            const price = toDec(r.price);
+            const fee = toDec(r.fee);
+            const tax = toDec(r.tax);
+            const totalCost = shares.times(price).plus(fee).plus(tax);
+
+            cashBalance = cashBalance.minus(totalCost);
+
+            if (!holdingsMap[symbol]) {
+              holdingsMap[symbol] = {
+                symbol: symbol,
+                name: r.stockName || symbol,
+                market: normalizeMarket(r.market),
+                category: r.category || '未分類',
+                account: r.account || '',
+                shares: new Decimal(0),
+                remainingCost: new Decimal(0),
+                avgCost: new Decimal(0)
+              };
+            }
+
+            const cur = holdingsMap[symbol];
+            cur.remainingCost = cur.remainingCost.plus(totalCost);
+            cur.shares = cur.shares.plus(shares);
+            cur.avgCost = cur.shares.gt(0) ? cur.remainingCost.div(cur.shares) : new Decimal(0);
+
+          } else if (type === '賣出') {
+            const shares = toDec(r.shares);
+            const price = toDec(r.price);
+            const fee = toDec(r.fee);
+            const tax = toDec(r.tax);
+            const netRev = shares.times(price).minus(fee).minus(tax);
+
+            cashBalance = cashBalance.plus(netRev);
+
+            const cur = holdingsMap[symbol];
+            if (cur && cur.shares.gte(shares)) {
+              const soldCost = shares.times(cur.avgCost);
+              const txRealized = netRev.minus(soldCost);
+              realizedPL = realizedPL.plus(txRealized);
+
+              cur.remainingCost = cur.remainingCost.minus(soldCost);
+              cur.shares = cur.shares.minus(shares);
+
+              if (cur.shares.eq(0)) {
+                cur.remainingCost = new Decimal(0);
+                cur.avgCost = new Decimal(0);
+              }
+            }
+          }
+        });
+
+        memberResults[h] = {
+          holder: h,
+          cashBalance,
+          cumulativeInflow,
+          cumulativeOutflow,
+          cumulativeNetInput: cumulativeInflow.minus(cumulativeOutflow),
+          realizedPL,
+          cumulativeDividends,
+          extraFees,
+          holdingsMap
+        };
+      });
+
+      const aggregatedHoldingsList = [];
+      let totalStockMarketValue = new Decimal(0);
+      let totalRemainingCost = new Decimal(0);
+      let totalTodayProfit = new Decimal(0);
+      let prevMarketValueSum = new Decimal(0);
+      let hasMissingPriceCount = 0;
+
+      let statLiveCount = 0;
+      let statCacheCount = 0;
+      let statCsvCount = 0;
+
+      let gainCount = 0;
+      let gainAmount = new Decimal(0);
+      let gainMarketValue = new Decimal(0);
+
+      let lossCount = 0;
+      let lossAmount = new Decimal(0);
+      let lossMarketValue = new Decimal(0);
+
+      let neutralCount = 0;
+
+      let globalLatestDate = null;
+      let globalPrevDate = null;
+
+      const globalStockKeys = new Set();
+      Object.values(memberResults).forEach(res => {
+        Object.keys(res.holdingsMap).forEach(sym => {
+          if (res.holdingsMap[sym].shares.gt(0)) {
+            globalStockKeys.add(sym);
+          }
+        });
+      });
+
+      globalStockKeys.forEach(sym => {
+        let combShares = new Decimal(0);
+        let combCost = new Decimal(0);
+        let stockName = '';
+        let market = 'TW';
+        let category = '未分類';
+
+        const memberBreakdown = [];
+        Object.values(memberResults).forEach(res => {
+          const hItem = res.holdingsMap[sym];
+          if (hItem && hItem.shares.gt(0)) {
+            combShares = combShares.plus(hItem.shares);
+            combCost = combCost.plus(hItem.remainingCost);
+            stockName = hItem.name;
+            market = normalizeMarket(hItem.market);
+            category = hItem.category;
+
+            memberBreakdown.push({
+              holder: res.holder,
+              account: hItem.account,
+              shares: hItem.shares,
+              remainingCost: hItem.remainingCost,
+              avgCost: hItem.avgCost
+            });
+          }
+        });
+
+        const priceKey = `${normalizeMarket(market)}:${normalizeSymbol(sym)}`;
+        
+        let latestPrice = null;
+        let prevPrice = null;
+        let latestDate = null;
+        let prevDate = null;
+        let priceSource = 'BUILT_IN';
+
+        const liveItem = livePriceMap[priceKey];
+        const csvItem = csvPriceLookup[priceKey];
+
+        if (liveItem && liveItem.latestPrice && liveItem.latestPrice.gt(0)) {
+          latestPrice = liveItem.latestPrice;
+          prevPrice = liveItem.prevPrice;
+          latestDate = liveItem.latestDate || liveItem.tradeTime || '盤中報價';
+          prevDate = liveItem.prevDate || '前一收盤';
+          priceSource = liveItem.priceSource;
+
+          if (priceSource === 'GOOGLE_SHEETS_LIVE') statLiveCount++;
+          else statCacheCount++;
+        } else if (csvItem && csvItem.latestPrice && csvItem.latestPrice.gt(0)) {
+          latestPrice = csvItem.latestPrice;
+          prevPrice = csvItem.prevPrice;
+          latestDate = csvItem.latestDate;
+          prevDate = csvItem.prevDate;
+          priceSource = 'TRANSACTION_CSV';
+          statCsvCount++;
+        }
+
+        if (latestDate && (!globalLatestDate || latestDate.localeCompare(globalLatestDate) > 0)) {
+          globalLatestDate = latestDate;
+        }
+        if (prevDate && (!globalPrevDate || prevDate.localeCompare(globalPrevDate) > 0)) {
+          globalPrevDate = prevDate;
+        }
+
+        const combAvgCost = combShares.gt(0) ? combCost.div(combShares) : new Decimal(0);
+
+        let marketValue = null;
+        let unrealizedPL = null;
+        let unrealizedReturn = null;
+        let todayPL = null;
+
+        if (latestPrice && latestPrice.gt(0)) {
+          marketValue = combShares.times(latestPrice);
+          unrealizedPL = marketValue.minus(combCost);
+          unrealizedReturn = combCost.gt(0) ? unrealizedPL.div(combCost).times(100) : new Decimal(0);
+
+          totalStockMarketValue = totalStockMarketValue.plus(marketValue);
+          totalRemainingCost = totalRemainingCost.plus(combCost);
+
+          if (unrealizedPL.gt(0)) {
+            gainCount++;
+            gainAmount = gainAmount.plus(unrealizedPL);
+            gainMarketValue = gainMarketValue.plus(marketValue);
+          } else if (unrealizedPL.lt(0)) {
+            lossCount++;
+            lossAmount = lossAmount.plus(unrealizedPL.abs());
+            lossMarketValue = lossMarketValue.plus(marketValue);
+          } else {
+            neutralCount++;
+          }
+
+          if (prevPrice && prevPrice.gt(0)) {
+            todayPL = combShares.times(latestPrice.minus(prevPrice));
+            totalTodayProfit = totalTodayProfit.plus(todayPL);
+            prevMarketValueSum = prevMarketValueSum.plus(combShares.times(prevPrice));
+          }
+
+        } else {
+          hasMissingPriceCount++;
+        }
+
+        aggregatedHoldingsList.push({
+          symbol: sym,
+          name: stockName,
+          market,
+          category,
+          shares: combShares,
+          avgCost: combAvgCost,
+          remainingCost: combCost,
+          latestPrice,
+          latestDate,
+          prevPrice,
+          prevDate,
+          priceSource,
+          marketValue,
+          unrealizedPL,
+          unrealizedReturn,
+          todayPL,
+          memberBreakdown
+        });
+      });
+
+      let totalCash = new Decimal(0);
+      let totalNetInput = new Decimal(0);
+      let totalRealizedPL = new Decimal(0);
+      let totalDividends = new Decimal(0);
+      let totalExtraFees = new Decimal(0);
+
+      Object.values(memberResults).forEach(res => {
+        totalCash = totalCash.plus(res.cashBalance);
+        totalNetInput = totalNetInput.plus(res.cumulativeNetInput);
+        totalRealizedPL = totalRealizedPL.plus(res.realizedPL);
+        totalDividends = totalDividends.plus(res.cumulativeDividends);
+        totalExtraFees = totalExtraFees.plus(res.extraFees);
+      });
+
+      const totalAssets = totalCash.plus(totalStockMarketValue);
+      const overallPL = totalAssets.minus(totalNetInput);
+      const overallReturn = totalNetInput.gt(0) ? overallPL.div(totalNetInput).times(100) : new Decimal(0);
+      const todayReturn = prevMarketValueSum.gt(0) ? totalTodayProfit.div(prevMarketValueSum).times(100) : new Decimal(0);
+
+      return {
+        memberResults,
+        holdingsList: aggregatedHoldingsList,
+        totalStockMarketValue,
+        totalRemainingCost,
+        totalCash,
+        totalAssets,
+        totalNetInput,
+        overallPL,
+        overallReturn,
+        totalTodayProfit,
+        todayReturn,
+        globalLatestDate: globalLatestDate || '2026-08-10',
+        globalPrevDate: globalPrevDate || '2026-08-07',
+        totalRealizedPL,
+        totalDividends,
+        totalExtraFees,
+        gainCount,
+        gainAmount,
+        gainMarketValue,
+        gainRatio: totalStockMarketValue.gt(0) ? gainMarketValue.div(totalStockMarketValue).times(100) : new Decimal(0),
+        lossCount,
+        lossAmount,
+        lossMarketValue,
+        lossRatio: totalStockMarketValue.gt(0) ? lossMarketValue.div(totalStockMarketValue).times(100) : new Decimal(0),
+        neutralCount,
+        hasMissingPriceCount,
+        statLiveCount,
+        statCacheCount,
+        statCsvCount
+      };
+    }
+
+    /* =====================================================================
+       6. CSV PARSER & VALIDATION
+       ===================================================================== */
+    function parseAndValidateCSV(csvText) {
+      const parseResult = Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: h => h.trim()
+      });
+
+      const records = [];
+      const idSet = new Set();
+
+      let validCount = 0;
+      let pendingCount = 0;
+      let missingDataCount = 0;
+      let duplicateIdCount = 0;
+      let validationErrorCount = 0;
+
+      parseResult.data.forEach((row, idx) => {
+        const rowIndex = idx + 2;
+        const recordId = (row['紀錄ID'] || '').trim();
+        const date = (row['日期'] || '').trim();
+        const holder = (row['持有人'] || '').trim();
+        const account = (row['帳戶'] || '').trim();
+        const market = normalizeMarket(row['市場']);
+        let symbol = normalizeSymbol(row['股票代號']);
+        const stockName = (row['股票名稱'] || '').trim();
+        const recordType = (row['紀錄類型'] || '').trim();
+        const dataStatus = (row['資料狀態'] || '').trim();
+        const anomalyDesc = (row['異常說明'] || '').trim();
+
+        let isValidRecord = true;
+        const validationIssues = [];
+
+        if (!recordId) {
+          isValidRecord = false;
+          validationIssues.push('缺少紀錄ID');
+        } else if (idSet.has(recordId)) {
+          isValidRecord = false;
+          duplicateIdCount++;
+          validationIssues.push('紀錄ID重複');
+        } else {
+          idSet.add(recordId);
+        }
+
+        if (recordType === '股價更新') {
+          if (!symbol) {
+            isValidRecord = false;
+            validationIssues.push('股價更新缺少股票代號');
+          }
+          if (!row['單價'] || toDec(row['單價']).lte(0)) {
+            isValidRecord = false;
+            validationIssues.push('股價更新單價無效');
+          }
+        }
+
+        if (['買入', '賣出', '股息', '入金', '出金', '費用'].includes(recordType)) {
+          if (!holder) {
+            isValidRecord = false;
+            validationIssues.push('缺少持有人');
+          }
+          if (!account) {
+            isValidRecord = false;
+            validationIssues.push('缺少帳戶');
+          }
+        }
+
+        if (dataStatus === '待確認') pendingCount++;
+        if (dataStatus === '待補資料') missingDataCount++;
+
+        if (dataStatus !== '有效') {
+          isValidRecord = false;
+        }
+
+        if (isValidRecord) validCount++;
+        else validationErrorCount++;
+
+        records.push({
+          rowIndex,
+          recordId,
+          date,
+          holder,
+          account,
+          market,
+          symbol,
+          stockName,
+          recordType,
+          shares: row['成交股數'] || null,
+          price: row['單價'] || null,
+          fee: row['手續費'] || '0',
+          tax: row['交易稅'] || '0',
+          cashAmount: row['現金金額'] || null,
+          currency: row['幣別'] || 'TWD',
+          exchangeRate: row['匯率'] || '1',
+          category: row['類別'] || '未分類',
+          strategy: row['策略'] || '未分類',
+          reason: row['交易理由'] || '',
+          review: row['交易檢討'] || '',
+          note: row['備註'] || '',
+          dataStatus,
+          anomalyDesc,
+          isValidRecord,
+          validationIssues
+        });
+      });
+
+      return {
+        records,
+        summary: {
+          totalRows: records.length,
+          validCount,
+          pendingCount,
+          missingDataCount,
+          duplicateIdCount,
+          validationErrorCount
+        }
+      };
+    }
+
+    /* =====================================================================
+       7. UI INTERACTION & PRIVACY & VIEW SWITCHING
+       ===================================================================== */
+    function togglePrivacyMask() {
+      privacyMaskEnabled = !privacyMaskEnabled;
+      const btnText = document.getElementById('privacyText');
+      const btnIcon = document.getElementById('privacyIcon');
+
+      if (privacyMaskEnabled) {
+        btnText.innerText = '隱私遮罩: 開';
+        btnIcon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        btnText.innerText = '隱私遮罩: 關';
+        btnIcon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+      refreshAllViews();
+    }
+
+    function lockAndLeave() {
+      privacyMaskEnabled = true;
+      document.getElementById('privacyText').innerText = '隱私遮罩: 開';
+      document.getElementById('privacyIcon').setAttribute('data-lucide', 'eye-off');
+      lucide.createIcons();
+      refreshAllViews();
+    }
+
+    function onHolderChange(val) {
+      currentHolderFilter = val;
+      refreshAllViews();
+    }
+
+    function onMarketChange(market) {
+      currentMarketFilter = market;
+      
+      ['ALL', 'TW', 'US'].forEach(m => {
+        const btn = document.getElementById(`marketBtn-${m}`);
+        if (m === market) {
+          btn.className = 'px-3 py-1 rounded-md transition text-white bg-blue-600 shadow-sm';
+        } else {
+          btn.className = 'px-3 py-1 rounded-md transition text-blue-200 hover:text-white';
+        }
+      });
+
+      const usNotice = document.getElementById('usMarketNotice');
+      if (market === 'US') {
+        usNotice.classList.remove('hidden');
+      } else {
+        usNotice.classList.add('hidden');
+      }
+
+      refreshAllViews();
+    }
+
+    function switchTab(tabKey) {
+      activeTab = tabKey;
+      ['dashboard', 'holdings', 'transactions', 'strategy', 'dreams', 'paper', 'dataCheck', 'quotes'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const view = document.getElementById(`view-${t}`);
+        
+        if (t === tabKey) {
+          if (btn) btn.className = 'tab-btn px-3 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-brand-900 text-brand-900 flex items-center space-x-1.5 whitespace-nowrap';
+          if (view) view.classList.remove('hidden');
+        } else {
+          if (btn) btn.className = 'tab-btn px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 whitespace-nowrap';
+          if (view) view.classList.add('hidden');
+        }
+      });
+
+      refreshAllViews();
+    }
+
+    function refreshAllViews() {
+      if (!rawCsvRecords || rawCsvRecords.length === 0) {
+        const parsed = parseAndValidateCSV(BUILTIN_CSV_DATA);
+        rawCsvRecords = parsed.records;
+      }
+
+      populateHolderDropdown(rawCsvRecords);
+
+      const state = calculatePortfolioState(rawCsvRecords, currentHolderFilter, currentMarketFilter);
+
+      renderDashboardView(state);
+      renderHoldingsView(state);
+      renderTransactionsView();
+      renderStrategyView(state);
+      renderFocusDreamCard(state);
+      renderDreamsView(state);
+      renderPaperView();
+
+      const parsedSummary = {
+        totalRows: rawCsvRecords.length,
+        validCount: rawCsvRecords.filter(r => r.dataStatus === '有效' && r.isValidRecord).length,
+        pendingCount: rawCsvRecords.filter(r => r.dataStatus === '待確認').length,
+        missingDataCount: rawCsvRecords.filter(r => r.dataStatus === '待補資料').length,
+        duplicateIdCount: 0,
+        validationErrorCount: rawCsvRecords.filter(r => !r.isValidRecord).length
+      };
+
+      renderDataCheckView(parsedSummary, rawCsvRecords, state);
+    }
+
+    function populateHolderDropdown(records) {
+      const select = document.getElementById('holderSelect');
+      const currentVal = select.value || 'ALL';
+
+      const holders = Array.from(new Set(records.map(r => r.holder).filter(Boolean)));
+      
+      let html = `<option value="ALL">全家總覽</option>`;
+      holders.forEach(h => {
+        html += `<option value="${h}">${h}</option>`;
+      });
+
+      select.innerHTML = html;
+      select.value = currentVal;
+    }
+
+    /* =====================================================================
+       8. DASHBOARD VIEW RENDERER
+       ===================================================================== */
+    function renderDashboardView(state) {
+      if (currentMarketFilter === 'US') {
+        document.getElementById('todayProfitVal').innerText = 'NT$ 0';
+        document.getElementById('todayReturnVal').innerText = '0.00%';
+        document.getElementById('overallProfitVal').innerText = 'NT$ 0';
+        document.getElementById('overallReturnVal').innerText = '0.00%';
+        document.getElementById('stockMarketVal').innerText = 'NT$ 0';
+        document.getElementById('stockRemainingCostVal').innerText = 'NT$ 0';
+        document.getElementById('cashBalanceVal').innerText = 'NT$ 0';
+        document.getElementById('totalAssetVal').innerText = 'NT$ 0';
+        document.getElementById('cumulativeInputVal').innerText = 'NT$ 0';
+        document.getElementById('realizedProfitVal').innerText = 'NT$ 0';
+        document.getElementById('unrealizedProfitVal').innerText = 'NT$ 0';
+        document.getElementById('cumulativeDividendsVal').innerText = 'NT$ 0';
+        document.getElementById('activeHoldingCountVal').innerText = '0 檔';
+        document.getElementById('gainStockCount').innerText = '0 檔';
+        document.getElementById('gainAmount').innerText = 'NT$ 0';
+        document.getElementById('gainRatio').innerText = '0.00%';
+        document.getElementById('lossStockCount').innerText = '0 檔';
+        document.getElementById('lossAmount').innerText = 'NT$ 0';
+        document.getElementById('lossRatio').innerText = '0.00%';
+        updateProfitLossChart(0, 0);
+        updateStockAllocationChart([]);
+        return;
+      }
+
+      const dateTagEl = document.getElementById('todayPriceDateTag');
+      dateTagEl.innerHTML = `
+        <div>最新交易日: ${state.globalLatestDate}</div>
+        <div>比較基準: ${state.globalPrevDate}</div>
+      `;
+
+      document.getElementById('todayStatusNote').innerText = liveSyncConfig.marketStatus;
+      document.getElementById('livePriceSyncInfoNote').innerText = liveSyncConfig.lastSyncTime ? `上次同步: ${liveSyncConfig.lastSyncTime}` : '股價來源: 內建與歷史檔';
+
+      const todayProfitEl = document.getElementById('todayProfitVal');
+      const todayReturnEl = document.getElementById('todayReturnVal');
+      todayProfitEl.innerText = fmtMoney(state.totalTodayProfit);
+      todayReturnEl.innerText = fmtPercent(state.todayReturn);
+      
+      if (state.totalTodayProfit.gt(0)) {
+        todayProfitEl.className = 'text-2xl font-extrabold text-twGain';
+        todayReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-red-50 text-twGain';
+      } else if (state.totalTodayProfit.lt(0)) {
+        todayProfitEl.className = 'text-2xl font-extrabold text-twLoss';
+        todayReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-twLoss';
+      } else {
+        todayProfitEl.className = 'text-2xl font-extrabold text-slate-900';
+        todayReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700';
+      }
+
+      const overallProfitEl = document.getElementById('overallProfitVal');
+      const overallReturnEl = document.getElementById('overallReturnVal');
+      overallProfitEl.innerText = fmtMoney(state.overallPL);
+      overallReturnEl.innerText = fmtPercent(state.overallReturn);
+
+      if (state.overallPL.gt(0)) {
+        overallProfitEl.className = 'text-2xl font-extrabold text-twGain';
+        overallReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-red-50 text-twGain';
+      } else if (state.overallPL.lt(0)) {
+        overallProfitEl.className = 'text-2xl font-extrabold text-twLoss';
+        overallReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-twLoss';
+      } else {
+        overallProfitEl.className = 'text-2xl font-extrabold text-slate-900';
+        overallReturnEl.className = 'text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700';
+      }
+
+      document.getElementById('stockMarketVal').innerText = fmtMoney(state.totalStockMarketValue);
+      document.getElementById('stockRemainingCostVal').innerText = fmtMoney(state.totalRemainingCost);
+      document.getElementById('cashBalanceVal').innerText = fmtMoney(state.totalCash);
+      document.getElementById('totalAssetVal').innerText = fmtMoney(state.totalAssets);
+      document.getElementById('cumulativeInputVal').innerText = fmtMoney(state.totalNetInput);
+
+      document.getElementById('realizedProfitVal').innerText = fmtMoney(state.totalRealizedPL);
+      document.getElementById('unrealizedProfitVal').innerText = fmtMoney(state.totalStockMarketValue.minus(state.totalRemainingCost));
+      document.getElementById('cumulativeDividendsVal').innerText = fmtMoney(state.totalDividends);
+      document.getElementById('activeHoldingCountVal').innerText = `${state.holdingsList.length} 檔`;
+
+      document.getElementById('gainStockCount').innerText = `${state.gainCount} 檔`;
+      document.getElementById('gainAmount').innerText = fmtMoney(state.gainAmount);
+      document.getElementById('gainRatio').innerText = fmtPercent(state.gainRatio);
+
+      document.getElementById('lossStockCount').innerText = `${state.lossCount} 檔`;
+      document.getElementById('lossAmount').innerText = fmtMoney(state.lossAmount);
+      document.getElementById('lossRatio').innerText = fmtPercent(state.lossRatio);
+
+      document.getElementById('neutralStockCount').innerText = `${state.neutralCount} 檔`;
+      document.getElementById('missingPriceStockCount').innerText = `${state.hasMissingPriceCount} 檔`;
+
+      updateProfitLossChart(state.gainMarketValue.toNumber(), state.lossMarketValue.toNumber());
+      updateStockAllocationChart(state.holdingsList);
+      renderTopGainersAndLosers(state.holdingsList);
+    }
+
+    function renderTopGainersAndLosers(holdings) {
+      const validHoldings = holdings.filter(h => h.unrealizedPL !== null);
+      
+      const gainers = [...validHoldings].filter(h => h.unrealizedPL.gt(0)).sort((a, b) => b.unrealizedPL.minus(a.unrealizedPL).toNumber()).slice(0, 3);
+      const losers = [...validHoldings].filter(h => h.unrealizedPL.lt(0)).sort((a, b) => a.unrealizedPL.minus(b.unrealizedPL).toNumber()).slice(0, 3);
+
+      const gainersEl = document.getElementById('topGainersList');
+      if (gainers.length === 0) {
+        gainersEl.innerHTML = `<div class="text-slate-400 italic">無獲利持股</div>`;
+      } else {
+        gainersEl.innerHTML = gainers.map(g => `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-red-50/50 border border-red-100">
+            <span class="font-bold text-slate-800">${g.symbol} ${g.name}</span>
+            <span class="font-extrabold text-twGain">${fmtMoney(g.unrealizedPL)} (${fmtPercent(g.unrealizedReturn)})</span>
+          </div>
+        `).join('');
+      }
+
+      const losersEl = document.getElementById('topLosersList');
+      if (losers.length === 0) {
+        losersEl.innerHTML = `<div class="text-slate-400 italic">無虧損持股</div>`;
+      } else {
+        losersEl.innerHTML = losers.map(l => `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
+            <span class="font-bold text-slate-800">${l.symbol} ${l.name}</span>
+            <span class="font-extrabold text-twLoss">-${fmtMoney(l.unrealizedPL.abs())} (${fmtPercent(l.unrealizedReturn)})</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function updateProfitLossChart(gainVal, lossVal) {
+      const ctx = document.getElementById('profitLossChart').getContext('2d');
+      if (profitLossChartInstance) profitLossChartInstance.destroy();
+
+      profitLossChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['獲利市值', '虧損市值'],
+          datasets: [{
+            data: [gainVal, lossVal],
+            backgroundColor: ['#dc2626', '#16a34a'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function updateStockAllocationChart(holdings) {
+      const ctx = document.getElementById('stockAllocationChart').getContext('2d');
+      if (stockAllocationChartInstance) stockAllocationChartInstance.destroy();
+
+      const labels = holdings.map(h => `${h.symbol} ${h.name}`);
+      const data = holdings.map(h => h.marketValue ? h.marketValue.toNumber() : 0);
+
+      const colors = [
+        '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd',
+        '#0284c7', '#0369a1', '#0f766e', '#14b8a6', '#0d9488', '#f59e0b', '#84cc16'
+      ];
+
+      stockAllocationChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors.slice(0, labels.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderHoldingsView(state) {
+      if (!state) {
+        state = calculatePortfolioState(rawCsvRecords, currentHolderFilter, currentMarketFilter);
+      }
+
+      const tbody = document.getElementById('holdingsTableBody');
+      const search = (document.getElementById('holdingSearchInput').value || '').toLowerCase();
+      const filterProfit = document.getElementById('holdingFilterProfit').value;
+      const sortBy = document.getElementById('holdingSortBy').value;
+
+      let list = [...state.holdingsList];
+
+      if (search) {
+        list = list.filter(h => h.symbol.toLowerCase().includes(search) || h.name.toLowerCase().includes(search));
+      }
+
+      if (filterProfit === 'GAIN') {
+        list = list.filter(h => h.unrealizedPL && h.unrealizedPL.gt(0));
+      } else if (filterProfit === 'LOSS') {
+        list = list.filter(h => h.unrealizedPL && h.unrealizedPL.lt(0));
+      } else if (filterProfit === 'EVEN') {
+        list = list.filter(h => h.unrealizedPL && h.unrealizedPL.eq(0));
+      }
+
+      list.sort((a, b) => {
+        if (sortBy === 'marketValue') {
+          return (b.marketValue ? b.marketValue.toNumber() : 0) - (a.marketValue ? a.marketValue.toNumber() : 0);
+        } else if (sortBy === 'unrealizedPL') {
+          return (b.unrealizedPL ? b.unrealizedPL.toNumber() : 0) - (a.unrealizedPL ? a.unrealizedPL.toNumber() : 0);
+        } else if (sortBy === 'shares') {
+          return b.shares.minus(a.shares).toNumber();
+        } else {
+          return a.symbol.localeCompare(b.symbol);
+        }
+      });
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">尚無符合條件之庫存紀錄</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(h => {
+        const isGain = h.unrealizedPL && h.unrealizedPL.gt(0);
+        const isLoss = h.unrealizedPL && h.unrealizedPL.lt(0);
+        const plClass = isGain ? 'text-twGain font-bold' : isLoss ? 'text-twLoss font-bold' : 'text-slate-700';
+
+        const memberPills = h.memberBreakdown.map(m => `
+          <span class="inline-block px-1.5 py-0.5 text-[10px] bg-slate-100 text-slate-700 rounded mr-1">
+            ${m.holder}: ${m.shares.toNumber().toLocaleString()} 股
+          </span>
+        `).join('');
+
+        let sourceBadge = '<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">歷史</span>';
+        if (h.priceSource === 'GOOGLE_SHEETS_LIVE') {
+          sourceBadge = '<span class="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">即時</span>';
+        } else if (h.priceSource === 'GOOGLE_SHEETS_CACHE') {
+          sourceBadge = '<span class="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded font-bold">快取</span>';
+        }
+
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="py-3 px-4 font-bold">
+              <div>${h.symbol} ${h.name}</div>
+              <div class="text-[10px] text-slate-400 font-normal">${h.category} | ${h.market}</div>
+            </td>
+            <td class="py-3 px-4">${memberPills}</td>
+            <td class="py-3 px-4 text-right">${h.shares.toNumber().toLocaleString()}</td>
+            <td class="py-3 px-4 text-right">NT$ ${fmtPrice(h.avgCost)}</td>
+            <td class="py-3 px-4 text-right">${fmtMoney(h.remainingCost)}</td>
+            <td class="py-3 px-4 text-right">${h.latestPrice ? 'NT$ ' + fmtPrice(h.latestPrice) : '<span class="text-amber-500">待補</span>'}</td>
+            <td class="py-3 px-4 text-right font-bold">${h.marketValue ? fmtMoney(h.marketValue) : '—'}</td>
+            <td class="py-3 px-4 text-right ${plClass}">${h.unrealizedPL ? fmtMoney(h.unrealizedPL) : '—'}</td>
+            <td class="py-3 px-4 text-right ${plClass}">${h.unrealizedReturn ? fmtPercent(h.unrealizedReturn) : '—'}</td>
+            <td class="py-3 px-4 text-center">
+              ${sourceBadge}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderTransactionsView() {
+      const tbody = document.getElementById('txTableBody');
+      const search = (document.getElementById('txSearchInput').value || '').toLowerCase();
+      const filterType = document.getElementById('txFilterType').value;
+      const filterStatus = document.getElementById('txFilterStatus').value;
+
+      let list = [...rawCsvRecords];
+
+      if (currentHolderFilter !== 'ALL') {
+        list = list.filter(r => r.holder === currentHolderFilter || r.recordType === '股價更新');
+      }
+
+      if (currentMarketFilter !== 'ALL') {
+        list = list.filter(r => (r.market || 'TW') === currentMarketFilter);
+      }
+
+      if (search) {
+        list = list.filter(r => 
+          r.symbol.toLowerCase().includes(search) || 
+          r.stockName.toLowerCase().includes(search) ||
+          r.strategy.toLowerCase().includes(search) ||
+          r.note.toLowerCase().includes(search)
+        );
+      }
+
+      if (filterType !== 'ALL') {
+        list = list.filter(r => r.recordType === filterType);
+      }
+
+      if (filterStatus !== 'ALL') {
+        list = list.filter(r => r.dataStatus === filterStatus);
+      }
+
+      tbody.innerHTML = list.map(r => {
+        let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">有效</span>';
+        if (r.dataStatus === '待確認') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">待確認</span>';
+        } else if (r.dataStatus === '待補資料') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800">待補資料</span>';
+        }
+
+        return `
+          <tr class="hover:bg-slate-50 border-b border-slate-100 text-xs">
+            <td class="py-2.5 px-3 font-mono text-slate-500">${r.recordId}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap">${r.date}</td>
+            <td class="py-2.5 px-3">${r.holder || '—'}</td>
+            <td class="py-2.5 px-3">${r.account || '—'}</td>
+            <td class="py-2.5 px-3 font-semibold">${r.symbol ? `${r.symbol} ${r.stockName}` : '—'}</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-medium">${r.recordType}</span></td>
+            <td class="py-2.5 px-3 text-right">${r.shares ? Number(r.shares).toLocaleString() : '—'}</td>
+            <td class="py-2.5 px-3 text-right">${r.price ? 'NT$ ' + r.price : '—'}</td>
+            <td class="py-2.5 px-3 text-right text-slate-500">${Number(r.fee || 0) + Number(r.tax || 0)}</td>
+            <td class="py-2.5 px-3">
+              <div class="text-slate-800">${r.strategy || '未分類'}</div>
+              <div class="text-[10px] text-slate-400 truncate max-w-xs">${r.note || r.reason || ''}</div>
+            </td>
+            <td class="py-2.5 px-3 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderStrategyView(state) {
+      const grid = document.getElementById('strategyGrid');
+      
+      let validTxs = rawCsvRecords.filter(r => r.dataStatus === '有效' && r.isValidRecord);
+      if (currentHolderFilter !== 'ALL') {
+        validTxs = validTxs.filter(r => r.holder === currentHolderFilter);
+      }
+
+      const strategyMap = {};
+
+      validTxs.forEach(r => {
+        const strat = r.strategy || '未分類';
+        if (!strategyMap[strat]) {
+          strategyMap[strat] = {
+            name: strat,
+            buyCount: 0,
+            sellCount: 0,
+            winSellCount: 0,
+            realizedPL: new Decimal(0)
+          };
+        }
+
+        const item = strategyMap[strat];
+        if (r.recordType === '買入') item.buyCount++;
+        if (r.recordType === '賣出') {
+          item.sellCount++;
+          const shares = toDec(r.shares);
+          const price = toDec(r.price);
+          const fee = toDec(r.fee);
+          const tax = toDec(r.tax);
+          const netRev = shares.times(price).minus(fee).minus(tax);
+          if (netRev.gt(0)) {
+            item.winSellCount++;
+          }
+        }
+      });
+
+      const stratKeys = Object.keys(strategyMap);
+      if (stratKeys.length === 0) {
+        grid.innerHTML = `<div class="col-span-3 text-center py-8 text-slate-400">尚無有效策略交易資料</div>`;
+        return;
+      }
+
+      grid.innerHTML = stratKeys.map(k => {
+        const s = strategyMap[k];
+        const winRate = s.sellCount > 0 ? ((s.winSellCount / s.sellCount) * 100).toFixed(1) : '—';
+
+        return `
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span class="font-bold text-sm text-slate-800 flex items-center">
+                <i data-lucide="compass" class="w-4 h-4 mr-1 text-blue-600"></i>${s.name}
+              </span>
+              <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">勝率 ${winRate}%</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-slate-50 p-2 rounded">
+                <span class="text-slate-400 block">買入 / 賣出次數</span>
+                <span class="font-bold text-slate-700">${s.buyCount} 次 / ${s.sellCount} 次</span>
+              </div>
+              <div class="bg-slate-50 p-2 rounded">
+                <span class="text-slate-400 block">賣出勝率</span>
+                <span class="font-bold text-blue-800">${winRate}%</span>
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-500 pt-1">
+              註：勝率計算依據「有效賣出事件數」統計，非完整週期勝率。
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    /* =====================================================================
+       9. DREAMS ENGINE & FOCUS DREAM CALCULATOR
+       ===================================================================== */
+    function initDefaultDreams() {
+      const stored = localStorage.getItem('v12_dreams');
+      if (stored) {
+        try { dreamsList = JSON.parse(stored); return; } catch(e){}
+      }
+
+      dreamsList = [
+        {
+          id: 'd1',
+          holder: '本人',
+          name: '換購全家休旅車 (模擬資料)',
+          category: '車輛',
+          targetType: '頭期款',
+          originalPrice: 1500000,
+          targetAmount: 500000,
+          account: '富邦證券',
+          isFocus: true,
+          icon: '🚘',
+          status: '進行中',
+          createdDate: '2026-01-01'
+        },
+        {
+          id: 'd2',
+          holder: '太太',
+          name: '歐州家庭旅遊基金 (模擬資料)',
+          category: '旅遊',
+          targetType: '完整價格',
+          originalPrice: 300000,
+          targetAmount: 300000,
+          account: '國泰證券',
+          isFocus: true,
+          icon: '✈️',
+          status: '進行中',
+          createdDate: '2026-01-01'
+        }
+      ];
+      saveDreams();
+    }
+
+    function saveDreams() {
+      localStorage.setItem('v12_dreams', JSON.stringify(dreamsList));
+      const badge = document.getElementById('dreamCountBadge');
+      if (badge) badge.innerText = dreamsList.filter(d => d.status === '進行中').length;
+    }
+
+    function calculateDreamMetrics(dream, state) {
+      const hResult = state.memberResults[dream.holder];
+      if (!hResult) {
+        return {
+          realizedGain: new Decimal(0),
+          bookGain: new Decimal(0),
+          bookProgressPct: 0,
+          realizedProgressPct: 0,
+          remainingAmount: new Decimal(dream.targetAmount),
+          nextMilestone: 25,
+          isNegative: false
+        };
+      }
+
+      const realizedGain = hResult.realizedPL.plus(hResult.cumulativeDividends).minus(hResult.extraFees);
+
+      let memberUnrealizedPL = new Decimal(0);
+      Object.values(hResult.holdingsMap).forEach(item => {
+        if (item.shares.gt(0)) {
+          const found = state.holdingsList.find(h => h.symbol === item.symbol);
+          if (found && found.latestPrice) {
+            const mv = item.shares.times(found.latestPrice);
+            memberUnrealizedPL = memberUnrealizedPL.plus(mv.minus(item.remainingCost));
+          }
+        }
+      });
+
+      const bookGain = realizedGain.plus(memberUnrealizedPL);
+      const targetDec = new Decimal(dream.targetAmount);
+
+      const isNegative = bookGain.lt(0);
+      const safeBookGain = Decimal.max(0, bookGain);
+      const safeRealizedGain = Decimal.max(0, realizedGain);
+
+      const bookProgressPct = targetDec.gt(0) ? safeBookGain.div(targetDec).times(100).toNumber() : 0;
+      const realizedProgressPct = targetDec.gt(0) ? safeRealizedGain.div(targetDec).times(100).toNumber() : 0;
+      const remainingAmount = Decimal.max(0, targetDec.minus(bookGain));
+
+      let nextMilestone = 25;
+      if (bookProgressPct >= 100) nextMilestone = 100;
+      else if (bookProgressPct >= 75) nextMilestone = 100;
+      else if (bookProgressPct >= 50) nextMilestone = 75;
+      else if (bookProgressPct >= 25) nextMilestone = 50;
+
+      return {
+        realizedGain,
+        bookGain,
+        bookProgressPct: Math.min(100, bookProgressPct),
+        realizedProgressPct: Math.min(100, realizedProgressPct),
+        remainingAmount,
+        nextMilestone,
+        isNegative
+      };
+    }
+
+    function renderFocusDreamCard(state) {
+      const activeHolder = currentHolderFilter;
+      let focusDream = dreamsList.find(d => (activeHolder === 'ALL' || d.holder === activeHolder) && d.isFocus && d.status === '進行中');
+
+      if (!focusDream && dreamsList.length > 0) {
+        focusDream = dreamsList[0];
+      }
+
+      const card = document.getElementById('dashboardFocusDreamCard');
+      if (!focusDream) {
+        card.classList.add('hidden');
+        return;
+      }
+      card.classList.remove('hidden');
+
+      const metrics = calculateDreamMetrics(focusDream, state);
+
+      document.getElementById('focusDreamIconDisplay').innerText = focusDream.icon || '🎯';
+      document.getElementById('focusDreamHolderBadge').innerText = `${focusDream.holder} | ${focusDream.account || '預設帳戶'}`;
+      document.getElementById('focusDreamTitle').innerText = focusDream.name;
+
+      document.getElementById('focusDreamBookPct').innerText = `${metrics.bookProgressPct.toFixed(1)}%`;
+      document.getElementById('focusDreamBookBar').style.width = `${Math.min(100, Math.max(0, metrics.bookProgressPct))}%`;
+      document.getElementById('focusDreamRealizedPct').innerText = `${metrics.realizedProgressPct.toFixed(1)}%`;
+      document.getElementById('focusDreamNextMilestone').innerText = `下一里程碑：${metrics.nextMilestone}%`;
+    }
+
+    function renderDreamsView(state) {
+      if (!state) state = calculatePortfolioState(rawCsvRecords, currentHolderFilter, currentMarketFilter);
+
+      const largeCard = document.getElementById('dreamFocusLargeCard');
+      let focusDream = dreamsList.find(d => (currentHolderFilter === 'ALL' || d.holder === currentHolderFilter) && d.isFocus && d.status === '進行中');
+
+      if (!focusDream && dreamsList.length > 0) focusDream = dreamsList[0];
+
+      if (focusDream) {
+        const m = calculateDreamMetrics(focusDream, state);
+        
+        let statusNotice = '';
+        if (m.isNegative) {
+          statusNotice = `<div class="p-2 bg-red-50 text-red-700 rounded text-xs">目前處於帳面虧損 (NT$ ${m.bookGain.abs().toNumber().toLocaleString()})，需先回補虧損才能開始累積進度。</div>`;
+        } else if (m.bookProgressPct >= 100) {
+          statusNotice = `<div class="p-2 bg-emerald-50 text-emerald-800 rounded text-xs font-bold">帳面投資收益已達到目標金額，其中部分仍為未實現損益。</div>`;
+        }
+
+        largeCard.innerHTML = `
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center space-x-3">
+              <span class="text-3xl">${focusDream.icon}</span>
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">焦點夢想</span>
+                <h3 class="text-base font-bold text-slate-900">${focusDream.name}</h3>
+                <span class="text-xs text-slate-500">${focusDream.holder} · ${focusDream.account} · ${focusDream.targetType}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-400">目標金額</div>
+              <div class="text-lg font-bold text-slate-800">${fmtMoney(focusDream.targetAmount)}</div>
+            </div>
+          </div>
+
+          ${statusNotice}
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs my-2">
+            <div class="bg-slate-50 p-3 rounded-lg">
+              <span class="text-slate-400 block">帳面總收益 (含未實現)</span>
+              <span class="text-base font-bold text-slate-800">${fmtMoney(m.bookGain)}</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg">
+              <span class="text-slate-400 block">已落袋收益</span>
+              <span class="text-base font-bold text-emerald-700">${fmtMoney(m.realizedGain)}</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg">
+              <span class="text-slate-400 block">距離目標尚差</span>
+              <span class="text-base font-bold text-amber-700">${fmtMoney(m.remainingAmount)}</span>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-semibold">
+              <span>帳面進度：${m.bookProgressPct.toFixed(1)}%</span>
+              <span>已落袋進度：${m.realizedProgressPct.toFixed(1)}%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+              <div class="bg-amber-500 h-3 rounded-full transition-all duration-500" style="width: ${m.bookProgressPct}%"></div>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-slate-400">
+            註：帳面總收益包含未實現損益，不等於目前可直接使用的現金。
+          </div>
+        `;
+      } else {
+        largeCard.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">尚無進行中的焦點夢想項目</div>`;
+      }
+
+      const grid = document.getElementById('dreamsGrid');
+      grid.innerHTML = dreamsList.map(d => {
+        const m = calculateDreamMetrics(d, state);
+        return `
+          <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="text-xl">${d.icon}</span>
+                <div>
+                  <h4 class="font-bold text-xs text-slate-800">${d.name}</h4>
+                  <span class="text-[10px] text-slate-400">${d.holder} | ${d.category}</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] ${d.isFocus ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-600'}">
+                ${d.isFocus ? '焦點' : d.status}
+              </span>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-slate-500">目標: ${fmtMoney(d.targetAmount)}</span>
+                <span class="font-bold text-amber-700">${m.bookProgressPct.toFixed(1)}%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="bg-amber-500 h-2 rounded-full" style="width: ${m.bookProgressPct}%"></div>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px]">
+              <button onclick="setFocusDream('${d.id}')" class="text-amber-600 hover:underline font-medium">設為焦點</button>
+              <button onclick="deleteDream('${d.id}')" class="text-red-500 hover:underline">刪除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openDreamModal() {
+      const holders = Array.from(new Set(rawCsvRecords.map(r => r.holder).filter(Boolean)));
+      const accounts = Array.from(new Set(rawCsvRecords.map(r => r.account).filter(Boolean)));
+
+      document.getElementById('dreamFormHolder').innerHTML = holders.map(h => `<option value="${h}">${h}</option>`).join('');
+      document.getElementById('dreamFormAccount').innerHTML = accounts.map(a => `<option value="${a}">${a}</option>`).join('');
+
+      document.getElementById('dreamModal').classList.remove('hidden');
+    }
+
+    function closeDreamModal() {
+      document.getElementById('dreamModal').classList.add('hidden');
+    }
+
+    function handleDreamSubmit(e) {
+      e.preventDefault();
+      const newDream = {
+        id: 'd_' + Date.now(),
+        name: document.getElementById('dreamFormName').value,
+        holder: document.getElementById('dreamFormHolder').value,
+        icon: document.getElementById('dreamFormIcon').value || '🎯',
+        category: document.getElementById('dreamFormCategory').value || '通用',
+        targetType: document.getElementById('dreamFormType').value,
+        targetAmount: Number(document.getElementById('dreamFormAmount').value),
+        account: document.getElementById('dreamFormAccount').value,
+        isFocus: false,
+        status: '進行中',
+        createdDate: new Date().toISOString().split('T')[0]
+      };
+
+      dreamsList.push(newDream);
+      saveDreams();
+      closeDreamModal();
+      refreshAllViews();
+    }
+
+    function setFocusDream(id) {
+      const target = dreamsList.find(d => d.id === id);
+      if (!target) return;
+
+      dreamsList.forEach(d => {
+        if (d.holder === target.holder && d.account === target.account) {
+          d.isFocus = false;
+        }
+      });
+      target.isFocus = true;
+      saveDreams();
+      refreshAllViews();
+    }
+
+    function deleteDream(id) {
+      dreamsList = dreamsList.filter(d => d.id !== id);
+      saveDreams();
+      refreshAllViews();
+    }
+
+    function exportDreamsCSV() {
+      const csv = Papa.unparse(dreamsList);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '夢想清單.csv';
+      a.click();
+    }
+
+    function importDreamsCSV(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        complete: function(res) {
+          if (res.data && res.data.length > 0) {
+            dreamsList = res.data.map((row, i) => ({
+              id: row.id || 'd_imp_' + i,
+              name: row.name || '匯入夢想',
+              holder: row.holder || '本人',
+              icon: row.icon || '🎯',
+              category: row.category || '通用',
+              targetType: row.targetType || '頭期款',
+              targetAmount: Number(row.targetAmount || 100000),
+              account: row.account || '富邦證券',
+              isFocus: row.isFocus === 'true',
+              status: row.status || '進行中',
+              createdDate: row.createdDate || '2026-08-10'
+            }));
+            saveDreams();
+            refreshAllViews();
+            alert('成功匯入夢想清單 CSV！');
+          }
+        }
+      });
+    }
+
+    /* =====================================================================
+       10. PAPER TRADING ENGINE
+       ===================================================================== */
+    function initPaperData() {
+      const storedPortfolios = localStorage.getItem('v12_paper_portfolios');
+      const storedOrders = localStorage.getItem('v12_paper_orders');
+
+      if (storedPortfolios) {
+        try { paperPortfolios = JSON.parse(storedPortfolios); } catch(e){}
+      } else {
+        paperPortfolios = [
+          { id: 'p1', name: '主要模擬實驗組合', initialCash: 1000000, maxConcentrationPct: 30 }
+        ];
+      }
+
+      if (storedOrders) {
+        try { paperOrders = JSON.parse(storedOrders); } catch(e){}
+      } else {
+        paperOrders = [
+          {
+            id: 'po1',
+            portfolioId: 'p1',
+            date: '2026-08-01',
+            symbol: '2330',
+            name: '台積電',
+            type: '買入',
+            shares: 1000,
+            price: 920,
+            stopLoss: 880,
+            targetPrice: 1100,
+            reason: '測試技術面突破',
+            status: '持有中'
+          }
+        ];
+      }
+
+      savePaperData();
+    }
+
+    function savePaperData() {
+      localStorage.setItem('v12_paper_portfolios', JSON.stringify(paperPortfolios));
+      localStorage.setItem('v12_paper_orders', JSON.stringify(paperOrders));
+    }
+
+    function renderPaperView() {
+      const select = document.getElementById('paperPortfolioSelect');
+      select.innerHTML = paperPortfolios.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      select.value = currentPaperPortfolioId;
+
+      const pOrders = paperOrders.filter(o => o.portfolioId === currentPaperPortfolioId);
+      const portfolio = paperPortfolios.find(p => p.id === currentPaperPortfolioId) || paperPortfolios[0];
+
+      let cash = new Decimal(portfolio.initialCash);
+      let marketValue = new Decimal(0);
+
+      pOrders.forEach(o => {
+        const cost = new Decimal(o.shares).times(o.price);
+        if (o.type === '買入' && o.status === '持有中') {
+          cash = cash.minus(cost);
+          const liveItem = livePriceMap[`TW:${o.symbol}`];
+          const priceObj = rawCsvRecords.find(r => r.recordType === '股價更新' && r.symbol === o.symbol);
+          const curPrice = liveItem ? liveItem.latestPrice : (priceObj ? toDec(priceObj.price) : new Decimal(o.price));
+          marketValue = marketValue.plus(new Decimal(o.shares).times(curPrice));
+        }
+      });
+
+      const totalAssets = cash.plus(marketValue);
+      const totalPL = totalAssets.minus(portfolio.initialCash);
+      const returnPct = totalPL.div(portfolio.initialCash).times(100);
+
+      document.getElementById('paperTotalAssets').innerText = fmtMoney(totalAssets);
+      document.getElementById('paperCashBalance').innerText = fmtMoney(cash);
+      document.getElementById('paperMarketValue').innerText = fmtMoney(marketValue);
+      document.getElementById('paperTotalPL').innerText = `${fmtMoney(totalPL)} (${fmtPercent(returnPct)})`;
+
+      const checksGrid = document.getElementById('paperDisciplineCheckGrid');
+      const missingReasonCount = pOrders.filter(o => !o.reason || o.reason.length < 5).length;
+      const missingStopLossCount = pOrders.filter(o => !o.stopLoss).length;
+
+      checksGrid.innerHTML = `
+        <div class="bg-purple-50/60 p-2.5 rounded-lg border border-purple-100">
+          <span class="text-slate-500 block">買進理由完整度</span>
+          <span class="font-bold text-slate-800">${missingReasonCount === 0 ? '全數符合紀律' : `${missingReasonCount} 筆缺少詳細理由`}</span>
+        </div>
+        <div class="bg-purple-50/60 p-2.5 rounded-lg border border-purple-100">
+          <span class="text-slate-500 block">預設風控停損單</span>
+          <span class="font-bold text-slate-800">${missingStopLossCount === 0 ? '全部設定完成' : `${missingStopLossCount} 筆未設停損價`}</span>
+        </div>
+        <div class="bg-purple-50/60 p-2.5 rounded-lg border border-purple-100">
+          <span class="text-slate-500 block">集中度風控門檻</span>
+          <span class="font-bold text-purple-700">單一持股上限 ${portfolio.maxConcentrationPct}%</span>
+        </div>
+      `;
+
+      const tbody = document.getElementById('paperTableBody');
+      tbody.innerHTML = pOrders.map(o => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <td class="py-2.5 px-3 font-mono text-slate-400">${o.id}</td>
+          <td class="py-2.5 px-3">${o.date}</td>
+          <td class="py-2.5 px-3 font-bold">${o.symbol} ${o.name}</td>
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">${o.type}</span></td>
+          <td class="py-2.5 px-3 text-right">${o.shares}</td>
+          <td class="py-2.5 px-3 text-right">NT$ ${o.price}</td>
+          <td class="py-2.5 px-3 text-slate-500">${o.stopLoss || '未設'} / ${o.targetPrice || '未設'}</td>
+          <td class="py-2.5 px-3 text-slate-700">${o.reason}</td>
+          <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">${o.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function onPaperPortfolioChange(val) {
+      currentPaperPortfolioId = val;
+      renderPaperView();
+    }
+
+    function openPaperOrderModal() {
+      document.getElementById('paperOrderModal').classList.remove('hidden');
+    }
+
+    function closePaperOrderModal() {
+      document.getElementById('paperOrderModal').classList.add('hidden');
+    }
+
+    function handlePaperOrderSubmit(e) {
+      e.preventDefault();
+      const newOrder = {
+        id: 'po_' + Date.now(),
+        portfolioId: currentPaperPortfolioId,
+        date: new Date().toISOString().split('T')[0],
+        symbol: document.getElementById('paperFormSymbol').value,
+        name: document.getElementById('paperFormName').value,
+        type: document.getElementById('paperFormType').value,
+        shares: Number(document.getElementById('paperFormShares').value),
+        price: Number(document.getElementById('paperFormPrice').value),
+        stopLoss: document.getElementById('paperFormStopLoss').value ? Number(document.getElementById('paperFormStopLoss').value) : null,
+        targetPrice: document.getElementById('paperFormTarget').value ? Number(document.getElementById('paperFormTarget').value) : null,
+        reason: document.getElementById('paperFormReason').value,
+        status: '持有中'
+      };
+
+      paperOrders.push(newOrder);
+      savePaperData();
+      closePaperOrderModal();
+      renderPaperView();
+    }
+
+    function exportPaperCSV() {
+      const csv = Papa.unparse(paperOrders);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '模擬交易.csv';
+      a.click();
+    }
+
+    /* =====================================================================
+       11. REFINED QUOTE POPUP & QUEUE ENGINE
+       ===================================================================== */
+    function initQuoteQueue() {
+      let queue = JSON.parse(localStorage.getItem('v12_quote_queue') || '[]');
+      let history = JSON.parse(localStorage.getItem('v12_quote_history') || '[]');
+
+      if (queue.length === 0) {
+        queue = [...INVESTMENT_QUOTES].map(q => q.id);
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+        
+        if (history.length > 0 && queue[0] === history[history.length - 1]) {
+          const first = queue.shift();
+          queue.push(first);
+        }
+      }
+
+      const nextId = queue.shift();
+      history.push(nextId);
+
+      localStorage.setItem('v12_quote_queue', JSON.stringify(queue));
+      localStorage.setItem('v12_quote_history', JSON.stringify(history));
+
+      return INVESTMENT_QUOTES.find(q => q.id === nextId) || INVESTMENT_QUOTES[0];
+    }
+
+    function openQuoteModal(manual = false) {
+      lastActiveElement = document.activeElement;
+      const quote = initQuoteQueue();
+
+      document.getElementById('quoteEnText').innerText = quote.textEn;
+      document.getElementById('quoteZhText').innerText = quote.textZh;
+      document.getElementById('quoteAuthor').innerText = `— ${quote.author}`;
+      document.getElementById('quoteTagBadge').innerText = quote.tag || '投資心法';
+
+      const modal = document.getElementById('quoteModal');
+      const progressBar = document.getElementById('quoteProgressBar');
+
+      modal.classList.remove('hidden');
+      progressBar.classList.remove('animate-progress');
+      void progressBar.offsetWidth;
+      progressBar.classList.add('animate-progress');
+
+      quoteTimeRemaining = 10;
+      isQuotePaused = false;
+      document.getElementById('quotePauseBadge').classList.add('hidden');
+      document.getElementById('quotePauseBtn').innerText = '暫停';
+      document.getElementById('quoteCountdownText').innerText = `${quoteTimeRemaining} 秒後自動關閉`;
+
+      if (quoteTimer) clearInterval(quoteTimer);
+      quoteTimer = setInterval(() => {
+        if (!isQuotePaused) {
+          quoteTimeRemaining--;
+          document.getElementById('quoteCountdownText').innerText = `${quoteTimeRemaining} 秒後自動關閉`;
+          if (quoteTimeRemaining <= 0) {
+            closeQuoteModal();
+          }
+        }
+      }, 1000);
+    }
+
+    function handleQuoteOverlayClick(e) {
+      if (e.target && e.target.id === 'quoteModal') {
+        closeQuoteModal();
+      }
+    }
+
+    function toggleQuotePause() {
+      isQuotePaused = !isQuotePaused;
+      const pauseBtn = document.getElementById('quotePauseBtn');
+      const badge = document.getElementById('quotePauseBadge');
+      const countdownText = document.getElementById('quoteCountdownText');
+      const progressBar = document.getElementById('quoteProgressBar');
+
+      if (isQuotePaused) {
+        pauseBtn.innerText = '繼續';
+        badge.classList.remove('hidden');
+        countdownText.innerText = '已暫停倒數';
+        progressBar.classList.add('paused');
+      } else {
+        pauseBtn.innerText = '暫停';
+        badge.classList.add('hidden');
+        countdownText.innerText = `${quoteTimeRemaining} 秒後自動關閉`;
+        progressBar.classList.remove('paused');
+      }
+    }
+
+    function closeQuoteModal() {
+      if (quoteTimer) clearInterval(quoteTimer);
+      document.getElementById('quoteModal').classList.add('hidden');
+      if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
+        try { lastActiveElement.focus(); } catch (e) {}
+      }
+    }
+
+    function renderViewAllQuotes(tag = 'ALL') {
+      const grid = document.getElementById('quotesGrid');
+      let list = INVESTMENT_QUOTES;
+      if (tag !== 'ALL') {
+        list = list.filter(q => q.tag === tag);
+      }
+
+      grid.innerHTML = list.map(q => `
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-brand-900">${q.author}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-medium">${q.tag}</span>
+            </div>
+            <p class="text-xs font-bold text-slate-800 italic leading-relaxed">${q.textEn}</p>
+            <p class="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">${q.textZh}</p>
+          </div>
+          <div class="pt-2 border-t border-slate-100 text-right">
+            <a href="${q.url}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-blue-600 hover:underline inline-flex items-center">
+              出處文獻 <i data-lucide="external-link" class="w-3 h-3 ml-0.5"></i>
+            </a>
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterQuotesByTag(tag) {
+      renderViewAllQuotes(tag);
+    }
+
+    /* =====================================================================
+       12. IDLE / BACKGROUND AUTO MASK & SETTINGS
+       ===================================================================== */
+    let idleTimer = null;
+    function resetIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        privacyMaskEnabled = true;
+        refreshAllViews();
+      }, 180000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        setTimeout(() => {
+          if (document.hidden) {
+            privacyMaskEnabled = true;
+            refreshAllViews();
+          }
+        }, 30000);
+      }
+    });
+
+    document.addEventListener('mousemove', resetIdleTimer);
+    document.addEventListener('keydown', resetIdleTimer);
+
+    function setStorageMode(mode) {
+      storageMode = mode;
+      alert(`已切換本機保護模式為：${mode === 'SESSION' ? '不保存模式' : '加密快取模式 (AES-GCM)'}`);
+    }
+
+    /* =====================================================================
+       13. DATA CHECK & SOURCES ENGINE
+       ===================================================================== */
+    function renderDataCheckView(summary, records, state) {
+      document.getElementById('qcTotalRows').innerText = summary.totalRows;
+      document.getElementById('qcValidRows').innerText = summary.validCount;
+      document.getElementById('qcPendingRows').innerText = summary.pendingCount;
+      document.getElementById('qcMissingDataRows').innerText = summary.missingDataCount;
+      document.getElementById('qcDuplicateIds').innerText = summary.duplicateIdCount;
+      document.getElementById('qcErrorRows').innerText = summary.validationErrorCount;
+
+      if (state) {
+        document.getElementById('priceStatTotal').innerText = `${state.holdingsList.length} 檔`;
+        document.getElementById('priceStatLive').innerText = `${state.statLiveCount} 檔`;
+        document.getElementById('priceStatCache').innerText = `${state.statCacheCount} 檔`;
+        document.getElementById('priceStatCsv').innerText = `${state.statCsvCount} 檔`;
+        document.getElementById('priceStatMissing').innerText = `${state.hasMissingPriceCount} 檔`;
+      }
+
+      const badge = document.getElementById('errorBadgeCount');
+      if (summary.pendingCount + summary.missingDataCount > 0) {
+        badge.innerText = summary.pendingCount + summary.missingDataCount;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      const tbody = document.getElementById('qcIssuesTableBody');
+      const issues = records.filter(r => r.dataStatus !== '有效' || !r.isValidRecord);
+
+      if (issues.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-emerald-600 font-medium">恭喜！全部交易 CSV 資料皆通過線上結構驗證。</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = issues.map(r => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100 text-xs">
+          <td class="py-2.5 px-3 font-mono text-slate-400">第 ${r.rowIndex} 列</td>
+          <td class="py-2.5 px-3 font-mono font-bold text-slate-700">${r.recordId || '—'}</td>
+          <td class="py-2.5 px-3">${r.date}</td>
+          <td class="py-2.5 px-3">${r.holder || '—'}</td>
+          <td class="py-2.5 px-3 font-medium">${r.symbol ? `${r.symbol} ${r.stockName}` : '—'}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.dataStatus === '待確認' ? 'bg-amber-100 text-amber-800' : 'bg-orange-100 text-orange-800'}">
+              ${r.dataStatus}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 text-red-600 font-medium">${r.anomalyDesc || r.validationIssues.join('; ') || '資料欄位不完整'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function useBuiltinCSV() {
+      activeSourceType = 'BUILTIN';
+      const parsed = parseAndValidateCSV(BUILTIN_CSV_DATA);
+      rawCsvRecords = parsed.records;
+      document.getElementById('sourceBadgeText').innerText = '內建 CSV';
+      alert('已切換至「內建 CSV 資料庫」（110 筆原始測試紀錄）。');
+      privacyMaskEnabled = true;
+      refreshAllViews();
+    }
+
+    function handleLocalFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        try {
+          const parsed = parseAndValidateCSV(text);
+          if (parsed.records.length === 0) {
+            alert('上傳的 CSV 檔案無有效資料。');
+            return;
+          }
+          rawCsvRecords = parsed.records;
+          activeSourceType = 'LOCAL';
+          document.getElementById('sourceBadgeText').innerText = '本機 CSV';
+          privacyMaskEnabled = true;
+          alert(`成功解析本機 CSV 檔案：共 ${parsed.records.length} 筆資料。`);
+          refreshAllViews();
+        } catch (err) {
+          alert('解析本機 CSV 時發生錯誤：' + err.message);
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    async function syncGoogleSheetsCSV() {
+      const url = document.getElementById('googleSheetUrlInput').value.trim();
+      if (!url) {
+        alert('請輸入有效的 Google Sheets 公開 CSV 網址。');
+        return;
+      }
+
+      const cacheUrl = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+      try {
+        const res = await fetch(cacheUrl);
+        if (!res.ok) throw new Error(`HTTP 錯誤狀態: ${res.status}`);
+        const csvText = await res.text();
+
+        const parsed = parseAndValidateCSV(csvText);
+        if (parsed.records.length === 0) {
+          alert('Google Sheets 網址傳回空白資料。');
+          return;
+        }
+
+        rawCsvRecords = parsed.records;
+        activeSourceType = 'GOOGLE';
+        document.getElementById('sourceBadgeText').innerText = 'Google Sheets CSV';
+        privacyMaskEnabled = true;
+        alert(`Google Sheets 交易資料同步成功！共載入 ${parsed.records.length} 筆資料。`);
+        refreshAllViews();
+      } catch (err) {
+        alert(`Google Sheets 同步失敗：${err.message}\n已保留最後一次成功讀取之資料。`);
+      }
+    }
+
+    /* =====================================================================
+       14. APP INITIALIZATION
+       ===================================================================== */
+    window.onload = function() {
+      lucide.createIcons();
+      initDefaultDreams();
+      initPaperData();
+      initLivePriceEngine();
+      refreshAllViews();
+      renderViewAllQuotes();
+
+      openQuoteModal();
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeQuoteModal();
+          closeDreamModal();
+          closePaperOrderModal();
+        }
+      });
+    };
+  </script>
+</body>
+</html>

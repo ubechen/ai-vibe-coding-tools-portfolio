@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Vibe Coding 工具作品集 | 精選 16 款實戰應用</title>
+    <meta name="description" content="AI Vibe Coding 工具作品集 - 精選 16 款高質感純前端 Web 應用程式，涵蓋商業財務、效率工具、健康生活、遊戲娛樂與語言學習。">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #07090e;
+            --bg-secondary: #0d121f;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(26, 34, 52, 0.85);
+            --border-card: rgba(255, 255, 255, 0.08);
+            --border-card-hover: rgba(99, 102, 241, 0.4);
+            
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --accent-cyan: #06b6d4;
+            --accent-purple: #a855f7;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            
+            --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 20px 40px -15px rgba(99, 102, 241, 0.25);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background Lights */
+        .ambient-glow {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.45;
+            animation: pulseGlow 12s ease-in-out infinite alternate;
+        }
+        .glow-1 {
+            top: -10%;
+            left: 15%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #4f46e5 0%, rgba(79, 70, 229, 0) 70%);
+        }
+        .glow-2 {
+            top: 40%;
+            right: -5%;
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, #06b6d4 0%, rgba(6, 182, 212, 0) 70%);
+            animation-delay: -4s;
+        }
+        .glow-3 {
+            bottom: 5%;
+            left: -5%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #9333ea 0%, rgba(147, 51, 234, 0) 70%);
+            animation-delay: -8s;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.35; }
+            50% { transform: scale(1.15) translate(30px, -20px); opacity: 0.55; }
+            100% { transform: scale(0.95) translate(-20px, 30px); opacity: 0.35; }
+        }
+
+        /* Subtle Grid Pattern Overlay */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header Area */
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+            padding-top: 20px;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #a5b4fc;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+        .brand-badge .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+            animation: blink 2s infinite ease-in-out;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        h1 {
+            font-size: clamp(2.2rem, 5vw, 3.6rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 20%, #cbd5e1 50%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto 32px;
+            font-weight: 400;
+        }
+
+        /* Stats Overview Cards */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .stat-item {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(8px);
+            transition: var(--transition);
+        }
+        .stat-item:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        .stat-item .stat-num {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #38bdf8;
+            font-family: 'Outfit', sans-serif;
+        }
+        .stat-item .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Controls Section (Search & Filter) */
+        .controls-panel {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .controls-top {
+            display: flex;
+            gap: 16px;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 260px;
+        }
+        .search-box input {
+            width: 100%;
+            background: rgba(8, 12, 22, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-full);
+            padding: 12px 44px 12px 46px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition);
+        }
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            background: rgba(11, 17, 32, 0.95);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            pointer-events: none;
+        }
+        .search-box .clear-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-secondary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 11px;
+            transition: var(--transition);
+        }
+        .search-box .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .view-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-group {
+            display: inline-flex;
+            background: rgba(8, 12, 22, 0.8);
+            padding: 4px;
+            border-radius: var(--radius-full);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+        .view-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        /* Filter Pills */
+        .filter-pills {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 8px 18px;
+            border-radius: var(--radius-full);
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+        .filter-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+        .filter-pill.active {
+            background: rgba(99, 102, 241, 0.18);
+            border-color: var(--primary);
+            color: #a5b4fc;
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+        }
+        .filter-pill .pill-count {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 7px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            color: inherit;
+        }
+        .filter-pill.active .pill-count {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            transition: var(--transition);
+        }
+
+        /* Card Styles */
+        .tool-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--card-accent, #6366f1), transparent);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .tool-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-card-hover);
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .tool-card:hover::before {
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .icon-wrapper {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.7rem;
+            box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.04);
+            transition: var(--transition);
+        }
+        .tool-card:hover .icon-wrapper {
+            transform: scale(1.08) rotate(3deg);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--card-accent, #6366f1);
+            box-shadow: 0 0 16px var(--card-accent-glow, rgba(99, 102, 241, 0.3));
+        }
+
+        .category-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            letter-spacing: 0.02em;
+        }
+
+        .card-body {
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+
+        .tool-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.35;
+            transition: var(--transition);
+        }
+        .tool-card:hover .tool-title {
+            color: #ffffff;
+        }
+
+        .tool-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            margin-bottom: 14px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .badge-item {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        /* Card Footer */
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .file-info {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+        }
+
+        .btn-launch {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--card-accent, #6366f1) 0%, #4f46e5 100%);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: 0 4px 14px var(--card-accent-glow, rgba(99, 102, 241, 0.3));
+            border: none;
+            cursor: pointer;
+            flex-grow: 1;
+            text-align: center;
+        }
+        .btn-launch:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.15);
+            box-shadow: 0 6px 20px var(--card-accent-glow, rgba(99, 102, 241, 0.5));
+            color: #fff;
+        }
+        .btn-launch .arrow-icon {
+            transition: transform 0.2s ease;
+            font-size: 1rem;
+        }
+        .btn-launch:hover .arrow-icon {
+            transform: translateX(4px);
+        }
+
+        /* List View Mode */
+        .cards-grid.list-view {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        .cards-grid.list-view .tool-card {
+            flex-direction: row;
+            align-items: center;
+            padding: 16px 24px;
+            gap: 20px;
+        }
+        .cards-grid.list-view .card-header {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+        .cards-grid.list-view .card-body {
+            margin-bottom: 0;
+            flex-grow: 1;
+        }
+        .cards-grid.list-view .card-footer {
+            border-top: none;
+            padding-top: 0;
+            flex-shrink: 0;
+            width: 180px;
+            justify-content: flex-end;
+        }
+        .cards-grid.list-view .file-info {
+            display: none;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            grid-column: 1 / -1;
+            display: none;
+        }
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+        .empty-state h3 {
+            font-size: 1.3rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px 20px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 60px;
+        }
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        footer a:hover {
+            color: var(--primary);
+        }
+
+        /* Category Color Profiles */
+        .cat-finance {
+            --card-accent: #10b981;
+            --card-accent-glow: rgba(16, 185, 129, 0.35);
+        }
+        .cat-tool {
+            --card-accent: #6366f1;
+            --card-accent-glow: rgba(99, 102, 241, 0.35);
+        }
+        .cat-life {
+            --card-accent: #06b6d4;
+            --card-accent-glow: rgba(6, 182, 212, 0.35);
+        }
+        .cat-fun {
+            --card-accent: #f59e0b;
+            --card-accent-glow: rgba(245, 158, 11, 0.35);
+        }
+        .cat-edu {
+            --card-accent: #ec4899;
+            --card-accent-glow: rgba(236, 72, 153, 0.35);
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 16px 60px;
+            }
+            .controls-panel {
+                padding: 16px;
+                gap: 16px;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .cards-grid.list-view .tool-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .cards-grid.list-view .card-footer {
+                width: 100%;
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+                padding-top: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Ambient Background Effects -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+    <div class="bg-grid"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand-badge">
+                <span class="dot"></span>
+                <span>AI Vibe Coding Collection</span>
+            </div>
+            <h1>AI Vibe Coding 工具作品集</h1>
+            <p class="subtitle">
+                探索 16 款運用 AI 協作打造的精選 Web 應用。涵蓋商業財務分析、團隊效率工具、健康生活管理、經典復古遊戲與日常學習。
+            </p>
+
+            <!-- Stats Overview -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-num" id="totalCount">16</span>
+                    <span class="stat-label">款作品收錄</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-num">100%</span>
+                    <span class="stat-label">純前端離線運行</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-num">RWD</span>
+                    <span class="stat-label">多裝置響應支援</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Controls: Search & Category Filters -->
+        <section class="controls-panel" aria-label="篩選與搜尋控制面板">
+            <div class="controls-top">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="搜尋作品名稱、功能標籤或說明..." autocomplete="off" />
+                    <button class="clear-btn" id="clearSearch" title="清除搜尋">✕</button>
+                </div>
+
+                <div class="view-actions">
+                    <div class="btn-group">
+                        <button class="view-btn active" id="gridModeBtn" title="網格檢視">
+                            <span>⊞</span> 網格
+                        </button>
+                        <button class="view-btn" id="listModeBtn" title="列表檢視">
+                            <span>☰</span> 列表
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Pills -->
+            <div class="filter-pills" id="categoryFilters">
+                <button class="filter-pill active" data-category="all">
+                    全部作品 <span class="pill-count" id="countAll">16</span>
+                </button>
+                <button class="filter-pill" data-category="finance">
+                    📊 商業財務 <span class="pill-count" id="countFinance">3</span>
+                </button>
+                <button class="filter-pill" data-category="tool">
+                    ⚡ 效率與資安 <span class="pill-count" id="countTool">4</span>
+                </button>
+                <button class="filter-pill" data-category="life">
+                    🌿 健康生活 <span class="pill-count" id="countLife">4</span>
+                </button>
+                <button class="filter-pill" data-category="fun">
+                    🎮 遊戲與娛樂 <span class="pill-count" id="countFun">4</span>
+                </button>
+                <button class="filter-pill" data-category="edu">
+                    📖 學習成長 <span class="pill-count" id="countEdu">1</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Cards Container -->
+        <main class="cards-grid" id="cardsGrid">
+            <!-- Dynamic JavaScript Rendered Cards -->
+        </main>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">🔎</div>
+            <h3>找不到相符的作品</h3>
+            <p>請嘗試其他關鍵字或切換分類篩選標籤</p>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>AI 時代專案管理師養成班 • AI 協作式網站應用 MVP 實作</p>
+            <p style="margin-top: 6px; font-size: 0.8rem; color: var(--text-muted);">
+                Powered by HTML5, Modern CSS & Vanilla JavaScript • 點擊卡片即可獨立運行小工具
+            </p>
+        </footer>
+    </div>
+
+    <!-- Application Data & Interactive Script -->
+    <script>
+        const toolsData = [
+            {
+                id: "cashflow-dashboard",
+                title: "上市公司現金流量表智慧分析儀表板",
+                category: "finance",
+                categoryName: "商業財務",
+                icon: "📊",
+                desc: "深度視覺化解析營運、投資、籌資三大活動現金流量，具備財務健康度量化評估與 AI 智能洞察建議。",
+                badges: ["財報分析", "現金流趨勢", "財務健康度", "圖表視覺化"],
+                fileName: "上市公司現金流量表智慧分析儀表板 v2.html"
+            },
+            {
+                id: "stock-management",
+                title: "個人股票資產管理系統",
+                category: "finance",
+                categoryName: "商業財務",
+                icon: "📈",
+                desc: "全方位追蹤個人股票投資組合損益與資產分佈比例，支援 Google Sheets 雲端即時盤中股價連動。",
+                badges: ["投資組合", "損益即時算", "持股分佈", "Google Sheets連動"],
+                fileName: "personal_stock_asset_management (4).html"
+            },
+            {
+                id: "travel-expense",
+                title: "企業級差旅費申請系統",
+                category: "finance",
+                categoryName: "商業財務",
+                icon: "💼",
+                desc: "專為企業差旅設計之費用報銷審批工具，支援多幣別匯率自動換算、單據明細試算與格式化列印匯出。",
+                badges: ["差旅報銷", "匯率換算", "單據管理", "申請單列印"],
+                fileName: "travel-expense v2.html"
+            },
+            {
+                id: "invoice-lottery",
+                title: "統一發票對獎機",
+                category: "life",
+                categoryName: "健康生活",
+                icon: "🧾",
+                desc: "台灣統一發票極速對獎神器，支援末三碼快比對、多期別切換、中獎金額自動累計與歷史清單保存。",
+                badges: ["末三碼對獎", "期別切換", "中獎累計", "生活實用"],
+                fileName: "invoice_v3.html"
+            },
+            {
+                id: "privashield",
+                title: "PrivaShield 個資假名化與匿名化系統",
+                category: "tool",
+                categoryName: "效率與資安",
+                icon: "🛡️",
+                desc: "100% 瀏覽器本地端運算之資安防護工具，提供姓名、身分證、手機號碼等機敏個資遮罩與假名化替換。",
+                badges: ["本地去識別化", "個資假名化", "資安合規", "即時遮罩"],
+                fileName: "code_artifact v3.html"
+            },
+            {
+                id: "cloud-sync",
+                title: "SYNC.MATRIX 跨裝置任務同步看板",
+                category: "tool",
+                categoryName: "效率與資安",
+                icon: "⚡",
+                desc: "專為創意團隊打造的跨裝置任務看板介面，具備矩陣資料流動態視覺化與敏捷卡片狀態流轉模擬。",
+                badges: ["敏捷看板", "跨裝置同步", "狀態追蹤", "矩陣動效"],
+                fileName: "cloud_sync v2.html"
+            },
+            {
+                id: "pro-clock-timer",
+                title: "Pro Clock & Countdown Timer 專業時鐘計時器",
+                category: "tool",
+                categoryName: "效率與資安",
+                icon: "⏱️",
+                desc: "極簡高效之多功能時鐘與倒數計時工具，支援番茄工作法、全螢幕沉浸專注模式與提示聲響。",
+                badges: ["全螢幕時鐘", "番茄鐘", "倒數計時", "專注工具"],
+                fileName: "pro_countdown_timer_v4.html"
+            },
+            {
+                id: "supercar-timer",
+                title: "RACE CHRONO 超跑座艙倒數計時器",
+                category: "tool",
+                categoryName: "效率與資安",
+                icon: "🏎️",
+                desc: "沉浸式超跑 HUD 數位儀表板計時介面，搭配轉速表風格計時動態刻度與賽車引擎聲浪音效氛圍。",
+                badges: ["超跑HUD", "科技儀表", "引擎聲浪", "賽車風格"],
+                fileName: "supercar_cockpit_countdown_timer.html"
+            },
+            {
+                id: "taiwan-tourism",
+                title: "Taiwan Tourism Odyssey 台灣觀光互動地圖",
+                category: "life",
+                categoryName: "健康生活",
+                icon: "🗺️",
+                desc: "探索全台灣各縣市人氣景點與特色美食，提供互動地圖導覽、推薦行程規劃與客製化旅遊清單匯出。",
+                badges: ["互動地圖", "行程規劃", "景點導覽", "在地美食"],
+                fileName: "taiwan_tourism_map (2).html"
+            },
+            {
+                id: "aquacoffee-tracker",
+                title: "AquaCoffee 每日水分與咖啡因智算追蹤器",
+                category: "life",
+                categoryName: "健康生活",
+                icon: "☕",
+                desc: "智慧計算個人每日健康補水目標與咖啡因攝取上限，搭配波浪動態視覺化與平衡狀態即時分析。",
+                badges: ["補水追蹤", "咖啡因計算", "健康波浪", "每日目標"],
+                fileName: "aquacoffee_hydro_coffee_tracker (1).html"
+            },
+            {
+                id: "baby-tracker",
+                title: "寶貝 - 嬰兒成長與護理數據分析系統",
+                category: "life",
+                categoryName: "健康生活",
+                icon: "👶",
+                desc: "專為新手爸媽量身打造的育兒日誌，涵蓋餵奶、換尿布、睡眠作息記錄與 WHO 標準生長曲線對照。",
+                badges: ["育兒記錄", "生長曲線", "WHO標準", "護理數據"],
+                fileName: "育兒數據分析 v2.html"
+            },
+            {
+                id: "daily-english",
+                title: "Daily English - 每日一句學英語",
+                category: "edu",
+                categoryName: "學習成長",
+                icon: "🇬🇧",
+                desc: "每日精選生活實用英語金句，提供真人語音朗讀、重點生字深度解析與即時記憶隨堂測驗。",
+                badges: ["每日金句", "發音朗讀", "單字解析", "隨堂測驗"],
+                fileName: "daily_english_learning_web_app.html"
+            },
+            {
+                id: "wallpaper-music",
+                title: "Wallpaper 數位時鐘與情境音樂播放器",
+                category: "fun",
+                categoryName: "遊戲與娛樂",
+                icon: "🎵",
+                desc: "高顏值桌面情境時鐘，整合多款精選動態壁紙與放鬆 Lo-Fi / 冥想背景音樂，打造沉浸式專注空間。",
+                badges: ["動態壁紙", "Lo-Fi音樂", "氛圍背景", "桌面時鐘"],
+                fileName: "wallpaper_digital_clock_music_player.html"
+            },
+            {
+                id: "outrun-racer",
+                title: "OutRun: Eternal Highway 永恆公路街機大賽車",
+                category: "fun",
+                categoryName: "遊戲與娛樂",
+                icon: "🕹️",
+                desc: "致敬 80 年代經典街機 OutRun 的純前端復古像素賽車，融合假 3D 彎道競速與 Synthwave 電子音樂。",
+                badges: ["復古街機", "假3D技術", "Synthwave", "像素賽車"],
+                fileName: "outrun_revival_classic_arcade_racer (12).html"
+            },
+            {
+                id: "lottery-3d",
+                title: "大樂透・億萬富翁幸運選號器 (3D搖號版)",
+                category: "fun",
+                categoryName: "遊戲與娛樂",
+                icon: "🎰",
+                desc: "3D 擬真物理球搖號選號器，支援十二生肖與星座幸運選號、包牌策略試算與歷史開獎號碼對獎。",
+                badges: ["3D擬真搖號", "幸運選號", "包牌試算", "開獎對比"],
+                fileName: "lottery.html"
+            },
+            {
+                id: "lucky-draw",
+                title: "幸運大抽獎 - Lucky Draw System",
+                category: "fun",
+                categoryName: "遊戲與娛樂",
+                icon: "🎁",
+                desc: "活動與尾牙必備抽獎神器，支援名單批次匯入、不重複抽獎防呆機制、酷炫動態特效與得獎名單匯出。",
+                badges: ["尾牙抽獎", "名單匯入", "防重複機制", "名單導出"],
+                fileName: "lucky_draw_v1.html"
+            }
+        ];
+
+        // State
+        let currentCategory = 'all';
+        let searchQuery = '';
+        let isListView = false;
+
+        // DOM Elements
+        const cardsGrid = document.getElementById('cardsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const categoryFilters = document.getElementById('categoryFilters');
+        const gridModeBtn = document.getElementById('gridModeBtn');
+        const listModeBtn = document.getElementById('listModeBtn');
+
+        // Update Counts
+        function updateCategoryCounts() {
+            const counts = { all: toolsData.length, finance: 0, tool: 0, life: 0, fun: 0, edu: 0 };
+            toolsData.forEach(tool => {
+                if (counts[tool.category] !== undefined) {
+                    counts[tool.category]++;
+                }
+            });
+            document.getElementById('countAll').textContent = counts.all;
+            document.getElementById('countFinance').textContent = counts.finance;
+            document.getElementById('countTool').textContent = counts.tool;
+            document.getElementById('countLife').textContent = counts.life;
+            document.getElementById('countFun').textContent = counts.fun;
+            document.getElementById('countEdu').textContent = counts.edu;
+        }
+
+        // Render Tool Cards
+        function renderCards() {
+            const filteredTools = toolsData.filter(tool => {
+                const matchCategory = currentCategory === 'all' || tool.category === currentCategory;
+                const matchSearch = searchQuery === '' || 
+                    tool.title.toLowerCase().includes(searchQuery) ||
+                    tool.desc.toLowerCase().includes(searchQuery) ||
+                    tool.categoryName.toLowerCase().includes(searchQuery) ||
+                    tool.badges.some(b => b.toLowerCase().includes(searchQuery));
+                return matchCategory && matchSearch;
+            });
+
+            if (filteredTools.length === 0) {
+                cardsGrid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            cardsGrid.innerHTML = filteredTools.map(tool => {
+                const encodedUrl = encodeURI(tool.fileName);
+                return `
+                    <article class="tool-card cat-${tool.category}" data-id="${tool.id}">
+                        <div class="card-header">
+                            <div class="icon-wrapper" aria-hidden="true">${tool.icon}</div>
+                            <span class="category-tag">${tool.categoryName}</span>
+                        </div>
+                        <div class="card-body">
+                            <h2 class="tool-title">${tool.title}</h2>
+                            <p class="tool-desc">${tool.desc}</p>
+                            <div class="badge-list">
+                                ${tool.badges.map(badge => `<span class="badge-item"># ${badge}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <span class="file-info" title="${tool.fileName}">${tool.fileName}</span>
+                            <a href="${encodedUrl}" target="_blank" rel="noopener noreferrer" class="btn-launch" title="在新視窗開啟 ${tool.title}">
+                                <span>開啟小工具</span>
+                                <span class="arrow-icon">➔</span>
+                            </a>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        // Event Listeners
+        categoryFilters.addEventListener('click', (e) => {
+            const pill = e.target.closest('.filter-pill');
+            if (!pill) return;
+            
+            document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
+            pill.classList.add('active');
+            currentCategory = pill.getAttribute('data-category');
+            renderCards();
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim().toLowerCase();
+            clearSearchBtn.style.display = searchQuery ? 'flex' : 'none';
+            renderCards();
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchQuery = '';
+            clearSearchBtn.style.display = 'none';
+            searchInput.focus();
+            renderCards();
+        });
+
+        // View Mode Switcher
+        gridModeBtn.addEventListener('click', () => {
+            isListView = false;
+            gridModeBtn.classList.add('active');
+            listModeBtn.classList.remove('active');
+            cardsGrid.classList.remove('list-view');
+        });
+
+        listModeBtn.addEventListener('click', () => {
+            isListView = true;
+            listModeBtn.classList.add('active');
+            gridModeBtn.classList.remove('active');
+            cardsGrid.classList.add('list-view');
+        });
+
+        // Keyboard Shortcut: Press '/' to focus search
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                searchInput.blur();
+            }
+        });
+
+        // Initialize
+        updateCategoryCounts();
+        renderCards();
+    </script>
+</body>
+</html>

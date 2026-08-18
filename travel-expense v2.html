@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業級差旅費申請系統</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- SheetJS CDN for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* A4 Page Simulation Styling */
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* Print Specific Styles */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .a4-page {
+                width: 100% !important;
+                min-height: auto !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white flex items-center justify-center">
+                    <i class="fa-solid fa-plane-departure text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-wide">差旅費報銷申請系統</h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Business Travel Expense Claim & Management System</p>
+                </div>
+            </div>
+
+            <!-- Action Quick Buttons -->
+            <div class="flex items-center space-x-2">
+                <button type="button" onclick="loadSampleData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                    <span class="hidden md:inline">載入</span>範例
+                </button>
+                <button type="button" onclick="resetFormWithModal()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-red-950 text-red-300 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    清空
+                </button>
+                <button type="button" onclick="exportToExcel()" class="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-excel"></i>
+                    匯出 Excel
+                </button>
+                <button type="button" onclick="showA4Preview()" class="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-invoice"></i>
+                    A4 預覽 / 列印
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+        <!-- System Top Notification / Banner -->
+        <div class="no-print mb-6 bg-gradient-to-r from-blue-900 to-slate-900 rounded-xl p-4 sm:p-6 text-white shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="relative z-10">
+                <span class="inline-block bg-blue-500/30 text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full mb-2 border border-blue-400/30">系統公告</span>
+                <h2 class="text-xl font-bold">填寫個人差旅費並實時換算外幣</h2>
+                <p class="text-slate-300 text-sm mt-1">請確實填寫出差事由與憑證明細，系統會自動歸類小計並儲存草稿。</p>
+            </div>
+            <div class="flex items-center gap-2 self-end md:self-auto text-xs text-slate-300 bg-white/10 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/10">
+                <i class="fa-regular fa-clock text-blue-400"></i>
+                <span id="autoSaveStatus">草稿保護中</span>
+            </div>
+        </div>
+
+        <form id="travelForm" onsubmit="event.preventDefault();" class="space-y-6">
+
+            <!-- Card 1: Basic Information -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 transition-all">
+                <div class="flex items-center border-b border-slate-100 pb-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 font-semibold text-sm">
+                        <i class="fa-solid fa-user-gear"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">1. 出差基本資料</h3>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Applicant Name -->
+                    <div>
+                        <label for="applicantName" class="block text-xs font-semibold text-slate-600 mb-1">申請人姓名 <span class="text-red-500">*</span></label>
+                        <input type="text" id="applicantName" required oninput="autoSaveDraft()" placeholder="例如：王小明" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Employee ID -->
+                    <div>
+                        <label for="employeeId" class="block text-xs font-semibold text-slate-600 mb-1">員工工號 <span class="text-red-500">*</span></label>
+                        <input type="text" id="employeeId" required oninput="autoSaveDraft()" placeholder="例如：EMP-8821" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Department -->
+                    <div>
+                        <label for="department" class="block text-xs font-semibold text-slate-600 mb-1">所屬部門 <span class="text-red-500">*</span></label>
+                        <input type="text" id="department" required oninput="autoSaveDraft()" placeholder="例如：業務事業一部" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Job Title -->
+                    <div>
+                        <label for="jobTitle" class="block text-xs font-semibold text-slate-600 mb-1">職稱 <span class="text-red-500">*</span></label>
+                        <input type="text" id="jobTitle" required oninput="autoSaveDraft()" placeholder="例如：資深專案經理" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Travel Destination -->
+                    <div>
+                        <label for="destination" class="block text-xs font-semibold text-slate-600 mb-1">出差地點 <span class="text-red-500">*</span></label>
+                        <input type="text" id="destination" required oninput="autoSaveDraft()" placeholder="例如：日本東京 / 新竹科學園區" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Date Range & Days Calculation -->
+                    <div>
+                        <label for="startDate" class="block text-xs font-semibold text-slate-600 mb-1">出差起始日期 <span class="text-red-500">*</span></label>
+                        <input type="date" id="startDate" required onchange="calculateDays(); autoSaveDraft();" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label for="endDate" class="block text-xs font-semibold text-slate-600 mb-1">出差結束日期 <span class="text-red-500">*</span></label>
+                        <input type="date" id="endDate" required onchange="calculateDays(); autoSaveDraft();" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">合計天數</label>
+                        <div class="relative">
+                            <input type="text" id="travelDays" readonly value="0 天" class="w-full text-sm px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-blue-600 outline-none cursor-not-allowed">
+                            <span class="absolute right-3 top-2 text-xs text-slate-400"><i class="fa-solid fa-calculator"></i> 自動算</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purpose -->
+                <div class="mt-4">
+                    <label for="travelPurpose" class="block text-xs font-semibold text-slate-600 mb-1">出差事由與任務說明 <span class="text-red-500">*</span></label>
+                    <textarea id="travelPurpose" rows="2" required oninput="autoSaveDraft()" placeholder="請詳細說明出差目的、拜訪客戶或參與之技術研討會名稱..." class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"></textarea>
+                </div>
+            </div>
+
+            <!-- Card 2: Expense Items Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 transition-all">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-2">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3 font-semibold text-sm">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">2. 動態費用明細登記</h3>
+                            <p class="text-xs text-slate-500">支援多國幣別填寫與即時換算新台幣</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addExpenseRow()" class="self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> 新增費用明細
+                    </button>
+                </div>
+
+                <!-- Table Container for Responsive Scroll -->
+                <div class="overflow-x-auto -mx-5 sm:mx-0">
+                    <table class="w-full text-left text-xs min-w-[768px]">
+                        <thead>
+                            <tr class="bg-slate-50 border-y border-slate-200 text-slate-600 font-semibold">
+                                <th class="py-2.5 px-3 w-12 text-center">項次</th>
+                                <th class="py-2.5 px-3 w-32">費用日期</th>
+                                <th class="py-2.5 px-3 w-36">類別</th>
+                                <th class="py-2.5 px-3">費用說明 / 憑證備註</th>
+                                <th class="py-2.5 px-3 w-28">幣別</th>
+                                <th class="py-2.5 px-3 w-28 text-right">原幣金額</th>
+                                <th class="py-2.5 px-3 w-24 text-right">匯率</th>
+                                <th class="py-2.5 px-3 w-32 text-right">台幣小計 (TWD)</th>
+                                <th class="py-2.5 px-3 w-12 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamic Rows render here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State Message -->
+                <div id="emptyExpenseMsg" class="hidden py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300"></i>
+                    <p class="text-xs">目前無任何費用明細，請點擊右上角「新增費用明細」按鈕。</p>
+                </div>
+            </div>
+
+            <!-- Card 3: Summary & Category Breakdown -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left 2 Cols: Category Breakdown -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
+                    <div class="flex items-center border-b border-slate-100 pb-3 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 font-semibold text-sm">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">3. 費用類別統計小計 (TWD)</h3>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-car text-blue-500"></i> 交通費
+                            </span>
+                            <p class="text-base font-bold text-slate-800 mt-1" id="catTraffic">NT$ 0</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-hotel text-purple-500"></i> 住宿費
+                            </span>
+                            <p class="text-base font-bold text-slate-800 mt-1" id="catLodging">NT$ 0</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-utensils text-amber-500"></i> 膳雜費
+                            </span>
+                            <p class="text-base font-bold text-slate-800 mt-1" id="catMeals">NT$ 0</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-handshake text-emerald-500"></i> 交際費
+                            </span>
+                            <p class="text-base font-bold text-slate-800 mt-1" id="catEntertainment">NT$ 0</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-ellipsis text-slate-500"></i> 其他費用
+                            </span>
+                            <p class="text-base font-bold text-slate-800 mt-1" id="catOther">NT$ 0</p>
+                        </div>
+
+                        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                            <span class="text-xs text-blue-600 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-square-poll-vertical"></i> 總項目數
+                            </span>
+                            <p class="text-base font-bold text-blue-700 mt-1" id="totalItemCount">0 筆</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 1 Col: Advance Settlement Calculation -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center border-b border-slate-100 pb-3 mb-4">
+                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mr-3 font-semibold text-sm">
+                                <i class="fa-solid fa-coins"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-800">4. 預支與最終結算</h3>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center text-xs text-slate-600">
+                                <span>申報費用總計：</span>
+                                <span class="font-semibold text-slate-800" id="summaryTotalExpense">NT$ 0</span>
+                            </div>
+
+                            <div class="flex justify-between items-center text-xs text-slate-600">
+                                <label for="advancePayment" class="cursor-pointer flex items-center gap-1 text-slate-600">
+                                    <i class="fa-regular fa-money-bill-1 text-slate-400"></i> 扣除原預支金額：
+                                </label>
+                                <div class="w-32">
+                                    <input type="number" id="advancePayment" min="0" value="0" oninput="updateCalculations(); autoSaveDraft();" class="w-full text-right text-xs px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Final Result Highlight Box -->
+                    <div class="mt-4 pt-3 border-t border-slate-200">
+                        <div class="p-3.5 rounded-xl bg-slate-900 text-white flex flex-col justify-between">
+                            <span class="text-xs text-slate-400 font-medium" id="settlementLabel">公司應補付金額 (實支)</span>
+                            <span class="text-2xl font-black tracking-tight text-emerald-400 mt-1" id="finalSettlementAmount">NT$ 0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="no-print flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200 gap-3">
+                <div class="text-xs text-slate-500 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-blue-500"></i>
+                    <span>請確認所有憑證與金額正確無誤後再進行匯出或列印。</span>
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <button type="button" onclick="exportToExcel()" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel text-sm"></i> 匯出 Excel 表單
+                    </button>
+                    <button type="button" onclick="showA4Preview()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-print text-sm"></i> A4 預覽與簽核列印
+                    </button>
+                </div>
+            </div>
+        </form>
+    </main>
+
+    <!-- Modal: A4 Print Preview -->
+    <div id="a4Modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto no-print">
+        <div class="bg-slate-100 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-300">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-blue-400"></i>
+                    <h3 class="font-bold text-sm sm:text-base">標準 A4 差旅費報銷單列印預覽</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="smartPrint()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-print"></i> 立即列印
+                    </button>
+                    <button onclick="closeA4Preview()" class="text-slate-400 hover:text-white p-1 text-lg rounded-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Body / A4 Container -->
+            <div class="p-4 sm:p-8 overflow-y-auto flex-grow bg-slate-200/80 flex justify-center">
+                <!-- A4 Sheet Template -->
+                <div id="a4PrintContent" class="a4-page text-slate-800 text-xs">
+                    <!-- Title & Header -->
+                    <div class="text-center border-b-2 border-slate-800 pb-3 mb-4">
+                        <h1 class="text-2xl font-bold tracking-widest text-slate-900">差旅費報銷申請單</h1>
+                        <p class="text-[10px] text-slate-500 tracking-wider mt-0.5">BUSINESS TRAVEL EXPENSE CLAIM FORM</p>
+                    </div>
+
+                    <!-- Basic Info Table -->
+                    <table class="w-full border-collapse border border-slate-400 text-left mb-4">
+                        <tr>
+                            <th class="border border-slate-400 bg-slate-100 p-2 w-20">申請人</th>
+                            <td class="border border-slate-400 p-2 w-36" id="pvName">-</td>
+                            <th class="border border-slate-400 bg-slate-100 p-2 w-20">員工工號</th>
+                            <td class="border border-slate-400 p-2 w-36" id="pvEmpId">-</td>
+                            <th class="border border-slate-400 bg-slate-100 p-2 w-20">填單日期</th>
+                            <td class="border border-slate-400 p-2" id="pvToday">-</td>
+                        </tr>
+                        <tr>
+                            <th class="border border-slate-400 bg-slate-100 p-2">部門</th>
+                            <td class="border border-slate-400 p-2" id="pvDept">-</td>
+                            <th class="border border-slate-400 bg-slate-100 p-2">職稱</th>
+                            <td class="border border-slate-400 p-2" id="pvTitle">-</td>
+                            <th class="border border-slate-400 bg-slate-100 p-2">出差天數</th>
+                            <td class="border border-slate-400 p-2" id="pvDays">-</td>
+                        </tr>
+                        <tr>
+                            <th class="border border-slate-400 bg-slate-100 p-2">地點</th>
+                            <td class="border border-slate-400 p-2" id="pvDest" colspan="2">-</td>
+                            <th class="border border-slate-400 bg-slate-100 p-2">起訖日期</th>
+                            <td class="border border-slate-400 p-2" id="pvPeriod" colspan="2">-</td>
+                        </tr>
+                        <tr>
+                            <th class="border border-slate-400 bg-slate-100 p-2">出差事由</th>
+                            <td class="border border-slate-400 p-2" id="pvPurpose" colspan="5">-</td>
+                        </tr>
+                    </table>
+
+                    <!-- Expense Items Preview Table -->
+                    <div class="mb-4">
+                        <h4 class="font-bold border-l-4 border-slate-800 pl-2 mb-2 text-slate-800">費用明細記錄</h4>
+                        <table class="w-full border-collapse border border-slate-400 text-left">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="border border-slate-400 p-1.5 text-center w-10">項次</th>
+                                    <th class="border border-slate-400 p-1.5 w-24">日期</th>
+                                    <th class="border border-slate-400 p-1.5 w-24">類別</th>
+                                    <th class="border border-slate-400 p-1.5">費用說明</th>
+                                    <th class="border border-slate-400 p-1.5 text-right w-20">原幣別</th>
+                                    <th class="border border-slate-400 p-1.5 text-right w-20">原幣金額</th>
+                                    <th class="border border-slate-400 p-1.5 text-right w-16">匯率</th>
+                                    <th class="border border-slate-400 p-1.5 text-right w-24">新台幣(TWD)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pvTableBody">
+                                <!-- Rendered dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Category Breakdown & Settlement -->
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <!-- Category Subtotals -->
+                        <table class="w-full border-collapse border border-slate-400 text-left">
+                            <tr class="bg-slate-100">
+                                <th class="border border-slate-400 p-1.5 text-center" colspan="2">費用類別彙整 (TWD)</th>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">交通費</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-medium" id="pvCatTraffic">0</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">住宿費</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-medium" id="pvCatLodging">0</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">膳雜費</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-medium" id="pvCatMeals">0</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">交際費與其他</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-medium" id="pvCatOtherTotal">0</td>
+                            </tr>
+                        </table>
+
+                        <!-- Settlement Box -->
+                        <table class="w-full border-collapse border border-slate-400 text-left">
+                            <tr class="bg-slate-100">
+                                <th class="border border-slate-400 p-1.5 text-center" colspan="2">結算金額資訊 (TWD)</th>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">申報費用總金額</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-bold text-slate-800" id="pvTotalExp">NT$ 0</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-400 p-1.5">扣除公司預支款</td>
+                                <td class="border border-slate-400 p-1.5 text-right text-slate-600" id="pvAdvance">NT$ 0</td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="border border-slate-400 p-1.5 font-bold" id="pvSettlementTitle">實支 / 應補金額</td>
+                                <td class="border border-slate-400 p-1.5 text-right font-black text-slate-900 text-sm" id="pvFinalNet">NT$ 0</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Signature Section -->
+                    <div class="mt-8 pt-4">
+                        <div class="text-[11px] font-bold text-slate-700 mb-3 border-b border-slate-300 pb-1">簽核流程核准 (SIGNATURES)</div>
+                        <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                            <div class="border border-slate-400 rounded p-2 h-24 flex flex-col justify-between">
+                                <span class="bg-slate-100 p-1 font-semibold text-slate-600 border-b border-slate-200">申請人</span>
+                                <span class="font-medium text-slate-700" id="pvApplicantSig">(簽名/蓋章)</span>
+                                <span class="text-[10px] text-slate-400">日期：</span>
+                            </div>
+                            <div class="border border-slate-400 rounded p-2 h-24 flex flex-col justify-between">
+                                <span class="bg-slate-100 p-1 font-semibold text-slate-600 border-b border-slate-200">部門主管</span>
+                                <span class="text-slate-300"></span>
+                                <span class="text-[10px] text-slate-400">日期：</span>
+                            </div>
+                            <div class="border border-slate-400 rounded p-2 h-24 flex flex-col justify-between">
+                                <span class="bg-slate-100 p-1 font-semibold text-slate-600 border-b border-slate-200">財務審核</span>
+                                <span class="text-slate-300"></span>
+                                <span class="text-[10px] text-slate-400">日期：</span>
+                            </div>
+                            <div class="border border-slate-400 rounded p-2 h-24 flex flex-col justify-between">
+                                <span class="bg-slate-100 p-1 font-semibold text-slate-600 border-b border-slate-200">總經理 / 核決</span>
+                                <span class="text-slate-300"></span>
+                                <span class="text-[10px] text-slate-400">日期：</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal Dialog (Replaces native confirm) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-150">
+            <div class="flex items-center gap-3 text-amber-500 mb-3">
+                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                <h4 class="font-bold text-slate-800 text-base" id="modalTitle">操作確認</h4>
+            </div>
+            <p class="text-xs text-slate-600 mb-5 leading-relaxed" id="modalMessage">您確定要執行此操作嗎？</p>
+            <div class="flex items-center justify-end gap-2">
+                <button type="button" onclick="closeConfirmModal(false)" class="px-3.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">取消</button>
+                <button type="button" id="modalConfirmBtn" class="px-3.5 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg shadow transition-colors">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 no-print"></div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-4 border-t border-slate-800 text-center text-xs no-print">
+        <p>© 2026 企業資產與差旅管理系統 | 支援 Excel 結構化匯出與 A4 智慧列印</p>
+    </footer>
+
+    <script>
+        // Default Exchange Rates (Base Currency: TWD)
+        const exchangeRates = {
+            'TWD': 1.0,
+            'USD': 32.20,
+            'JPY': 0.21,
+            'EUR': 35.10,
+            'CNY': 4.45,
+            'HKD': 4.12,
+            'GBP': 41.50
+        };
+
+        let rowCounter = 0;
+        let confirmResolver = null;
+
+        window.onload = function () {
+            // Check LocalStorage Draft
+            loadDraft();
+
+            // If empty table, add default empty rows or sample
+            const tbody = document.getElementById('expenseTableBody');
+            if (tbody.children.length === 0) {
+                addExpenseRow();
+            }
+
+            // Setup today's date into A4 preview
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('pvToday').innerText = today;
+        };
+
+        function calculateDays() {
+            const startInput = document.getElementById('startDate').value;
+            const endInput = document.getElementById('endDate').value;
+            const daysDisplay = document.getElementById('travelDays');
+
+            if (startInput && endInput) {
+                const start = new Date(startInput);
+                const end = new Date(endInput);
+
+                if (end >= start) {
+                    const diffTime = Math.abs(end - start);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
+                    daysDisplay.value = `${diffDays} 天`;
+                } else {
+                    daysDisplay.value = "日期無效";
+                    showToast("結束日期不得早於起始日期", "error");
+                }
+            } else {
+                daysDisplay.value = "0 天";
+            }
+        }
+
+        function addExpenseRow(data = null) {
+            rowCounter++;
+            const tbody = document.getElementById('expenseTableBody');
+            const tr = document.createElement('tr');
+            tr.id = `row-${rowCounter}`;
+            tr.className = "hover:bg-slate-50/80 transition-colors";
+
+            const defaultDate = data?.date || new Date().toISOString().split('T')[0];
+            const defaultCategory = data?.category || '交通費';
+            const defaultDesc = data?.desc || '';
+            const defaultCurr = data?.currency || 'TWD';
+            const defaultAmount = data?.amount || 0;
+            const defaultRate = data?.rate || exchangeRates[defaultCurr] || 1.0;
+
+            tr.innerHTML = `
+                <td class="py-2 px-3 text-center font-medium text-slate-500 row-index">1</td>
+                <td class="py-2 px-3">
+                    <input type="date" value="${defaultDate}" onchange="updateCalculations(); autoSaveDraft();" class="item-date w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
+                </td>
+                <td class="py-2 px-3">
+                    <select onchange="updateCalculations(); autoSaveDraft();" class="item-category w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white">
+                        <option value="交通費" ${defaultCategory === '交通費' ? 'selected' : ''}>交通費</option>
+                        <option value="住宿費" ${defaultCategory === '住宿費' ? 'selected' : ''}>住宿費</option>
+                        <option value="膳雜費" ${defaultCategory === '膳雜費' ? 'selected' : ''}>膳雜費</option>
+                        <option value="交際費" ${defaultCategory === '交際費' ? 'selected' : ''}>交際費</option>
+                        <option value="其他" ${defaultCategory === '其他' ? 'selected' : ''}>其他</option>
+                    </select>
+                </td>
+                <td class="py-2 px-3">
+                    <input type="text" value="${defaultDesc}" placeholder="例如：高鐵車票 / 飯店發票" oninput="autoSaveDraft()" class="item-desc w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
+                </td>
+                <td class="py-2 px-3">
+                    <select onchange="handleCurrencyChange(this); updateCalculations(); autoSaveDraft();" class="item-currency w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white font-medium">
+                        <option value="TWD" ${defaultCurr === 'TWD' ? 'selected' : ''}>TWD (新台幣)</option>
+                        <option value="USD" ${defaultCurr === 'USD' ? 'selected' : ''}>USD (美金)</option>
+                        <option value="JPY" ${defaultCurr === 'JPY' ? 'selected' : ''}>JPY (日圓)</option>
+                        <option value="EUR" ${defaultCurr === 'EUR' ? 'selected' : ''}>EUR (歐元)</option>
+                        <option value="CNY" ${defaultCurr === 'CNY' ? 'selected' : ''}>CNY (人民幣)</option>
+                        <option value="HKD" ${defaultCurr === 'HKD' ? 'selected' : ''}>HKD (港幣)</option>
+                        <option value="GBP" ${defaultCurr === 'GBP' ? 'selected' : ''}>GBP (英鎊)</option>
+                    </select>
+                </td>
+                <td class="py-2 px-3">
+                    <input type="number" min="0" step="any" value="${defaultAmount}" oninput="updateCalculations(); autoSaveDraft();" class="item-amount text-right w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none font-semibold">
+                </td>
+                <td class="py-2 px-3">
+                    <input type="number" min="0" step="any" value="${defaultRate}" oninput="updateCalculations(); autoSaveDraft();" class="item-rate text-right w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
+                </td>
+                <td class="py-2 px-3 text-right">
+                    <span class="item-twd-total font-bold text-slate-800">0</span>
+                </td>
+                <td class="py-2 px-3 text-center">
+                    <button type="button" onclick="removeExpenseRow('${tr.id}')" class="text-slate-400 hover:text-red-500 p-1 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+            reindexRows();
+            updateCalculations();
+            document.getElementById('emptyExpenseMsg').classList.add('hidden');
+        }
+
+        function handleCurrencyChange(selectElem) {
+            const row = selectElem.closest('tr');
+            const rateInput = row.querySelector('.item-rate');
+            const selectedCurrency = selectElem.value;
+
+            if (exchangeRates[selectedCurrency] !== undefined) {
+                rateInput.value = exchangeRates[selectedCurrency];
+            }
+        }
+
+        function removeExpenseRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.remove();
+                reindexRows();
+                updateCalculations();
+                autoSaveDraft();
+
+                const tbody = document.getElementById('expenseTableBody');
+                if (tbody.children.length === 0) {
+                    document.getElementById('emptyExpenseMsg').classList.remove('hidden');
+                }
+            }
+        }
+
+        function reindexRows() {
+            const rows = document.querySelectorAll('#expenseTableBody tr');
+            rows.forEach((row, index) => {
+                const indexCell = row.querySelector('.row-index');
+                if (indexCell) indexCell.innerText = index + 1;
+            });
+        }
+
+        function updateCalculations() {
+            const rows = document.querySelectorAll('#expenseTableBody tr');
+
+            let categoryTotals = {
+                '交通費': 0,
+                '住宿費': 0,
+                '膳雜費': 0,
+                '交際費': 0,
+                '其他': 0
+            };
+
+            let grandTotalTWD = 0;
+
+            rows.forEach(row => {
+                const category = row.querySelector('.item-category').value;
+                const amount = parseFloat(row.querySelector('.item-amount').value) || 0;
+                const rate = parseFloat(row.querySelector('.item-rate').value) || 1.0;
+
+                const twdTotal = Math.round(amount * rate);
+                row.querySelector('.item-twd-total').innerText = twdTotal.toLocaleString();
+
+                if (categoryTotals[category] !== undefined) {
+                    categoryTotals[category] += twdTotal;
+                } else {
+                    categoryTotals['其他'] += twdTotal;
+                }
+
+                grandTotalTWD += twdTotal;
+            });
+
+            // Update Subtotal Cards
+            document.getElementById('catTraffic').innerText = `NT$ ${categoryTotals['交通費'].toLocaleString()}`;
+            document.getElementById('catLodging').innerText = `NT$ ${categoryTotals['住宿費'].toLocaleString()}`;
+            document.getElementById('catMeals').innerText = `NT$ ${categoryTotals['膳雜費'].toLocaleString()}`;
+            document.getElementById('catEntertainment').innerText = `NT$ ${categoryTotals['交際費'].toLocaleString()}`;
+            document.getElementById('catOther').innerText = `NT$ ${categoryTotals['其他'].toLocaleString()}`;
+            document.getElementById('totalItemCount').innerText = `${rows.length} 筆`;
+
+            // Summary Totals
+            document.getElementById('summaryTotalExpense').innerText = `NT$ ${grandTotalTWD.toLocaleString()}`;
+
+            // Advance Payment Deduction
+            const advancePayment = parseFloat(document.getElementById('advancePayment').value) || 0;
+            const netSettlement = grandTotalTWD - advancePayment;
+
+            const settlementLabel = document.getElementById('settlementLabel');
+            const finalSettlementAmount = document.getElementById('finalSettlementAmount');
+
+            if (netSettlement >= 0) {
+                settlementLabel.innerText = "公司應補付金額 (實支)";
+                settlementLabel.className = "text-xs text-slate-400 font-medium";
+                finalSettlementAmount.innerText = `NT$ ${netSettlement.toLocaleString()}`;
+                finalSettlementAmount.className = "text-2xl font-black tracking-tight text-emerald-400 mt-1";
+            } else {
+                settlementLabel.innerText = "員工應繳回溢領金額";
+                settlementLabel.className = "text-xs text-red-300 font-medium";
+                finalSettlementAmount.innerText = `NT$ ${Math.abs(netSettlement).toLocaleString()}`;
+                finalSettlementAmount.className = "text-2xl font-black tracking-tight text-amber-400 mt-1";
+            }
+        }
+
+        function autoSaveDraft() {
+            saveDraft(true);
+        }
+
+        function saveDraft(isAuto = false) {
+            const rowsData = [];
+            const rows = document.querySelectorAll('#expenseTableBody tr');
+
+            rows.forEach(row => {
+                rowsData.push({
+                    date: row.querySelector('.item-date').value,
+                    category: row.querySelector('.item-category').value,
+                    desc: row.querySelector('.item-desc').value,
+                    currency: row.querySelector('.item-currency').value,
+                    amount: row.querySelector('.item-amount').value,
+                    rate: row.querySelector('.item-rate').value
+                });
+            });
+
+            const formData = {
+                applicantName: document.getElementById('applicantName').value,
+                employeeId: document.getElementById('employeeId').value,
+                department: document.getElementById('department').value,
+                jobTitle: document.getElementById('jobTitle').value,
+                destination: document.getElementById('destination').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                travelPurpose: document.getElementById('travelPurpose').value,
+                advancePayment: document.getElementById('advancePayment').value,
+                items: rowsData
+            };
+
+            localStorage.setItem('travel_expense_draft', JSON.stringify(formData));
+
+            const statusElem = document.getElementById('autoSaveStatus');
+            const now = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (statusElem) {
+                statusElem.innerText = `草稿已於 ${now} 自動儲存`;
+            }
+        }
+
+        function loadDraft() {
+            const saved = localStorage.getItem('travel_expense_draft');
+            if (!saved) return;
+
+            try {
+                const data = JSON.parse(saved);
+                document.getElementById('applicantName').value = data.applicantName || '';
+                document.getElementById('employeeId').value = data.employeeId || '';
+                document.getElementById('department').value = data.department || '';
+                document.getElementById('jobTitle').value = data.jobTitle || '';
+                document.getElementById('destination').value = data.destination || '';
+                document.getElementById('startDate').value = data.startDate || '';
+                document.getElementById('endDate').value = data.endDate || '';
+                document.getElementById('travelPurpose').value = data.travelPurpose || '';
+                document.getElementById('advancePayment').value = data.advancePayment || 0;
+
+                calculateDays();
+
+                const tbody = document.getElementById('expenseTableBody');
+                tbody.innerHTML = '';
+
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(item => addExpenseRow(item));
+                } else {
+                    addExpenseRow();
+                }
+
+                updateCalculations();
+            } catch (e) {
+                console.error("載入草稿失敗:", e);
+            }
+        }
+
+        function loadSampleData() {
+            document.getElementById('applicantName').value = '林家豪';
+            document.getElementById('employeeId').value = 'EMP-9032';
+            document.getElementById('department').value = '海外業務開發部';
+            document.getElementById('jobTitle').value = '資深業務經理';
+            document.getElementById('destination').value = '日本東京 (Tokyo)';
+
+            const today = new Date();
+            const lastWeek = new Date(today);
+            lastWeek.setDate(today.getDate() - 3);
+
+            document.getElementById('startDate').value = lastWeek.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            calculateDays();
+
+            document.getElementById('travelPurpose').value = '參與東京國際科技展覽 (Tokyo Tech Expo)，拜訪日本區代理商與簽署年度經銷合約。';
+            document.getElementById('advancePayment').value = '15000';
+
+            const tbody = document.getElementById('expenseTableBody');
+            tbody.innerHTML = '';
+
+            const sampleItems = [
+                { date: lastWeek.toISOString().split('T')[0], category: '交通費', desc: '桃機往返東京羽田經濟艙機票', currency: 'TWD', amount: 16500, rate: 1.0 },
+                { date: lastWeek.toISOString().split('T')[0], category: '交通費', desc: '成田/羽田 Skyliner 電車乘車券', currency: 'JPY', amount: 2570, rate: 0.21 },
+                { date: today.toISOString().split('T')[0], category: '住宿費', desc: '東京品川王子大飯店 3 晚', currency: 'JPY', amount: 48000, rate: 0.21 },
+                { date: today.toISOString().split('T')[0], category: '交際費', desc: '與代理商 Executive 團隊商務晚宴', currency: 'JPY', amount: 22000, rate: 0.21 },
+                { date: today.toISOString().split('T')[0], category: '膳雜費', desc: '出差期間每日餐費津貼（3天）', currency: 'USD', amount: 150, rate: 32.20 }
+            ];
+
+            sampleItems.forEach(item => addExpenseRow(item));
+            updateCalculations();
+            autoSaveDraft();
+            showToast('已成功載入範例資料！', 'success');
+        }
+
+        async function resetFormWithModal() {
+            const confirmed = await showConfirmModal('重置申請表單', '您確定要清空目前所有填寫資料與草稿嗎？此操作無法復原。');
+            if (confirmed) {
+                document.getElementById('travelForm').reset();
+                localStorage.removeItem('travel_expense_draft');
+
+                const tbody = document.getElementById('expenseTableBody');
+                tbody.innerHTML = '';
+                addExpenseRow();
+
+                calculateDays();
+                updateCalculations();
+                showToast('表單已成功清空', 'info');
+            }
+        }
+
+        function exportToExcel() {
+            const name = document.getElementById('applicantName').value || '未填寫';
+            const empId = document.getElementById('employeeId').value || '無';
+            const dept = document.getElementById('department').value || '無';
+            const title = document.getElementById('jobTitle').value || '無';
+            const dest = document.getElementById('destination').value || '無';
+            const startDate = document.getElementById('startDate').value || '-';
+            const endDate = document.getElementById('endDate').value || '-';
+            const days = document.getElementById('travelDays').value || '0 天';
+            const purpose = document.getElementById('travelPurpose').value || '無';
+
+            // Build Sheet Data Array of Arrays (AOA)
+            const sheetData = [
+                ["差旅費報銷申請表"],
+                ["填報日期", new Date().toLocaleDateString('zh-TW')],
+                [],
+                ["【 basic info 一、基本資料 】"],
+                ["申請人姓名", name, "員工工號", empId, "所屬部門", dept],
+                ["職稱", title, "出差地點", dest, "出差天數", days],
+                ["起訖日期", `${startDate} 至 ${endDate}`, "出差事由", purpose],
+                [],
+                ["【 二、費用明細登錄 】"],
+                ["項次", "費用日期", "類別", "費用說明 / 憑證備註", "原幣別", "原幣金額", "匯率", "折合台幣 (TWD)"]
+            ];
+
+            // Add Expense Items
+            const rows = document.querySelectorAll('#expenseTableBody tr');
+            let grandTotal = 0;
+
+            let catSums = { '交通費': 0, '住宿費': 0, '膳雜費': 0, '交際費': 0, '其他': 0 };
+
+            rows.forEach((row, index) => {
+                const date = row.querySelector('.item-date').value;
+                const cat = row.querySelector('.item-category').value;
+                const desc = row.querySelector('.item-desc').value;
+                const curr = row.querySelector('.item-currency').value;
+                const amount = parseFloat(row.querySelector('.item-amount').value) || 0;
+                const rate = parseFloat(row.querySelector('.item-rate').value) || 1.0;
+                const twd = Math.round(amount * rate);
+
+                grandTotal += twd;
+                if (catSums[cat] !== undefined) catSums[cat] += twd;
+
+                sheetData.push([
+                    index + 1,
+                    date,
+                    cat,
+                    desc,
+                    curr,
+                    amount,
+                    rate,
+                    twd
+                ]);
+            });
+
+            const advance = parseFloat(document.getElementById('advancePayment').value) || 0;
+            const net = grandTotal - advance;
+
+            // Summary Section in Excel
+            sheetData.push([]);
+            sheetData.push(["【 三、費用類別統計小計 (TWD) 】"]);
+            sheetData.push(["交通費小計", catSums['交通費'], "住宿費小計", catSums['住宿費']]);
+            sheetData.push(["膳雜費小計", catSums['膳雜費'], "交際費與其他", catSums['交際費'] + catSums['其他']]);
+            sheetData.push([]);
+            sheetData.push(["【 四、最終結算金額 (TWD) 】"]);
+            sheetData.push(["申報總費用", grandTotal]);
+            sheetData.push(["扣除公司預支款", advance]);
+            sheetData.push([net >= 0 ? "公司應補付金額" : "員工應繳回金額", Math.abs(net)]);
+            sheetData.push([]);
+            sheetData.push(["【 五、簽核核准紀錄 】"]);
+            sheetData.push(["申請人簽名", "", "部門主管", "", "財務審核", "", "總經理核決", ""]);
+
+            // SheetJS API workflow
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+            // Column width adjustments
+            ws['!cols'] = [
+                { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 35 },
+                { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 16 }
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "差旅費報銷申請單");
+
+            // Generate filename
+            const fileName = `差旅費報銷單_${name}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+
+            showToast('已成功匯出 Excel 報表！', 'success');
+        }
+
+        function showA4Preview() {
+            // Update A4 basic fields
+            document.getElementById('pvName').innerText = document.getElementById('applicantName').value || '-';
+            document.getElementById('pvEmpId').innerText = document.getElementById('employeeId').value || '-';
+            document.getElementById('pvDept').innerText = document.getElementById('department').value || '-';
+            document.getElementById('pvTitle').innerText = document.getElementById('jobTitle').value || '-';
+            document.getElementById('pvDest').innerText = document.getElementById('destination').value || '-';
+            document.getElementById('pvDays').innerText = document.getElementById('travelDays').value || '0 天';
+
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            document.getElementById('pvPeriod').innerText = (start && end) ? `${start} ～ ${end}` : '-';
+            document.getElementById('pvPurpose').innerText = document.getElementById('travelPurpose').value || '-';
+            document.getElementById('pvApplicantSig').innerText = document.getElementById('applicantName').value || '(簽名/蓋章)';
+
+            // Populate Table Rows
+            const pvBody = document.getElementById('pvTableBody');
+            pvBody.innerHTML = '';
+
+            const rows = document.querySelectorAll('#expenseTableBody tr');
+            let catSums = { '交通費': 0, '住宿費': 0, '膳雜費': 0, '交際費': 0, '其他': 0 };
+            let grandTotal = 0;
+
+            rows.forEach((row, idx) => {
+                const date = row.querySelector('.item-date').value;
+                const cat = row.querySelector('.item-category').value;
+                const desc = row.querySelector('.item-desc').value;
+                const curr = row.querySelector('.item-currency').value;
+                const amount = parseFloat(row.querySelector('.item-amount').value) || 0;
+                const rate = parseFloat(row.querySelector('.item-rate').value) || 1.0;
+                const twd = Math.round(amount * rate);
+
+                grandTotal += twd;
+                if (catSums[cat] !== undefined) catSums[cat] += twd;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="border border-slate-400 p-1 text-center">${idx + 1}</td>
+                    <td class="border border-slate-400 p-1">${date}</td>
+                    <td class="border border-slate-400 p-1">${cat}</td>
+                    <td class="border border-slate-400 p-1">${desc}</td>
+                    <td class="border border-slate-400 p-1 text-right">${curr}</td>
+                    <td class="border border-slate-400 p-1 text-right">${amount.toLocaleString()}</td>
+                    <td class="border border-slate-400 p-1 text-right">${rate}</td>
+                    <td class="border border-slate-400 p-1 text-right font-medium">${twd.toLocaleString()}</td>
+                `;
+                pvBody.appendChild(tr);
+            });
+
+            // Category Totals
+            document.getElementById('pvCatTraffic').innerText = `NT$ ${catSums['交通費'].toLocaleString()}`;
+            document.getElementById('pvCatLodging').innerText = `NT$ ${catSums['住宿費'].toLocaleString()}`;
+            document.getElementById('pvCatMeals').innerText = `NT$ ${catSums['膳雜費'].toLocaleString()}`;
+            document.getElementById('pvCatOtherTotal').innerText = `NT$ ${(catSums['交際費'] + catSums['其他']).toLocaleString()}`;
+
+            // Net Settlement
+            const advance = parseFloat(document.getElementById('advancePayment').value) || 0;
+            const net = grandTotal - advance;
+
+            document.getElementById('pvTotalExp').innerText = `NT$ ${grandTotal.toLocaleString()}`;
+            document.getElementById('pvAdvance').innerText = `NT$ ${advance.toLocaleString()}`;
+
+            if (net >= 0) {
+                document.getElementById('pvSettlementTitle').innerText = "實支 / 應補付金額";
+                document.getElementById('pvFinalNet').innerText = `NT$ ${net.toLocaleString()}`;
+                document.getElementById('pvFinalNet').className = "border border-slate-400 p-1.5 text-right font-black text-slate-900 text-sm";
+            } else {
+                document.getElementById('pvSettlementTitle').innerText = "溢領 / 應繳回金額";
+                document.getElementById('pvFinalNet').innerText = `NT$ ${Math.abs(net).toLocaleString()}`;
+                document.getElementById('pvFinalNet').className = "border border-slate-400 p-1.5 text-right font-black text-red-600 text-sm";
+            }
+
+            // Show Modal
+            document.getElementById('a4Modal').classList.remove('hidden');
+        }
+
+        function closeA4Preview() {
+            document.getElementById('a4Modal').classList.add('hidden');
+        }
+
+        function smartPrint() {
+            const isIframe = window.self !== window.top;
+
+            if (isIframe) {
+                // If embedded inside an iframe, open clean window for printing to bypass sandbox issues
+                const printContent = document.getElementById('a4PrintContent').outerHTML;
+                const win = window.open('', '_blank', 'width=900,height=1000');
+
+                win.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>列印差旅費申請單</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <style>
+                            @page { size: A4; margin: 15mm; }
+                            body { font-family: sans-serif; background: white; color: black; }
+                            .a4-page { width: 100% !important; box-shadow: none !important; padding: 0 !important; }
+                        </style>
+                    </head>
+                    <body class="p-6">
+                        ${printContent}
+                        <script>
+                            window.onload = function() {
+                                setTimeout(function() {
+                                    window.print();
+                                    window.close();
+                                }, 300);
+                            };
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                win.document.close();
+            } else {
+                // Standard browser print
+                window.print();
+            }
+        }
+
+        function showConfirmModal(title, message) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('confirmModal').classList.remove('hidden');
+
+            return new Promise((resolve) => {
+                confirmResolver = resolve;
+
+                document.getElementById('modalConfirmBtn').onclick = function () {
+                    closeConfirmModal(true);
+                };
+            });
+        }
+
+        function closeConfirmModal(result) {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (confirmResolver) {
+                confirmResolver(result);
+                confirmResolver = null;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            let bgClass = "bg-slate-900 text-white";
+            let iconClass = "fa-circle-info text-blue-400";
+
+            if (type === 'success') {
+                bgClass = "bg-emerald-900 text-emerald-100 border border-emerald-700";
+                iconClass = "fa-circle-check text-emerald-400";
+            } else if (type === 'error') {
+                bgClass = "bg-red-900 text-red-100 border border-red-700";
+                iconClass = "fa-circle-exclamation text-red-400";
+            }
+
+            toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-lg text-xs flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-base"></i>
+                <span class="font-medium">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Auto dismiss
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

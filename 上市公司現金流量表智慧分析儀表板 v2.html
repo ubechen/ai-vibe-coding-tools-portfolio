@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上市公司現金流量表智慧分析儀表板</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        tsmc: {
+                            red: '#e11d48',
+                            dark: '#0b0f19',
+                            card: '#131b2e',
+                            border: '#1e293b',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- Google Font: Inter & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #080c14;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .chart-container {
+            min-height: 380px;
+            height: 380px;
+            width: 100%;
+        }
+        .accounting-neg {
+            color: #f87171;
+        }
+        .accounting-pos {
+            color: #34d399;
+        }
+    </style>
+</head>
+<body class="bg-[#080c14] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-[#0c1220]/90 backdrop-blur border-b border-slate-800/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-gradient-to-tr from-cyan-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
+                <i data-lucide="activity" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg lg:text-xl text-white tracking-tight flex items-center gap-2">
+                    上市公司現金流量表智慧分析儀表板
+                </h1>
+                <p class="text-xs text-slate-400">TWSE Standard Financial Cash Flow Analytics Engine</p>
+            </div>
+        </div>
+
+        <!-- Action Toolbar & Unit Switcher -->
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Unit Switcher -->
+            <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs">
+                <span class="text-slate-400 px-2 font-medium">顯示單位:</span>
+                <div class="inline-flex rounded-lg bg-slate-950 p-0.5" id="unitToggleGroup">
+                    <button onclick="setDisplayUnit('UNIT_RAW')" id="unitBtn_UNIT_RAW" class="px-2.5 py-1 rounded-md transition-all font-medium text-slate-400 hover:text-white">元</button>
+                    <button onclick="setDisplayUnit('UNIT_THOUSAND')" id="unitBtn_UNIT_THOUSAND" class="px-2.5 py-1 rounded-md transition-all font-medium text-slate-400 hover:text-white">千元</button>
+                    <button onclick="setDisplayUnit('UNIT_MILLION')" id="unitBtn_UNIT_MILLION" class="px-2.5 py-1 rounded-md transition-all font-medium text-slate-400 hover:text-white">百萬元</button>
+                    <button onclick="setDisplayUnit('UNIT_HUNDRED_MILLION')" id="unitBtn_UNIT_HUNDRED_MILLION" class="px-2.5 py-1 rounded-md transition-all font-medium bg-indigo-600 text-white shadow-sm">億元</button>
+                </div>
+            </div>
+
+            <button onclick="loadPresetData()" class="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-medium rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+                <span>載入台積電範例資料</span>
+            </button>
+            <button onclick="clearAllData()" id="clearBtn" class="hidden px-3.5 py-2 bg-slate-800/80 hover:bg-rose-950/40 hover:text-rose-400 text-slate-300 text-xs font-medium rounded-xl border border-slate-700/80 flex items-center gap-1.5 transition-all">
+                <i data-lucide="trash-2" class="w-4 h-4 text-slate-400"></i>
+                <span>清除資料</span>
+            </button>
+            <button onclick="triggerFileUpload()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
+                <i data-lucide="upload" class="w-4 h-4 text-cyan-400"></i>
+                <span>上傳 Excel 報表</span>
+            </button>
+            <button onclick="exportExcelReport()" id="exportExcelBtn" class="hidden px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>匯出 Excel</span>
+            </button>
+            <button onclick="downloadDashboardImage()" id="exportImgBtn" class="hidden px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all">
+                <i data-lucide="image" class="w-4 h-4 text-cyan-400"></i>
+                <span>匯出圖表圖片</span>
+            </button>
+            <input type="file" id="excelFileInput" class="hidden" accept=".xlsx, .xls" onchange="handleFileSelect(event)">
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 space-y-6">
+
+        <!-- Empty State Container (Displayed when no data is loaded) -->
+        <div id="emptyStateView" class="border-2 border-dashed border-slate-800 hover:border-indigo-500/60 rounded-2xl p-12 text-center transition-all bg-[#0d1424]/60 my-8 shadow-2xl">
+            <div class="max-w-md mx-auto space-y-4">
+                <div class="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center border border-indigo-500/20">
+                    <i data-lucide="file-up" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100">尚無載入現金流量表資料</h3>
+                    <p class="text-xs text-slate-400 mt-1">請上傳您的台積電或上市櫃公司現金流量表 (.xlsx/.xls)，或一鍵載入內建範例資料進行體驗。</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-3 pt-2">
+                    <button onclick="loadPresetData()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+                        <span>載入台積電範例資料 (115上半年 vs 114上半年)</span>
+                    </button>
+                    <button onclick="triggerFileUpload()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4 text-cyan-400"></i>
+                        <span>選擇本機 Excel 報表</span>
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-500 pt-2">🔒 隱私承諾：所有檔案運算與解析皆 100% 在您本機瀏覽器端執行，不會傳輸至伺服器。</p>
+            </div>
+        </div>
+
+        <!-- Active Data View Wrapper (Hidden by default until data is loaded) -->
+        <div id="activeDashboardView" class="hidden space-y-6">
+
+            <!-- Target Company & Reporting Period Banner -->
+            <div class="bg-[#0f172a] border border-slate-800/90 rounded-2xl p-4 lg:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                        <i data-lucide="building-2" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">目標公司 / 申報期別</div>
+                        <div class="text-base lg:text-lg font-bold text-white tracking-tight" id="companyTitleLabel">
+                            台灣積體電路製造股份有限公司 (TSMC 2330)
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-6 text-xs">
+                    <div>
+                        <span class="text-slate-500 block text-[11px]">當期區間</span>
+                        <span class="font-semibold text-indigo-300" id="currentPeriodLabel">115年01月01日至115年06月30日</span>
+                    </div>
+                    <div class="w-px h-8 bg-slate-800 hidden sm:block"></div>
+                    <div>
+                        <span class="text-slate-500 block text-[11px]">前期區間</span>
+                        <span class="font-semibold text-slate-400" id="priorPeriodLabel">114年01月01日至114年06月30日</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6 KPI Metrics Cards Grid -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Card 1: CFO -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">營業現金流 (CFO)</span>
+                        <span class="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                            <i data-lucide="wallet" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiOcfVal">--</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiOcfPriorLabel">前期: --</span>
+                        <span id="kpiOcfBadge" class="px-2 py-0.5 rounded font-bold text-[11px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: CapEx -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">資本支出 (CapEx)</span>
+                        <span class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                            <i data-lucide="factory" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiCapexVal">--</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiCapexPriorLabel">前期: --</span>
+                        <span id="kpiCapexBadge" class="px-2 py-0.5 rounded font-bold text-[11px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: FCF -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">自由現金流 (FCF)</span>
+                        <span class="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                            <i data-lucide="coins" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiFcfVal">--</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiFcfPriorLabel">前期: --</span>
+                        <span id="kpiFcfBadge" class="px-2 py-0.5 rounded font-bold text-[11px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Ending Cash -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">期末現金餘額</span>
+                        <span class="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg">
+                            <i data-lucide="landmark" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiEndingCashVal">--</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiBegCashLabel">期初: --</span>
+                        <span id="kpiEndingCashBadge" class="px-2 py-0.5 rounded font-bold text-[11px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Card 5: Net Cash Flow -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">本期淨現金增加數</span>
+                        <span class="p-1.5 bg-violet-500/10 text-violet-400 rounded-lg">
+                            <i data-lucide="trending-up" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiNetCashVal">--</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiNetCashPriorLabel">前期: --</span>
+                        <span id="kpiNetCashBadge" class="px-2 py-0.5 rounded font-bold text-[11px]">--</span>
+                    </div>
+                </div>
+
+                <!-- Card 6: FCF / CFO Ratio -->
+                <div class="bg-[#111827] border border-slate-800/90 rounded-2xl p-5 relative overflow-hidden shadow-xl hover:border-slate-700 transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">FCF / 營業現金流</span>
+                        <span class="p-1.5 bg-pink-500/10 text-pink-400 rounded-lg">
+                            <i data-lucide="percent" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white tracking-tight font-mono" id="kpiFcfOcfRatioVal">--%</div>
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono" id="kpiDividendRatioLabel">股利占CFO比: --%</span>
+                        <span class="px-2 py-0.5 rounded font-medium text-[11px] bg-slate-800 text-slate-300 border border-slate-700">含金量指標</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cash Flow Matrix Intelligent Diagnostic Banner -->
+            <section class="bg-[#0e1726] border border-emerald-500/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="space-y-2 flex-1">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-lg text-xs font-bold tracking-wide">
+                                現金流矩陣診斷
+                            </span>
+                            <span class="px-2.5 py-1 bg-slate-800 text-indigo-300 border border-slate-700 rounded-lg text-xs font-mono font-bold" id="matrixPatternBadge">
+                                (+ - -)
+                            </span>
+                            <span class="text-sm font-bold text-white" id="matrixTypeTitle">
+                                營運穩健成熟型 (Mature & Solid)
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed pt-1" id="matrixDiagnosisDesc">
+                            企業主業具備極強獲利與現金流產生能力 (CFO > 0)，並持續進行資本支出與產能維護 (CFI < 0)，同時積極償還債務或發放現金股利回饋股東 (CFF < 0)。這是優質成熟型績優企業的典型指標。
+                        </p>
+                    </div>
+                    <div class="bg-[#090e1a]/90 border border-slate-800 rounded-xl p-3.5 text-xs space-y-1.5 font-mono min-w-[240px]">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">營業現金流 CFO:</span>
+                            <span class="font-bold text-emerald-400" id="matrixCfoVal">+ --</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">投資現金流 CFI:</span>
+                            <span class="font-bold text-rose-400" id="matrixCfiVal">- --</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">籌資現金流 CFF:</span>
+                            <span class="font-bold text-amber-400" id="matrixCffVal">- --</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visualization Charts Section -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Waterfall Chart -->
+                <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                                <i data-lucide="git-commit" class="w-4 h-4 text-indigo-400"></i> 現金流結構瀑布圖 (最新期)
+                            </h3>
+                            <p class="text-xs text-slate-400">展示期初現金經由各項營運、投資、籌資活動變動至期末現金之歷程</p>
+                        </div>
+                    </div>
+                    <div id="waterfallChart" class="chart-container flex-1"></div>
+                </div>
+
+                <!-- Grouped Bar Chart -->
+                <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-indigo-400"></i> 兩期現金流三大活動與 FCF 對比
+                            </h3>
+                            <p class="text-xs text-slate-400">比較營業活動、投資活動、籌資活動與自由現金流之同期變化</p>
+                        </div>
+                    </div>
+                    <div id="groupedBarChart" class="chart-container flex-1"></div>
+                </div>
+
+                <!-- Allocation Pie Chart -->
+                <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                                <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i> 營業現金流分配與資本支出強度 (CapEx vs FCF)
+                            </h3>
+                            <p class="text-xs text-slate-400">剖析營業現金流中用於建廠擴產 (CapEx) 與保留為自由現金流 (FCF) 之比例結構</p>
+                        </div>
+                    </div>
+                    <div id="allocationChart" class="chart-container flex-1"></div>
+                </div>
+            </section>
+
+            <!-- Cash Flow Detailed Statement Table -->
+            <section class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                            <i data-lucide="table" class="w-4 h-4 text-indigo-400"></i> 詳細現金流量表數據檢視
+                        </h3>
+                        <p class="text-xs text-slate-400">完整會計科目明細與增減變動金額</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Category Filters -->
+                        <div class="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800 text-xs">
+                            <button onclick="filterCategory('ALL')" id="filterAll" class="px-3 py-1 rounded-md font-medium transition-all bg-indigo-600 text-white">全部</button>
+                            <button onclick="filterCategory('OPERATING')" id="filterOp" class="px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">營業活動</button>
+                            <button onclick="filterCategory('INVESTING')" id="filterInv" class="px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">投資活動</button>
+                            <button onclick="filterCategory('FINANCING')" id="filterFin" class="px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">籌資活動</button>
+                        </div>
+                        <!-- Search Bar -->
+                        <div class="relative min-w-[200px]">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="搜尋會計科目 (如: 折舊)..." class="w-full pl-9 pr-4 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-800/60 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 w-1/2">會計項目 (Item)</th>
+                                <th scope="col" class="py-3 px-4 text-right" id="thCurrentHeader">當期</th>
+                                <th scope="col" class="py-3 px-4 text-right" id="thPriorHeader">前期</th>
+                                <th scope="col" class="py-3 px-4 text-right">變動金額</th>
+                                <th scope="col" class="py-3 px-4 text-right">變動率 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statementTableBody" class="divide-y divide-slate-800/60 font-mono">
+                            <!-- Dynamic Table Rows Injection -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <footer class="border-t border-slate-800/80 bg-[#080c14] py-4 px-6 text-center text-xs text-slate-500">
+        <p>© TWSE Standard Financial Cash Flow Analytics Engine. Powered by ECharts & SheetJS.</p>
+    </footer>
+
+    <!-- Toast Notification Message Container -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-800 text-slate-100 border border-slate-700 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transition-all transform translate-y-20 opacity-0 pointer-events-none">
+        <span id="toastIcon" class="text-indigo-400"><i data-lucide="info" class="w-5 h-5"></i></span>
+        <span id="toastMessage" class="text-xs font-medium">通知訊息</span>
+    </div>
+
+    <script>
+        // Preset Mock TSMC Consolidated Cash Flow Statement Data (In NT$ Thousands)
+        const PRESET_TSMC_DATA = {
+            companyName: "台灣積體電路製造股份有限公司 (TSMC 2330)",
+            currentPeriodName: "115年01月01日至115年06月30日",
+            priorPeriodName: "114年01月01日至114年06月30日",
+            // All base numbers in raw NT$ Thousands
+            items: [
+                // 營業活動
+                { id: 10, category: "OPERATING", isHeader: true, name: "營業活動之現金流量", current: 462000000, prior: 400000000 },
+                { id: 11, category: "OPERATING", isHeader: false, name: "本期稅前淨利", current: 310000000, prior: 260000000 },
+                { id: 12, category: "OPERATING", isHeader: false, name: "折舊費用", current: 150000000, prior: 130000000 },
+                { id: 13, category: "OPERATING", isHeader: false, name: "攤銷費用", current: 10000000, prior: 8000000 },
+                { id: 14, category: "OPERATING", isHeader: false, name: "營運資產及負債淨變動數", current: -8000000, prior: 2000000 },
+                
+                // 投資活動
+                { id: 20, category: "INVESTING", isHeader: true, name: "投資活動之現金流量", current: -279000000, prior: -215000000 },
+                { id: 21, category: "INVESTING", isHeader: false, name: "取得不動產、廠房及設備 (CapEx)", current: -285000000, prior: -220000000 },
+                { id: 22, category: "INVESTING", isHeader: false, name: "處分不動產、廠房及設備", current: 1500000, prior: 800000 },
+                { id: 23, category: "INVESTING", isHeader: false, name: "取得無形資產及其他資產", current: -4500000, prior: -4200000 },
+
+                // 籌資活動
+                { id: 30, category: "FINANCING", isHeader: true, name: "籌資活動之現金流量", current: -79000000, prior: -82000000 },
+                { id: 31, category: "FINANCING", isHeader: false, name: "發行/償還公司債淨額", current: 24400000, prior: 7600000 },
+                { id: 32, category: "FINANCING", isHeader: false, name: "發放現金股利", current: -103400000, prior: -89600000 },
+
+                // 匯率與現金總計
+                { id: 40, category: "OTHER", isHeader: false, name: "匯率變動對現金及約當現金之影響", current: 7000000, prior: 4000000 },
+                { id: 50, category: "SUMMARY", isHeader: true, name: "本期現金及約當現金淨增加數", current: 111000000, prior: 107000000 },
+                { id: 60, category: "SUMMARY", isHeader: false, name: "期初現金及約當現金餘額", current: 1850000000, prior: 1613000000 },
+                { id: 70, category: "SUMMARY", isHeader: true, name: "期末現金及約當現金餘額", current: 1961000000, prior: 1720000000 }
+            ]
+        };
+
+        // App Application State
+        let currentData = null; // Default NULL (No Data Loaded)
+        let activeCategoryFilter = 'ALL';
+        let searchQuery = '';
+        let currentDisplayUnit = 'UNIT_HUNDRED_MILLION'; // Default unit: 億元
+
+        // ECharts Instance Registry
+        let waterfallChartInst = null;
+        let groupedBarChartInst = null;
+        let allocationChartInst = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            updateUnitToggleUI();
+
+            window.addEventListener('resize', () => {
+                if (waterfallChartInst) waterfallChartInst.resize();
+                if (groupedBarChartInst) groupedBarChartInst.resize();
+                if (allocationChartInst) allocationChartInst.resize();
+            });
+        });
+
+        function ensureEChartsInit() {
+            const el1 = document.getElementById('waterfallChart');
+            const el2 = document.getElementById('groupedBarChart');
+            const el3 = document.getElementById('allocationChart');
+
+            if (el1 && !waterfallChartInst) {
+                waterfallChartInst = echarts.init(el1, 'dark');
+            }
+            if (el2 && !groupedBarChartInst) {
+                groupedBarChartInst = echarts.init(el2, 'dark');
+            }
+            if (el3 && !allocationChartInst) {
+                allocationChartInst = echarts.init(el3, 'dark');
+            }
+        }
+
+        // Unit Conversion Scaling
+        function getUnitDivisor() {
+            switch (currentDisplayUnit) {
+                case 'UNIT_RAW': return 0.001; // Raw NT$ (1 raw = 1,000 元) -> Divide by 0.001 = Multiply by 1000
+                case 'UNIT_THOUSAND': return 1; // Raw NT$ Thousands
+                case 'UNIT_MILLION': return 1000; // Raw / 1000 = Million
+                case 'UNIT_HUNDRED_MILLION': default: return 100000; // Raw / 100,000 = 億元
+            }
+        }
+
+        function getUnitLabel() {
+            switch (currentDisplayUnit) {
+                case 'UNIT_RAW': return "元";
+                case 'UNIT_THOUSAND': return "千元";
+                case 'UNIT_MILLION': return "百萬元";
+                case 'UNIT_HUNDRED_MILLION': default: return "億元";
+            }
+        }
+
+        function setDisplayUnit(unitKey) {
+            currentDisplayUnit = unitKey;
+            updateUnitToggleUI();
+            if (currentData) {
+                processAndRenderData();
+            }
+        }
+
+        function updateUnitToggleUI() {
+            const units = ['UNIT_RAW', 'UNIT_THOUSAND', 'UNIT_MILLION', 'UNIT_HUNDRED_MILLION'];
+            units.forEach(u => {
+                const btn = document.getElementById(`unitBtn_${u}`);
+                if (!btn) return;
+                if (u === currentDisplayUnit) {
+                    btn.className = "px-2.5 py-1 rounded-md transition-all font-medium bg-indigo-600 text-white shadow-sm";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-md transition-all font-medium text-slate-400 hover:text-white";
+                }
+            });
+        }
+
+        function loadPresetData() {
+            currentData = JSON.parse(JSON.stringify(PRESET_TSMC_DATA));
+            processAndRenderData();
+            showToast("已成功載入台積電範例現金流量表資料！");
+        }
+
+        function clearAllData() {
+            currentData = null;
+            document.getElementById('emptyStateView').classList.remove('hidden');
+            document.getElementById('activeDashboardView').classList.add('hidden');
+            document.getElementById('clearBtn').classList.add('hidden');
+            document.getElementById('exportExcelBtn').classList.add('hidden');
+            document.getElementById('exportImgBtn').classList.add('hidden');
+
+            showToast("已清除載入資料", "info");
+        }
+
+        function calculateMetrics(data) {
+            const items = data.items;
+
+            const ocfItem = items.find(i => i.name.includes("營業活動之現金流量") || (i.category === 'OPERATING' && i.isHeader)) || { current: 0, prior: 0 };
+            const capexItem = items.find(i => i.name.includes("取得不動產") || i.name.includes("CapEx")) || { current: 0, prior: 0 };
+            
+            const capexCurrent = Math.abs(capexItem.current);
+            const capexPrior = Math.abs(capexItem.prior);
+
+            const icfItem = items.find(i => i.name.includes("投資活動之現金流量") || (i.category === 'INVESTING' && i.isHeader)) || { current: 0, prior: 0 };
+            const finItem = items.find(i => i.name.includes("籌資活動之現金流量") || (i.category === 'FINANCING' && i.isHeader)) || { current: 0, prior: 0 };
+            const fxItem = items.find(i => i.name.includes("匯率變動")) || { current: 0, prior: 0 };
+
+            const netCashItem = items.find(i => i.name.includes("淨增加數")) || { current: ocfItem.current + icfItem.current + finItem.current + fxItem.current, prior: ocfItem.prior + icfItem.prior + finItem.prior + fxItem.prior };
+            const begCashItem = items.find(i => i.name.includes("期初現金")) || { current: 0, prior: 0 };
+            const endCashItem = items.find(i => i.name.includes("期末現金")) || { current: 0, prior: 0 };
+
+            const dividendItem = items.find(i => i.name.includes("現金股利")) || { current: 0, prior: 0 };
+
+            const fcfCurrent = ocfItem.current - capexCurrent;
+            const fcfPrior = ocfItem.prior - capexPrior;
+
+            const calcYoY = (curr, pri) => {
+                if (!pri || pri === 0) return 0;
+                return ((curr - pri) / Math.abs(pri)) * 100;
+            };
+
+            const fcfOcfRatio = ocfItem.current !== 0 ? (fcfCurrent / ocfItem.current) * 100 : 0;
+            const dividendRatio = ocfItem.current !== 0 ? (Math.abs(dividendItem.current) / ocfItem.current) * 100 : 0;
+
+            return {
+                companyName: data.companyName || "台灣積體電路製造股份有限公司 (TSMC 2330)",
+                currentPeriodName: data.currentPeriodName,
+                priorPeriodName: data.priorPeriodName,
+                ocfCurrent: ocfItem.current,
+                ocfPrior: ocfItem.prior,
+                ocfYoY: calcYoY(ocfItem.current, ocfItem.prior),
+                capexCurrent,
+                capexPrior,
+                capexYoY: calcYoY(capexCurrent, capexPrior),
+                icfCurrent: icfItem.current,
+                icfPrior: icfItem.prior,
+                finCurrent: finItem.current,
+                finPrior: finItem.prior,
+                fxCurrent: fxItem.current,
+                netCashCurrent: netCashItem.current,
+                netCashPrior: netCashItem.prior,
+                netCashYoY: calcYoY(netCashItem.current, netCashItem.prior),
+                begCashCurrent: begCashItem.current,
+                endCashCurrent: endCashItem.current,
+                endCashPrior: endCashItem.prior,
+                endCashYoY: calcYoY(endCashItem.current, endCashItem.prior),
+                fcfCurrent,
+                fcfPrior,
+                fcfYoY: calcYoY(fcfCurrent, fcfPrior),
+                fcfOcfRatio,
+                dividendRatio
+            };
+        }
+
+        function renderYoYBadge(elId, yoyVal, invert = false) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            const isPos = yoyVal >= 0;
+            const sign = isPos ? '+' : '';
+            const text = `${sign}${yoyVal.toFixed(2)}%`;
+            
+            // For CapEx, an increase in spending is usually shown in rose/amber or neutral, but standard growth is color coded
+            const isGood = invert ? !isPos : isPos;
+            if (isGood) {
+                el.className = "px-2 py-0.5 rounded font-bold text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            } else {
+                el.className = "px-2 py-0.5 rounded font-bold text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/20";
+            }
+            el.innerText = text;
+        }
+
+        function renderKpiCards(metrics) {
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            document.getElementById('companyTitleLabel').innerText = metrics.companyName;
+            document.getElementById('currentPeriodLabel').innerText = metrics.currentPeriodName;
+            document.getElementById('priorPeriodLabel').innerText = metrics.priorPeriodName;
+
+            // 1. OCF
+            document.getElementById('kpiOcfVal').innerText = (metrics.ocfCurrent / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpiOcfPriorLabel').innerText = `前期: ${(metrics.ocfPrior / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            renderYoYBadge('kpiOcfBadge', metrics.ocfYoY);
+
+            // 2. CapEx (Display as (Val) format for accounting convention)
+            const capexScaled = metrics.capexCurrent / divisor;
+            const capexPriorScaled = metrics.capexPrior / divisor;
+            document.getElementById('kpiCapexVal').innerText = `(${capexScaled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+            document.getElementById('kpiCapexPriorLabel').innerText = `前期: (${capexPriorScaled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+            renderYoYBadge('kpiCapexBadge', metrics.capexYoY, true);
+
+            // 3. FCF
+            document.getElementById('kpiFcfVal').innerText = (metrics.fcfCurrent / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpiFcfPriorLabel').innerText = `前期: ${(metrics.fcfPrior / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            renderYoYBadge('kpiFcfBadge', metrics.fcfYoY);
+
+            // 4. Ending Cash
+            document.getElementById('kpiEndingCashVal').innerText = (metrics.endCashCurrent / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpiBegCashLabel').innerText = `期初: ${(metrics.begCashCurrent / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            renderYoYBadge('kpiEndingCashBadge', metrics.endCashYoY);
+
+            // 5. Net Cash
+            document.getElementById('kpiNetCashVal').innerText = (metrics.netCashCurrent / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpiNetCashPriorLabel').innerText = `前期: ${(metrics.netCashPrior / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            renderYoYBadge('kpiNetCashBadge', metrics.netCashYoY);
+
+            // 6. FCF/OCF Ratio
+            document.getElementById('kpiFcfOcfRatioVal').innerText = `${metrics.fcfOcfRatio.toFixed(1)}%`;
+            document.getElementById('kpiDividendRatioLabel').innerText = `股利占CFO比: ${metrics.dividendRatio.toFixed(1)}%`;
+        }
+
+        function renderCashFlowMatrixDiagnosis(metrics) {
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            const cfoSign = metrics.ocfCurrent >= 0 ? '+' : '-';
+            const cfiSign = metrics.icfCurrent >= 0 ? '+' : '-';
+            const cffSign = metrics.finCurrent >= 0 ? '+' : '-';
+
+            const pattern = `(${cfoSign} ${cfiSign} ${cffSign})`;
+            document.getElementById('matrixPatternBadge').innerText = pattern;
+
+            let title = "營運穩健成熟型 (Mature & Solid)";
+            let desc = "企業主業具備極強獲利與現金流產生能力 (CFO > 0)，並持續進行資本支出與產能維護 (CFI < 0)，同時積極償還債務或發放現金股利回饋股東 (CFF < 0)。這是優質成熟型績優企業的典型指標。";
+
+            if (cfoSign === '+' && cfiSign === '-' && cffSign === '+') {
+                title = "擴張成長型 (Aggressive Expansion)";
+                desc = "本業強勁且外部融資積極，投資大幅超過營運流入，籌資管道暢通以進行大擴產。";
+            } else if (cfoSign === '+' && cfiSign === '+' && cffSign === '-') {
+                title = "資產重組/處分轉型型 (Asset Reallocation)";
+                desc = "本業獲利之外同時處分投資或不動產回收現金，主要用於還債或特別分紅。";
+            } else if (cfoSign === '-' && cfiSign === '-' && cffSign === '+') {
+                title = "燒錢/高籌資擴張型 (Startup / Turnaround)";
+                desc = "本業尚未產生淨現金流入且仍需資本支出，完全依賴外部發債或增資維持運營。";
+            } else if (cfoSign === '-' && cfiSign === '+' && cffSign === '-') {
+                title = "變賣資產還債型 (Distressed Selling)";
+                desc = "營運流出且外部融資困難，需靠出售資產變現來償還債務。";
+            }
+
+            document.getElementById('matrixTypeTitle').innerText = title;
+            document.getElementById('matrixDiagnosisDesc').innerText = desc;
+
+            const formatSignedVal = (val) => {
+                const s = val >= 0 ? '+' : '-';
+                return `${s} (${Math.abs(val / divisor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText})`;
+            };
+
+            document.getElementById('matrixCfoVal').innerText = formatSignedVal(metrics.ocfCurrent);
+            document.getElementById('matrixCfiVal').innerText = formatSignedVal(metrics.icfCurrent);
+            document.getElementById('matrixCffVal').innerText = formatSignedVal(metrics.finCurrent);
+        }
+
+        function renderStatementTable() {
+            if (!currentData || !currentData.items) return;
+
+            const tbody = document.getElementById('statementTableBody');
+            if (!tbody) return;
+
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            document.getElementById('thCurrentHeader').innerText = `當期 (${unitText})`;
+            document.getElementById('thPriorHeader').innerText = `前期 (${unitText})`;
+
+            let filtered = currentData.items.filter(item => {
+                if (activeCategoryFilter !== 'ALL' && item.category !== activeCategoryFilter && item.category !== 'SUMMARY' && item.category !== 'OTHER') {
+                    return false;
+                }
+                if (searchQuery.trim() !== '') {
+                    return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                }
+                return true;
+            });
+
+            let html = '';
+            filtered.forEach(item => {
+                const currScaled = item.current / divisor;
+                const priorScaled = item.prior / divisor;
+                const diffScaled = currScaled - priorScaled;
+                const diffPct = item.prior !== 0 ? ((item.current - item.prior) / Math.abs(item.prior)) * 100 : 0;
+
+                const isHeader = item.isHeader;
+                const rowBgClass = isHeader ? 'bg-slate-800/40 font-bold text-white' : 'hover:bg-slate-800/30';
+                const indentClass = isHeader ? '' : 'pl-6 text-slate-300';
+
+                const fmtCurr = formatAccountingNumber(currScaled);
+                const fmtPrior = formatAccountingNumber(priorScaled);
+                const fmtDiff = formatAccountingNumber(diffScaled);
+
+                const pctSign = diffPct >= 0 ? '+' : '';
+                const pctClass = diffPct > 0 ? 'text-emerald-400' : (diffPct < 0 ? 'text-rose-400' : 'text-slate-400');
+
+                html += `
+                    <tr class="${rowBgClass} transition-colors border-b border-slate-800/50">
+                        <td class="py-3 px-4 ${indentClass}">${item.name}</td>
+                        <td class="py-3 px-4 text-right ${getAccountingColorClass(currScaled)}">${fmtCurr}</td>
+                        <td class="py-3 px-4 text-right text-slate-400">${fmtPrior}</td>
+                        <td class="py-3 px-4 text-right ${getAccountingColorClass(diffScaled)}">${fmtDiff}</td>
+                        <td class="py-3 px-4 text-right ${pctClass}">${item.prior !== 0 ? pctSign + diffPct.toFixed(2) + '%' : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderWaterfallChart(metrics) {
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            const beg = metrics.begCashCurrent / divisor;
+            const ocf = metrics.ocfCurrent / divisor;
+            const icf = metrics.icfCurrent / divisor;
+            const fin = metrics.finCurrent / divisor;
+            const fx = metrics.fxCurrent / divisor;
+            const end = metrics.endCashCurrent / divisor;
+
+            let base = [0];
+            let values = [beg];
+            let currentLevel = beg;
+
+            // OCF
+            base.push(currentLevel);
+            values.push(ocf);
+            currentLevel += ocf;
+
+            // ICF
+            if (icf >= 0) {
+                base.push(currentLevel);
+                values.push(icf);
+                currentLevel += icf;
+            } else {
+                currentLevel += icf;
+                base.push(currentLevel);
+                values.push(Math.abs(icf));
+            }
+
+            // FIN
+            if (fin >= 0) {
+                base.push(currentLevel);
+                values.push(fin);
+                currentLevel += fin;
+            } else {
+                currentLevel += fin;
+                base.push(currentLevel);
+                values.push(Math.abs(fin));
+            }
+
+            // FX
+            if (fx >= 0) {
+                base.push(currentLevel);
+                values.push(fx);
+                currentLevel += fx;
+            } else {
+                currentLevel += fx;
+                base.push(currentLevel);
+                values.push(Math.abs(fx));
+            }
+
+            // End
+            base.push(0);
+            values.push(end);
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function (params) {
+                        const tar = params[1] || params[0];
+                        return `${tar.name}<br/>金額: ${Number(tar.value).toLocaleString('en-US', {maximumFractionDigits: 2})} ${unitText}`;
+                    }
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: ['期初現金', '營業活動', '投資活動', '籌資活動', '匯率影響', '期末現金'],
+                    axisLabel: { color: '#94a3b8', fontSize: 11 }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#94a3b8',
+                        formatter: (val) => val.toLocaleString('en-US') + ' ' + unitText
+                    },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [
+                    {
+                        name: 'Base',
+                        type: 'bar',
+                        stack: 'Total',
+                        itemStyle: { borderColor: 'transparent', color: 'transparent' },
+                        data: base
+                    },
+                    {
+                        name: 'Amount',
+                        type: 'bar',
+                        stack: 'Total',
+                        itemStyle: {
+                            color: function (params) {
+                                if (params.dataIndex === 0 || params.dataIndex === 5) return '#38bdf8';
+                                if (params.dataIndex === 1) return '#34d399';
+                                return '#f43f5e';
+                            },
+                            borderRadius: [4, 4, 0, 0]
+                        },
+                        data: values
+                    }
+                ]
+            };
+
+            waterfallChartInst.setOption(option, true);
+        }
+
+        function renderGroupedBarChart(metrics) {
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            const categories = ['營業現金流 (CFO)', '資本支出 (CapEx)', '投資現金流 (ICF)', '籌資現金流 (FIN)', '自由現金流 (FCF)'];
+            const currVals = [
+                metrics.ocfCurrent / divisor,
+                metrics.capexCurrent / divisor,
+                metrics.icfCurrent / divisor,
+                metrics.finCurrent / divisor,
+                metrics.fcfCurrent / divisor
+            ];
+            const priorVals = [
+                metrics.ocfPrior / divisor,
+                metrics.capexPrior / divisor,
+                metrics.icfPrior / divisor,
+                metrics.finPrior / divisor,
+                metrics.fcfPrior / divisor
+            ];
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function (params) {
+                        let res = `<div class="font-bold border-b border-slate-700 pb-1 mb-1">${params[0].name}</div>`;
+                        params.forEach(p => {
+                            res += `<div class="flex items-center justify-between gap-4">
+                                        <span>${p.marker} ${p.seriesName}:</span>
+                                        <span class="font-mono font-bold">${Number(p.value).toLocaleString('en-US', {maximumFractionDigits: 2})} ${unitText}</span>
+                                    </div>`;
+                        });
+                        return res;
+                    }
+                },
+                legend: { data: ['當期', '前期'], textStyle: { color: '#cbd5e1' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: categories,
+                    axisLabel: { color: '#94a3b8', fontSize: 11 }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#94a3b8',
+                        formatter: (val) => val.toLocaleString('en-US') + ' ' + unitText
+                    },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [
+                    {
+                        name: '當期',
+                        type: 'bar',
+                        data: currVals,
+                        itemStyle: { color: '#6366f1', borderRadius: [4, 4, 0, 0] }
+                    },
+                    {
+                        name: '前期',
+                        type: 'bar',
+                        data: priorVals,
+                        itemStyle: { color: '#475569', borderRadius: [4, 4, 0, 0] }
+                    }
+                ]
+            };
+
+            groupedBarChartInst.setOption(option, true);
+        }
+
+        function renderAllocationChart(metrics) {
+            const divisor = getUnitDivisor();
+            const unitText = getUnitLabel();
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    formatter: `{b}: {c} ${unitText} ({d}%)`
+                },
+                legend: { orient: 'horizontal', bottom: '0', textStyle: { color: '#cbd5e1' } },
+                series: [
+                    {
+                        name: '營業現金流去向',
+                        type: 'pie',
+                        radius: ['45%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 8,
+                            borderColor: '#0b0f19',
+                            borderWidth: 3
+                        },
+                        label: {
+                            show: true,
+                            color: '#e2e8f0',
+                            formatter: `{b}\n{c} ${unitText} ({d}%)`
+                        },
+                        data: [
+                            { value: Math.abs(metrics.capexCurrent / divisor), name: '資本支出 (CapEx)', itemStyle: { color: '#f59e0b' } },
+                            { value: Math.max(0, metrics.fcfCurrent / divisor), name: '自由現金流 (FCF)', itemStyle: { color: '#10b981' } }
+                        ]
+                    }
+                ]
+            };
+
+            allocationChartInst.setOption(option, true);
+        }
+
+        function processAndRenderData() {
+            if (!currentData) return;
+
+            // Reveal dashboard views
+            document.getElementById('emptyStateView').classList.add('hidden');
+            document.getElementById('activeDashboardView').classList.remove('hidden');
+            document.getElementById('clearBtn').classList.remove('hidden');
+            document.getElementById('exportExcelBtn').classList.remove('hidden');
+            document.getElementById('exportImgBtn').classList.remove('hidden');
+
+            const metrics = calculateMetrics(currentData);
+
+            renderKpiCards(metrics);
+            renderCashFlowMatrixDiagnosis(metrics);
+            renderStatementTable();
+
+            // Delay chart instantiation & rendering slightly so DOM dimensions are calculated
+            setTimeout(() => {
+                ensureEChartsInit();
+
+                renderWaterfallChart(metrics);
+                renderGroupedBarChart(metrics);
+                renderAllocationChart(metrics);
+
+                if (waterfallChartInst) waterfallChartInst.resize();
+                if (groupedBarChartInst) groupedBarChartInst.resize();
+                if (allocationChartInst) allocationChartInst.resize();
+            }, 50);
+        }
+
+        function filterCategory(category) {
+            activeCategoryFilter = category;
+            const btnMap = { 'ALL': 'filterAll', 'OPERATING': 'filterOp', 'INVESTING': 'filterInv', 'FINANCING': 'filterFin' };
+
+            Object.keys(btnMap).forEach(key => {
+                const el = document.getElementById(btnMap[key]);
+                if (!el) return;
+                if (key === category) {
+                    el.className = "px-3 py-1 rounded-md font-medium transition-all bg-indigo-600 text-white";
+                } else {
+                    el.className = "px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all";
+                }
+            });
+
+            renderStatementTable();
+        }
+
+        function handleSearch(query) {
+            searchQuery = query;
+            renderStatementTable();
+        }
+
+        function triggerFileUpload() {
+            document.getElementById('excelFileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    parseUploadedCashFlowExcel(jsonData, file.name);
+                } catch (err) {
+                    console.error("XLSX parsing error:", err);
+                    showToast("Excel 檔案解析失敗，請確認內容格式", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseUploadedCashFlowExcel(rows, filename) {
+            if (!rows || rows.length < 3) {
+                showToast("上傳之 Excel 缺乏足夠數據列", "error");
+                return;
+            }
+
+            let parsedItems = [];
+            let companyName = filename.replace(/\.[^/.]+$/, "");
+            let currentHeader = "當期 (Current Period)";
+            let priorHeader = "前期 (Prior Period)";
+
+            for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                const row = rows[i];
+                if (row && row.length >= 3) {
+                    const strRow = row.join(' ');
+                    if (strRow.includes('公司') || strRow.includes('股份有限公司')) {
+                        companyName = String(row[0] || row[1] || companyName).trim();
+                    }
+                    if (strRow.includes('年') || strRow.includes('季') || strRow.includes('月')) {
+                        if (row[1]) currentHeader = String(row[1]).trim();
+                        if (row[2]) priorHeader = String(row[2]).trim();
+                    }
+                }
+            }
+
+            rows.forEach((row, idx) => {
+                if (!row || row.length < 2) return;
+                const itemName = String(row[0] || '').trim();
+                if (!itemName) return;
+
+                const val1 = parseNumberCell(row[1]);
+                const val2 = parseNumberCell(row[2]);
+
+                let cat = 'OTHER';
+                let isHeader = false;
+
+                if (itemName.includes('營業活動')) {
+                    cat = 'OPERATING'; isHeader = true;
+                } else if (itemName.includes('投資活動')) {
+                    cat = 'INVESTING'; isHeader = true;
+                } else if (itemName.includes('籌資活動')) {
+                    cat = 'FINANCING'; isHeader = true;
+                } else if (itemName.includes('期初現金') || itemName.includes('期末現金') || itemName.includes('淨增加')) {
+                    cat = 'SUMMARY'; isHeader = itemName.includes('期末現金') || itemName.includes('淨增加');
+                }
+
+                if (val1 !== 0 || val2 !== 0 || isHeader) {
+                    parsedItems.push({
+                        id: idx + 1,
+                        category: cat,
+                        isHeader: isHeader,
+                        name: itemName,
+                        current: val1,
+                        prior: val2
+                    });
+                }
+            });
+
+            if (parsedItems.length > 0) {
+                currentData = {
+                    companyName,
+                    currentPeriodName: currentHeader,
+                    priorPeriodName: priorHeader,
+                    items: parsedItems
+                };
+                
+                document.getElementById('emptyStateView').classList.add('hidden');
+                document.getElementById('activeDashboardView').classList.remove('hidden');
+                document.getElementById('clearBtn').classList.remove('hidden');
+                document.getElementById('exportExcelBtn').classList.remove('hidden');
+                document.getElementById('exportImgBtn').classList.remove('hidden');
+
+                processAndRenderData();
+                showToast("Excel 現金流量表已成功解析並繪製！");
+            } else {
+                showToast("無法辨識有效的現金流量表會計科目", "error");
+            }
+        }
+
+        function parseNumberCell(cell) {
+            if (cell === undefined || cell === null) return 0;
+            if (typeof cell === 'number') return cell;
+            let str = String(cell).replace(/,/g, '').trim();
+            if (str.startsWith('(') && str.endsWith(')')) {
+                str = '-' + str.substring(1, str.length - 1);
+            }
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function exportExcelReport() {
+            if (!currentData) return;
+
+            const metrics = calculateMetrics(currentData);
+            const unitText = getUnitLabel();
+
+            const summaryWsData = [
+                ["上市公司現金流量分析報告 (TWSE Cash Flow Report)"],
+                ["目標公司", metrics.companyName],
+                ["當期區間", metrics.currentPeriodName, "前期區間", metrics.priorPeriodName],
+                ["匯出時間", new Date().toLocaleString()],
+                [],
+                ["核心財務指標", `當期 (${unitText})`, `前期 (${unitText})`, "YoY 成長率 (%)"],
+                ["營業現金流 (CFO)", metrics.ocfCurrent, metrics.ocfPrior, `${metrics.ocfYoY.toFixed(2)}%`],
+                ["資本支出 (CapEx)", metrics.capexCurrent, metrics.capexPrior, `${metrics.capexYoY.toFixed(2)}%`],
+                ["自由現金流 (FCF)", metrics.fcfCurrent, metrics.fcfPrior, `${metrics.fcfYoY.toFixed(2)}%`],
+                ["期末現金餘額", metrics.endCashCurrent, metrics.endCashPrior, `${metrics.endCashYoY.toFixed(2)}%`],
+                ["FCF / CFO 比率", `${metrics.fcfOcfRatio.toFixed(2)}%`, "-", "-"]
+            ];
+
+            const detailWsData = [
+                ["會計項目", `當期 (${unitText})`, `前期 (${unitText})`, "變動金額", "變動率 (%)"]
+            ];
+
+            currentData.items.forEach(item => {
+                const diff = item.current - item.prior;
+                const diffPct = item.prior !== 0 ? ((diff / Math.abs(item.prior)) * 100).toFixed(2) + '%' : '0.00%';
+                detailWsData.push([item.name, item.current, item.prior, diff, diffPct]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryWsData);
+            const wsDetail = XLSX.utils.aoa_to_sheet(detailWsData);
+
+            XLSX.utils.book_append_sheet(wb, wsSummary, "財務指標摘要");
+            XLSX.utils.book_append_sheet(wb, wsDetail, "現金流量表明細");
+
+            XLSX.writeFile(wb, `現金流量表分析報告_${metrics.companyName}.xlsx`);
+            showToast("分析報告已成功匯出 Excel 檔案！");
+        }
+
+        function downloadDashboardImage() {
+            if (!waterfallChartInst) return;
+            const imgData = waterfallChartInst.getDataURL({
+                type: 'png',
+                pixelRatio: 2,
+                backgroundColor: '#0b0f19'
+            });
+
+            const a = document.createElement('a');
+            a.href = imgData;
+            a.download = `現金流分析圖表_${new Date().getTime()}.png`;
+            a.click();
+            showToast("儀表板圖表圖片已下載！");
+        }
+
+        function formatValWithUnit(val, divisor) {
+            if (val === undefined || val === null || isNaN(val)) return "0.00";
+            const scaled = val / divisor;
+            return Math.abs(scaled).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatAccountingNumber(val) {
+            if (val === undefined || val === null || isNaN(val)) return "0.00";
+            if (val < 0) {
+                return `(${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+            }
+            return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function getAccountingColorClass(val) {
+            if (val < 0) return "accounting-neg";
+            if (val > 0) return "accounting-pos";
+            return "text-slate-500";
+        }
+
+        function showToast(message, type = "info") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = message;
+            if (type === "error") {
+                toastIcon.innerHTML = `<i data-lucide="alert-circle" class="w-5 h-5 text-rose-400"></i>`;
+            } else {
+                toastIcon.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>`;
+            }
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

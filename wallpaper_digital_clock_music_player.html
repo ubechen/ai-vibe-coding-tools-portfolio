@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallpaper Digital Clock & Music Player</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=Montserrat:wght@300;400;700;900&family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        .font-outfit { font-family: 'Outfit', 'Inter', sans-serif; }
+        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-sans-clean { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-montserrat { font-family: 'Montserrat', sans-serif; }
+        .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
+
+        .giant-clock-num {
+            font-size: clamp(4.5rem, 15vw, 16rem);
+            line-height: 0.88;
+            letter-spacing: -0.05em;
+        }
+
+        .bg-fade {
+            transition: background-image 1s ease-in-out, filter 0.5s ease, opacity 0.8s ease;
+        }
+
+        .glow-soft {
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5), 0 0 60px rgba(0, 0, 0, 0.8);
+        }
+        .glow-neon {
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.9), 0 0 30px rgba(56, 189, 248, 0.8), 0 0 50px rgba(14, 165, 233, 0.8);
+        }
+        .glow-shadow {
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.95);
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 8s linear infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .auto-hide {
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .auto-hide.hidden-ui {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
+        }
+
+        /* Lyrics Scroll Bar Hide */
+        .lyrics-scroll-box::-webkit-scrollbar {
+            width: 3px;
+        }
+        .lyrics-scroll-box::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-black text-white h-screen w-screen overflow-hidden select-none font-outfit">
+
+    <!-- Background Wallpaper Display -->
+    <div id="wallpaper-container" class="absolute inset-0 bg-cover bg-center bg-no-repeat bg-fade z-0 transition-all duration-1000 transform scale-105"></div>
+
+    <!-- Dark Overlay Layer for legibility -->
+    <div id="dark-overlay" class="absolute inset-0 bg-black pointer-events-none z-10 transition-opacity duration-500" style="opacity: 0.35;"></div>
+
+    <!-- Central Content Area -->
+    <main id="main-content" class="relative z-20 h-full w-full flex flex-col justify-center items-center px-4 text-center">
+        <!-- Clock Box -->
+        <div id="clock-box" class="cursor-pointer group flex flex-col items-center justify-center p-4 sm:p-8 rounded-3xl transition-transform duration-300 hover:scale-[1.01]">
+            
+            <!-- Weather Badge -->
+            <div id="clock-weather" class="mb-3 sm:mb-4 flex items-center space-x-2.5 px-4 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-xs sm:text-sm md:text-base font-medium tracking-wide glow-shadow transition-all hover:bg-black/40">
+                <i id="weather-icon" class="fa-solid fa-cloud-sun text-sky-300 text-sm sm:text-lg"></i>
+                <span id="weather-temp" class="font-bold">--°C</span>
+                <span class="opacity-40">•</span>
+                <span id="weather-location" class="opacity-90">Detecting location...</span>
+            </div>
+
+            <!-- Massive Display Time -->
+            <div id="clock-time" class="giant-clock-num font-extrabold tracking-tighter glow-shadow transition-all duration-300 flex items-baseline">
+                00:00
+            </div>
+
+            <!-- Date & Day -->
+            <div id="clock-date" class="mt-3 sm:mt-5 text-base sm:text-xl md:text-2xl font-semibold tracking-wider uppercase opacity-90 glow-shadow">
+                Tuesday, August 11
+            </div>
+
+            <!-- Tagline / Quote -->
+            <div id="clock-greeting" class="mt-3 text-xs sm:text-sm font-light tracking-widest opacity-75 max-w-lg hidden glow-shadow uppercase">
+                STAY INSPIRED
+            </div>
+        </div>
+    </main>
+
+    <!-- Quick Action Bar -->
+    <div id="ui-overlay" class="auto-hide fixed top-0 left-0 w-full p-4 sm:p-6 flex justify-between items-center z-30">
+        <!-- Left: Wallpaper Controls -->
+        <div class="flex items-center space-x-3 bg-black/40 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-full text-xs text-white/80">
+            <span id="star-count-badge" class="flex items-center space-x-1.5 font-medium">
+                <i class="fa-solid fa-image text-sky-400"></i>
+                <span id="current-bg-index">1 / --</span>
+            </span>
+            <span class="text-white/20">|</span>
+            <button id="btn-prev-bg" title="Previous Wallpaper (Left Arrow)" class="hover:text-white transition-colors p-1">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button id="btn-next-bg" title="Next Wallpaper (Right Arrow)" class="hover:text-white transition-colors p-1">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <button id="btn-random-bg" title="Random Wallpaper (R)" class="hover:text-sky-300 transition-colors p-1 ml-1">
+                <i class="fa-solid fa-shuffle"></i>
+            </button>
+        </div>
+
+        <!-- Right: Settings & Fullscreen -->
+        <div class="flex items-center space-x-2">
+            <button id="btn-fullscreen" title="Toggle Fullscreen (F)" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 hover:scale-110 transition-all">
+                <i class="fa-solid fa-expand text-sm"></i>
+            </button>
+            <button id="btn-open-settings" title="Settings" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 hover:rotate-90 hover:scale-110 transition-all">
+                <i class="fa-solid fa-gear text-base"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Lyrics Card Window -->
+    <div id="lyrics-panel" class="auto-hide fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-[92vw] sm:w-[480px] max-h-56 bg-slate-950/80 backdrop-blur-2xl border border-sky-500/30 rounded-2xl shadow-2xl p-4 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10 text-xs">
+            <div class="flex items-center space-x-2 text-sky-400 font-semibold">
+                <i class="fa-solid fa-align-center"></i>
+                <span id="lyrics-song-title">陪你慢慢長大 - 動態歌詞</span>
+            </div>
+            <button id="btn-close-lyrics" class="text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+        <!-- Lyrics Scroll Box -->
+        <div id="lyrics-scroll-box" class="lyrics-scroll-box h-40 overflow-y-auto space-y-2 text-center text-sm px-2 py-1 scroll-smooth">
+            <!-- Dynamic Lyrics Lines Inserted Here -->
+        </div>
+    </div>
+
+    <!-- Music Player Floating Widget -->
+    <div id="music-player-bar" class="auto-hide fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-3 bg-black/60 backdrop-blur-xl border border-sky-500/20 px-4 py-2.5 rounded-2xl shadow-2xl transition-all duration-300 max-w-md w-[92vw] sm:w-auto">
+        <!-- Vinyl / Disc Icon -->
+        <div id="music-disc-wrap" class="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md flex-shrink-0 transition-transform">
+            <i id="music-disc-icon" class="fa-solid fa-compact-disc text-lg"></i>
+        </div>
+
+        <!-- Track Info & Progress Bar -->
+        <div class="flex-1 min-w-0 pr-1">
+            <div class="flex items-center justify-between text-xs mb-1">
+                <span id="music-title" class="font-semibold text-white/90 truncate max-w-[120px] sm:max-w-[150px]">陪你慢慢長大</span>
+                <span id="music-time" class="text-[10px] text-white/60 font-mono ml-2">00:00 / 00:00</span>
+            </div>
+            <!-- Progress Line -->
+            <div id="music-progress-container" class="w-full bg-white/20 h-1.5 rounded-full cursor-pointer overflow-hidden relative">
+                <div id="music-progress-bar" class="bg-gradient-to-r from-sky-400 to-blue-500 h-full w-0 transition-all duration-100 rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Music Playback Controls -->
+        <div class="flex items-center space-x-2 flex-shrink-0 border-l border-white/10 pl-3">
+            <button id="btn-toggle-lyrics" title="Dynamic Lyrics" class="px-2 py-1 bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 rounded-lg text-[11px] font-semibold border border-sky-500/30 transition-all flex items-center space-x-1">
+                <i class="fa-solid fa-align-left text-[10px]"></i>
+                <span class="hidden sm:inline">Lyrics</span>
+            </button>
+            <button id="btn-music-prev" title="Previous Track" class="text-white/70 hover:text-white transition-colors p-1 text-xs">
+                <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button id="btn-music-play" title="Play / Pause (M)" class="w-8 h-8 rounded-full bg-sky-500 hover:bg-sky-400 text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95">
+                <i id="music-play-icon" class="fa-solid fa-play text-xs ml-0.5"></i>
+            </button>
+            <button id="btn-music-next" title="Next Track" class="text-white/70 hover:text-white transition-colors p-1 text-xs">
+                <i class="fa-solid fa-forward-step"></i>
+            </button>
+            <button id="btn-music-mute" title="Mute / Unmute" class="text-white/70 hover:text-white transition-colors p-1 text-xs ml-1">
+                <i id="music-mute-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-msg" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-lg border border-white/20 text-white text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-2xl opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4 flex items-center space-x-2">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400"></i>
+        <span id="toast-text">Notification</span>
+    </div>
+
+    <!-- Settings Drawer -->
+    <div id="settings-modal" class="fixed inset-0 z-40 bg-black/70 backdrop-blur-xl opacity-0 pointer-events-none transition-opacity duration-300 flex justify-end">
+        <div id="settings-drawer" class="w-full sm:w-[480px] h-full bg-slate-950/95 border-l border-white/10 shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 text-slate-100">
+            
+            <!-- Header -->
+            <div class="p-5 border-b border-white/10 flex items-center justify-between bg-slate-900/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold tracking-wide">DISPLAY SETTINGS</h2>
+                        <p class="text-xs text-slate-400">Wallpaper, Clock, Weather & Music</p>
+                    </div>
+                </div>
+                <button id="btn-close-settings" class="w-8 h-8 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-white/10 bg-slate-900/30 text-xs font-semibold tracking-wider">
+                <button id="tab-btn-bg" class="flex-1 py-3 border-b-2 border-sky-500 text-sky-400 flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-image"></i>
+                    <span>Wallpapers</span>
+                </button>
+                <button id="tab-btn-clock" class="flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-clock"></i>
+                    <span>Clock</span>
+                </button>
+                <button id="tab-btn-weather" class="flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-cloud-sun"></i>
+                    <span>Weather</span>
+                </button>
+                <button id="tab-btn-music" class="flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Music</span>
+                </button>
+            </div>
+
+            <!-- Drawer Body -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-6">
+                
+                <!-- TAB 1: WALLPAPER SETTINGS -->
+                <div id="tab-content-bg" class="space-y-5">
+                    <!-- Google Sheet CSV Source -->
+                    <div class="bg-slate-900/80 border border-white/10 rounded-xl p-3.5 flex items-center justify-between">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <i class="fa-solid fa-database text-sky-400 text-lg"></i>
+                            <div class="truncate">
+                                <div class="text-xs font-semibold text-slate-200">Google Sheets CSV Source</div>
+                                <div id="csv-status-text" class="text-[11px] text-slate-400 truncate">Syncing CSV spreadsheet...</div>
+                            </div>
+                        </div>
+                        <button id="btn-reload-csv" class="px-2.5 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded-lg text-xs font-medium border border-sky-500/30 transition-all flex items-center space-x-1 flex-shrink-0">
+                            <i class="fa-solid fa-rotate"></i>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+
+                    <!-- Unsplash Explorer -->
+                    <div class="bg-slate-900/80 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <i class="fa-brands fa-unsplash text-xl text-white"></i>
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-200">Unsplash Wallpaper Explorer</div>
+                                    <div class="text-[11px] text-slate-400">Discover curated HD wallpapers</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 text-[10px] bg-sky-500/20 text-sky-300 font-mono rounded-full border border-sky-500/30">HD 4K</span>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <button data-unsplash-topic="celebrity" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-star text-amber-400 text-[10px] mr-1"></i>Stars & Portraits
+                            </button>
+                            <button data-unsplash-topic="car" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-car text-rose-400 text-[10px] mr-1"></i>Supercars & Auto
+                            </button>
+                            <button data-unsplash-topic="fashion" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-shirt text-purple-400 text-[10px] mr-1"></i>High Fashion
+                            </button>
+                            <button data-unsplash-topic="concert" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-guitar text-sky-400 text-[10px] mr-1"></i>Concerts & Stage
+                            </button>
+                            <button data-unsplash-topic="aesthetic" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-wand-magic-sparkles text-cyan-400 text-[10px] mr-1"></i>Aesthetic Neon
+                            </button>
+                            <button data-unsplash-topic="nature" class="btn-unsplash-tag px-2.5 py-1 bg-slate-800 hover:bg-sky-500/30 border border-white/10 rounded-lg text-[11px] text-slate-300 hover:text-white transition-all">
+                                <i class="fa-solid fa-mountain text-emerald-400 text-[10px] mr-1"></i>Nature
+                            </button>
+                        </div>
+
+                        <div class="flex space-x-2 pt-1">
+                            <input type="text" id="unsplash-search-input" placeholder="Search Unsplash (e.g. portrait, idol, city)..." class="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                            <button id="btn-fetch-unsplash" class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-lg text-xs transition-all flex items-center space-x-1.5">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <span>Load</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Image URL -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-2">
+                        <label class="text-xs font-semibold text-slate-200 block">Add Custom Image URL</label>
+                        <div class="flex space-x-2">
+                            <input type="url" id="custom-url-input" placeholder="https://images.unsplash.com/photo-..." class="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                            <button id="btn-add-custom-url" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg text-xs transition-all">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Slideshow Toggle -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-slate-200">Auto Slideshow</div>
+                                <div class="text-[11px] text-slate-400">Rotate wallpapers automatically</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="setting-slideshow-toggle" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-white/5">
+                            <span class="text-xs text-slate-300">Interval</span>
+                            <select id="setting-slideshow-interval" class="bg-slate-800 border border-white/10 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none">
+                                <option value="5000">5 seconds</option>
+                                <option value="10000" selected>10 seconds</option>
+                                <option value="30000">30 seconds</option>
+                                <option value="60000">1 minute</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Grid -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-slate-300">Wallpaper Gallery</span>
+                            <span id="gallery-count" class="text-slate-400">0 loaded</span>
+                        </div>
+                        <div id="wallpaper-gallery" class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 bg-slate-900/40 rounded-xl border border-white/10"></div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: CLOCK SETTINGS -->
+                <div id="tab-content-clock" class="space-y-5 hidden">
+                    <!-- Typography Choice -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <span class="text-xs font-semibold text-slate-200 block">Font Style</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button data-font="font-outfit" class="btn-font-choice p-2.5 rounded-lg border border-white/10 bg-slate-800 text-left font-outfit hover:border-sky-500 transition-all">
+                                <div class="text-xs font-bold">Outfit</div>
+                                <div class="text-[10px] text-slate-400">Modern Sans</div>
+                            </button>
+                            <button data-font="font-jakarta" class="btn-font-choice p-2.5 rounded-lg border border-white/10 bg-slate-800 text-left font-jakarta hover:border-sky-500 transition-all">
+                                <div class="text-xs font-bold">Plus Jakarta</div>
+                                <div class="text-[10px] text-slate-400">Geometric</div>
+                            </button>
+                            <button data-font="font-montserrat" class="btn-font-choice p-2.5 rounded-lg border border-white/10 bg-slate-800 text-left font-montserrat hover:border-sky-500 transition-all">
+                                <div class="text-xs font-bold">Montserrat</div>
+                                <div class="text-[10px] text-slate-400">Bold Display</div>
+                            </button>
+                            <button data-font="font-grotesk" class="btn-font-choice p-2.5 rounded-lg border border-white/10 bg-slate-800 text-left font-grotesk hover:border-sky-500 transition-all">
+                                <div class="text-xs font-bold">Space Grotesk</div>
+                                <div class="text-[10px] text-slate-400">Tech Sans</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Glow Effect -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <span class="text-xs font-semibold text-slate-200 block">Text Effect</span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button data-glow="glow-shadow" class="btn-glow-choice p-2 rounded-lg border border-white/10 bg-slate-800 text-center text-xs hover:border-sky-500 transition-all">Deep Shadow</button>
+                            <button data-glow="glow-soft" class="btn-glow-choice p-2 rounded-lg border border-white/10 bg-slate-800 text-center text-xs hover:border-sky-500 transition-all">Soft Glow</button>
+                            <button data-glow="glow-neon" class="btn-glow-choice p-2 rounded-lg border border-white/10 bg-slate-800 text-center text-xs hover:border-sky-500 transition-all">Neon Pulse</button>
+                        </div>
+                    </div>
+
+                    <!-- Display Options -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3 text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-300">Use 24-Hour Clock</span>
+                            <input type="checkbox" id="setting-24h" class="accent-sky-500 w-4 h-4 rounded cursor-pointer">
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-white/5">
+                            <span class="text-slate-300">Show Seconds</span>
+                            <input type="checkbox" id="setting-show-seconds" class="accent-sky-500 w-4 h-4 rounded cursor-pointer">
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-white/5">
+                            <span class="text-slate-300">Show Full Date</span>
+                            <input type="checkbox" id="setting-show-date" class="accent-sky-500 w-4 h-4 rounded cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Subtitle Quote -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-2">
+                        <label class="text-xs font-semibold text-slate-200 block">Custom Tagline / Subtitle</label>
+                        <input type="text" id="setting-greeting-input" placeholder="e.g. STAY INSPIRED" class="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                    </div>
+                </div>
+
+                <!-- TAB 3: WEATHER SETTINGS -->
+                <div id="tab-content-weather" class="space-y-5 hidden">
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-slate-200">Show Weather Widget</div>
+                                <div class="text-[11px] text-slate-400">Display live local temperature</div>
+                            </div>
+                            <input type="checkbox" id="setting-show-weather" class="accent-sky-500 w-4 h-4 rounded cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <span class="text-xs font-semibold text-slate-200 block">Temperature Unit</span>
+                        <div class="flex bg-slate-800 p-1 rounded-lg border border-white/10 text-xs">
+                            <button id="unit-celsius" class="flex-1 py-1.5 rounded-md bg-sky-500 text-white font-semibold transition-all">°C (Celsius)</button>
+                            <button id="unit-fahrenheit" class="flex-1 py-1.5 rounded-md text-slate-400 transition-all">°F (Fahrenheit)</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-slate-200">Local Location Refresh</div>
+                                <div class="text-[11px] text-slate-400">Re-detect location & weather</div>
+                            </div>
+                            <button id="btn-refresh-weather" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg text-xs text-slate-200 flex items-center space-x-1.5 transition-all">
+                                <i class="fa-solid fa-location-crosshairs text-sky-400"></i>
+                                <span>Locate</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Adjustments -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-medium text-slate-300">Background Overlay Darkness</span>
+                            <span id="val-darkness" class="text-sky-400 font-mono">35%</span>
+                        </div>
+                        <input type="range" id="slider-darkness" min="0" max="80" value="35" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                    </div>
+
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-medium text-slate-300">Background Blur</span>
+                            <span id="val-blur" class="text-sky-400 font-mono">0px</span>
+                        </div>
+                        <input type="range" id="slider-blur" min="0" max="20" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                    </div>
+
+                    <div class="pt-2 border-t border-white/10 flex justify-between items-center">
+                        <span class="text-xs text-slate-400">Reset options to default</span>
+                        <button id="btn-reset-settings" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg text-xs font-medium transition-colors">
+                            Restore Defaults
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 4: MUSIC SETTINGS -->
+                <div id="tab-content-music" class="space-y-5 hidden">
+                    <!-- Volume Control -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-medium text-slate-200">Music Volume</span>
+                            <span id="val-volume" class="text-sky-400 font-mono">70%</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-volume-low text-slate-400 text-xs"></i>
+                            <input type="range" id="slider-volume" min="0" max="100" value="70" class="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                            <i class="fa-solid fa-volume-high text-slate-200 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <!-- Add Custom Song -->
+                    <div class="bg-slate-900/50 border border-white/10 rounded-xl p-4 space-y-2">
+                        <label class="text-xs font-semibold text-slate-200 block">Add Custom MP3 Track URL</label>
+                        <div class="space-y-2">
+                            <input type="text" id="music-title-input" placeholder="Track Title (optional)..." class="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                            <div class="flex space-x-2">
+                                <input type="url" id="music-url-input" placeholder="https://example.com/audio.mp3" class="flex-1 bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                                <button id="btn-add-custom-track" class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-lg text-xs transition-all">Add Track</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Playlist -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-slate-300">Audio Playlist</span>
+                            <span id="playlist-count" class="text-slate-400">1 track</span>
+                        </div>
+                        <div id="music-playlist-container" class="space-y-1.5 max-h-56 overflow-y-auto p-1 bg-slate-900/40 rounded-xl border border-white/10"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-white/10 bg-slate-900/80 flex items-center justify-between text-xs text-slate-400">
+                <span>Wallpaper v2.3</span>
+                <span class="text-[11px] opacity-70">Press Esc to close</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtgQi2aVMAqhNb5Vsj30Sr9MilTbNC3NDNklRuFCl9c5xvsSsZdM7yl2S830kjLXLAoODHXm1zYuiY/pub?output=csv';
+
+        const FALLBACK_WALLPAPERS = [
+            'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1920&q=80'
+        ];
+
+        const UNSPLASH_COLLECTIONS = {
+            celebrity: [
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1920&q=80'
+            ],
+            car: [
+                'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1920&q=80'
+            ],
+            fashion: [
+                'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1920&q=80'
+            ],
+            concert: [
+                'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1920&q=80'
+            ],
+            aesthetic: [
+                'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1920&q=80'
+            ],
+            nature: [
+                'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1511497584788-876761465586?auto=format&fit=crop&w=1920&q=80',
+                'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80'
+            ]
+        };
+
+        // Lyrics Data for 「陪你慢慢長大」
+        const SONG_LYRICS = [
+            "[Verse 1]",
+            "凌晨三點　房裡一盞微光",
+            "你哭著尋找　熟悉的胸膛",
+            "我笨拙地抱著你　輕輕搖晃",
+            "才懂勇敢　有時只是守在身旁",
+            "不懂你為什麼　又紅了眼眶",
+            "只好一遍一遍　哼著同樣的樂章",
+            "當你終於靠著我　安靜進入夢鄉",
+            "整個世界　也跟著變得柔軟",
+            "[Pre-Chorus]",
+            "奶瓶的刻度　睡眠的長短",
+            "我怕一不留神　就錯過你的成長",
+            "那些忙亂疲憊　重複的夜晚",
+            "原來都會成為　最想念的片段",
+            "[Chorus]",
+            "小小的手握住我的指尖",
+            "也把我的世界悄悄改變",
+            "微光中你安穩地睡去",
+            "每一次心跳　都是愛的延續",
+            "等你有一天　走向更遠的風景",
+            "回頭會看見　我一直都在這裡",
+            "陪你寫下　最溫暖的記憶",
+            "陪你慢慢長大　是我最幸福的事情",
+            "[Verse 2]",
+            "我記下喝完奶的每個時間",
+            "換過的尿布　和熟睡的側臉",
+            "第一次翻身　第一次笑得那麼甜",
+            "平凡的日子　都是不會重來的瞬間",
+            "有時我疲倦　也懷疑自己",
+            "害怕沒能成為　你需要的那個爸爸",
+            "可當你伸出手　靠進我的懷裡",
+            "所有不安　都有了答案",
+            "[Pre-Chorus]",
+            "日曆一頁頁　走得比想像更快",
+            "昨天還在懷中　明天就學會離開",
+            "我不能替你擋下　生命所有風雨",
+            "但每當你需要　我會在這裡",
+            "[Chorus]",
+            "小小的手握住我的指尖",
+            "也把我的世界悄悄改變",
+            "微光中你安穩地睡去",
+            "每一次心跳　都是愛的延續",
+            "等你有一天　走向更遠的風景",
+            "回頭會看見　我一直都在這裡",
+            "陪你寫下　最溫暖的記憶",
+            "陪你慢慢長大　是我最幸福的事情",
+            "[Bridge]",
+            "也許有一天　你不再需要我抱",
+            "會有自己的遠方　自己的奔跑",
+            "我會記得今夜　你小小的模樣",
+            "也記得是你　讓我學會勇敢",
+            "我沒有所有答案t也不總是堅強",
+            "是你用一聲爸爸　給了我新的方向",
+            "原來在我陪著你　認識世界的路上",
+            "你也陪著我　成為更好的爸爸",
+            "[Final Chorus]",
+            "小小的手　曾握住我的指尖",
+            "從那一刻開始　世界完全改變",
+            "微光中你安穩地睡去",
+            "每一次心跳　都是愛的延續",
+            "放心去長大　去看遙遠的風景",
+            "無論走多遠　愛都會陪著你",
+            "我們寫下　最溫暖的記憶",
+            "陪你慢慢長大　是我一生最美的事情",
+            "[Outro]",
+            "睡吧　我的孩子",
+            "天亮以前　我都在這裡",
+            "你慢慢長大",
+            "我慢慢學會　成為爸爸"
+        ];
+
+        // Application State
+        let appState = {
+            wallpapers: [],
+            currentIndex: 0,
+            slideshowActive: false,
+            slideshowIntervalMs: 10000,
+            slideshowTimer: null,
+            
+            // Clock settings
+            use24h: true,
+            showSeconds: true,
+            showDate: true,
+            fontClass: 'font-outfit',
+            glowClass: 'glow-shadow',
+            greeting: '',
+
+            // Weather settings
+            showWeather: true,
+            tempUnit: 'C',
+            weatherData: null,
+
+            // Visual settings
+            darkness: 35,
+            blur: 0,
+
+            // Music Player state
+            playlist: [
+                {
+                    id: 1,
+                    title: '陪你慢慢長大',
+                    url: 'https://img.ai365.fans/artworks/5d9b7364-f483-41bd-827c-982491c91141/bpvcy14g54s.mp3',
+                    lyrics: SONG_LYRICS
+                }
+            ],
+            currentTrackIdx: 0,
+            isPlaying: false,
+            volume: 70,
+            isMuted: false,
+            showLyrics: false,
+            activeLyricIndex: -1
+        };
+
+        // Audio Object
+        const audioPlayer = new Audio();
+
+        // DOM Element Cache
+        const DOM = {
+            container: document.getElementById('wallpaper-container'),
+            overlay: document.getElementById('dark-overlay'),
+            clockBox: document.getElementById('clock-box'),
+            clockTime: document.getElementById('clock-time'),
+            clockDate: document.getElementById('clock-date'),
+            clockGreeting: document.getElementById('clock-greeting'),
+            clockWeather: document.getElementById('clock-weather'),
+            weatherIcon: document.getElementById('weather-icon'),
+            weatherTemp: document.getElementById('weather-temp'),
+            weatherLocation: document.getElementById('weather-location'),
+            mainContent: document.getElementById('main-content'),
+            uiOverlay: document.getElementById('ui-overlay'),
+            currentBgIndex: document.getElementById('current-bg-index'),
+            
+            // Buttons
+            btnPrev: document.getElementById('btn-prev-bg'),
+            btnNext: document.getElementById('btn-next-bg'),
+            btnRandom: document.getElementById('btn-random-bg'),
+            btnFullscreen: document.getElementById('btn-fullscreen'),
+            btnOpenSettings: document.getElementById('btn-open-settings'),
+            btnCloseSettings: document.getElementById('btn-close-settings'),
+            btnReloadCsv: document.getElementById('btn-reload-csv'),
+            btnAddCustomUrl: document.getElementById('btn-add-custom-url'),
+            btnResetSettings: document.getElementById('btn-reset-settings'),
+            btnRefreshWeather: document.getElementById('btn-refresh-weather'),
+            unitCelsius: document.getElementById('unit-celsius'),
+            unitFahrenheit: document.getElementById('unit-fahrenheit'),
+
+            btnFetchUnsplash: document.getElementById('btn-fetch-unsplash'),
+            unsplashSearchInput: document.getElementById('unsplash-search-input'),
+
+            // Lyrics DOM Elements
+            lyricsPanel: document.getElementById('lyrics-panel'),
+            lyricsScrollBox: document.getElementById('lyrics-scroll-box'),
+            lyricsSongTitle: document.getElementById('lyrics-song-title'),
+            btnToggleLyrics: document.getElementById('btn-toggle-lyrics'),
+            btnCloseLyrics: document.getElementById('btn-close-lyrics'),
+
+            // Music Player DOM Elements
+            musicPlayerBar: document.getElementById('music-player-bar'),
+            musicDiscWrap: document.getElementById('music-disc-wrap'),
+            musicDiscIcon: document.getElementById('music-disc-icon'),
+            musicTitle: document.getElementById('music-title'),
+            musicTime: document.getElementById('music-time'),
+            musicProgressContainer: document.getElementById('music-progress-container'),
+            musicProgressBar: document.getElementById('music-progress-bar'),
+            btnMusicPlay: document.getElementById('btn-music-play'),
+            musicPlayIcon: document.getElementById('music-play-icon'),
+            btnMusicPrev: document.getElementById('btn-music-prev'),
+            btnMusicNext: document.getElementById('btn-music-next'),
+            btnMusicMute: document.getElementById('btn-music-mute'),
+            musicMuteIcon: document.getElementById('music-mute-icon'),
+            sliderVolume: document.getElementById('slider-volume'),
+            valVolume: document.getElementById('val-volume'),
+            musicTitleInput: document.getElementById('music-title-input'),
+            musicUrlInput: document.getElementById('music-url-input'),
+            btnAddCustomTrack: document.getElementById('btn-add-custom-track'),
+            musicPlaylistContainer: document.getElementById('music-playlist-container'),
+            playlistCount: document.getElementById('playlist-count'),
+
+            // Modal & Drawer
+            settingsModal: document.getElementById('settings-modal'),
+            settingsDrawer: document.getElementById('settings-drawer'),
+            galleryGrid: document.getElementById('wallpaper-gallery'),
+            galleryCount: document.getElementById('gallery-count'),
+            csvStatusText: document.getElementById('csv-status-text'),
+            customUrlInput: document.getElementById('custom-url-input'),
+
+            // Toast
+            toastMsg: document.getElementById('toast-msg'),
+            toastText: document.getElementById('toast-text'),
+
+            // Inputs
+            settingSlideshowToggle: document.getElementById('setting-slideshow-toggle'),
+            settingSlideshowInterval: document.getElementById('setting-slideshow-interval'),
+            setting24h: document.getElementById('setting-24h'),
+            settingShowSeconds: document.getElementById('setting-show-seconds'),
+            settingShowDate: document.getElementById('setting-show-date'),
+            settingShowWeather: document.getElementById('setting-show-weather'),
+            settingGreetingInput: document.getElementById('setting-greeting-input'),
+            sliderDarkness: document.getElementById('slider-darkness'),
+            valDarkness: document.getElementById('val-darkness'),
+            sliderBlur: document.getElementById('slider-blur'),
+            valBlur: document.getElementById('val-blur'),
+
+            // Tabs
+            tabBtnBg: document.getElementById('tab-btn-bg'),
+            tabBtnClock: document.getElementById('tab-btn-clock'),
+            tabBtnWeather: document.getElementById('tab-btn-weather'),
+            tabBtnMusic: document.getElementById('tab-btn-music'),
+            tabContentBg: document.getElementById('tab-content-bg'),
+            tabContentClock: document.getElementById('tab-content-clock'),
+            tabContentWeather: document.getElementById('tab-content-weather'),
+            tabContentMusic: document.getElementById('tab-content-music')
+        };
+
+        function initMusicPlayer() {
+            audioPlayer.volume = appState.volume / 100;
+            loadTrack(appState.currentTrackIdx, false);
+
+            audioPlayer.addEventListener('timeupdate', () => {
+                updateAudioProgress();
+                updateDynamicLyrics();
+            });
+            audioPlayer.addEventListener('ended', playNextTrack);
+            audioPlayer.addEventListener('pause', () => {
+                appState.isPlaying = false;
+                updateMusicUI();
+            });
+            audioPlayer.addEventListener('play', () => {
+                appState.isPlaying = true;
+                updateMusicUI();
+            });
+
+            DOM.btnMusicPlay.addEventListener('click', toggleMusicPlay);
+            DOM.btnMusicPrev.addEventListener('click', playPrevTrack);
+            DOM.btnMusicNext.addEventListener('click', playNextTrack);
+            DOM.btnMusicMute.addEventListener('click', toggleMusicMute);
+
+            DOM.btnToggleLyrics.addEventListener('click', toggleLyricsPanel);
+            DOM.btnCloseLyrics.addEventListener('click', () => toggleLyricsPanel(false));
+
+            DOM.musicProgressContainer.addEventListener('click', (e) => {
+                if (!audioPlayer.duration) return;
+                const rect = DOM.musicProgressContainer.getBoundingClientRect();
+                const pos = (e.clientX - rect.left) / rect.width;
+                audioPlayer.currentTime = pos * audioPlayer.duration;
+            });
+
+            DOM.sliderVolume.addEventListener('input', (e) => {
+                const vol = parseInt(e.target.value, 10);
+                appState.volume = vol;
+                audioPlayer.volume = vol / 100;
+                DOM.valVolume.textContent = `${vol}%`;
+                if (vol === 0) {
+                    DOM.musicMuteIcon.className = 'fa-solid fa-volume-xmark text-red-400';
+                } else {
+                    DOM.musicMuteIcon.className = 'fa-solid fa-volume-high';
+                }
+                savePreferences();
+            });
+
+            DOM.btnAddCustomTrack.addEventListener('click', () => {
+                const url = DOM.musicUrlInput.value.trim();
+                const title = DOM.musicTitleInput.value.trim() || `Custom Track #${appState.playlist.length + 1}`;
+                if (url) {
+                    appState.playlist.push({ id: Date.now(), title, url });
+                    DOM.musicUrlInput.value = '';
+                    DOM.musicTitleInput.value = '';
+                    renderPlaylist();
+                    showToast(`Added track: ${title}`, 'fa-music');
+                } else {
+                    showToast('Please enter a valid MP3 URL', 'fa-triangle-exclamation');
+                }
+            });
+
+            renderPlaylist();
+            renderLyricsContent();
+        }
+
+        function toggleLyricsPanel(forceState = null) {
+            if (forceState !== null) {
+                appState.showLyrics = forceState;
+            } else {
+                appState.showLyrics = !appState.showLyrics;
+            }
+
+            if (appState.showLyrics) {
+                DOM.lyricsPanel.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+                DOM.lyricsPanel.classList.add('opacity-100', 'translate-y-0');
+                DOM.btnToggleLyrics.classList.add('bg-sky-500', 'text-white');
+                DOM.btnToggleLyrics.classList.remove('bg-sky-500/20', 'text-sky-300');
+            } else {
+                DOM.lyricsPanel.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+                DOM.lyricsPanel.classList.remove('opacity-100', 'translate-y-0');
+                DOM.btnToggleLyrics.classList.remove('bg-sky-500', 'text-white');
+                DOM.btnToggleLyrics.classList.add('bg-sky-500/20', 'text-sky-300');
+            }
+        }
+
+        function renderLyricsContent() {
+            const currentTrack = appState.playlist[appState.currentTrackIdx];
+            DOM.lyricsSongTitle.textContent = `${currentTrack.title} - 動態歌詞`;
+            DOM.lyricsScrollBox.innerHTML = '';
+
+            const lyrics = currentTrack.lyrics || ["(No lyrics available)"];
+
+            lyrics.forEach((line, idx) => {
+                const p = document.createElement('p');
+                const isSectionHeader = line.startsWith('[');
+                p.id = `lyric-line-${idx}`;
+                p.className = `transition-all duration-300 py-1 rounded-lg ${
+                    isSectionHeader ? 'text-sky-400 font-bold text-xs uppercase tracking-widest pt-3' : 'text-slate-400 font-medium hover:text-white'
+                }`;
+                p.textContent = line;
+                p.addEventListener('click', () => {
+                    if (audioPlayer.duration && !isSectionHeader) {
+                        const targetTime = (idx / lyrics.length) * audioPlayer.duration;
+                        audioPlayer.currentTime = targetTime;
+                    }
+                });
+                DOM.lyricsScrollBox.appendChild(p);
+            });
+        }
+
+        function updateDynamicLyrics() {
+            if (!audioPlayer.duration) return;
+            const currentTrack = appState.playlist[appState.currentTrackIdx];
+            const lyrics = currentTrack.lyrics;
+            if (!lyrics || !lyrics.length) return;
+
+            const progressRatio = audioPlayer.currentTime / audioPlayer.duration;
+            const calculatedIdx = Math.min(Math.floor(progressRatio * lyrics.length), lyrics.length - 1);
+
+            if (calculatedIdx !== appState.activeLyricIndex) {
+                if (appState.activeLyricIndex >= 0) {
+                    const prevElem = document.getElementById(`lyric-line-${appState.activeLyricIndex}`);
+                    if (prevElem && !lyrics[appState.activeLyricIndex].startsWith('[')) {
+                        prevElem.className = 'transition-all duration-300 py-1 rounded-lg text-slate-400 font-medium';
+                    }
+                }
+
+                appState.activeLyricIndex = calculatedIdx;
+                const activeElem = document.getElementById(`lyric-line-${calculatedIdx}`);
+                if (activeElem && !lyrics[calculatedIdx].startsWith('[')) {
+                    activeElem.className = 'transition-all duration-300 py-1 px-2 rounded-lg text-white font-bold text-base bg-sky-500/30 text-sky-200 border border-sky-400/40 shadow-lg scale-105';
+                    activeElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        function loadTrack(idx, autoPlay = true) {
+            if (!appState.playlist.length) return;
+            if (idx < 0) idx = appState.playlist.length - 1;
+            if (idx >= appState.playlist.length) idx = 0;
+
+            appState.currentTrackIdx = idx;
+            const track = appState.playlist[idx];
+            audioPlayer.src = track.url;
+            DOM.musicTitle.textContent = track.title;
+
+            renderPlaylist();
+            renderLyricsContent();
+
+            if (autoPlay) {
+                audioPlayer.play().then(() => {
+                    appState.isPlaying = true;
+                    updateMusicUI();
+                }).catch(() => {
+                    showToast('Click play button to start music', 'fa-circle-info');
+                });
+            } else {
+                updateMusicUI();
+            }
+        }
+
+        function toggleMusicPlay() {
+            if (!audioPlayer.src) {
+                loadTrack(appState.currentTrackIdx, true);
+                return;
+            }
+            if (audioPlayer.paused) {
+                audioPlayer.play().then(() => {
+                    appState.isPlaying = true;
+                    updateMusicUI();
+                    showToast(`Playing: ${appState.playlist[appState.currentTrackIdx].title}`, 'fa-music');
+                }).catch(() => {
+                    showToast('Unable to autoplay audio', 'fa-triangle-exclamation');
+                });
+            } else {
+                audioPlayer.pause();
+                appState.isPlaying = false;
+                updateMusicUI();
+            }
+        }
+
+        function playNextTrack() { loadTrack(appState.currentTrackIdx + 1, true); }
+        function playPrevTrack() { loadTrack(appState.currentTrackIdx - 1, true); }
+
+        function toggleMusicMute() {
+            appState.isMuted = !appState.isMuted;
+            audioPlayer.muted = appState.isMuted;
+            if (appState.isMuted) {
+                DOM.musicMuteIcon.className = 'fa-solid fa-volume-xmark text-red-400';
+                showToast('Music Muted', 'fa-volume-xmark');
+            } else {
+                DOM.musicMuteIcon.className = 'fa-solid fa-volume-high';
+                showToast('Music Unmuted', 'fa-volume-high');
+            }
+        }
+
+        function updateAudioProgress() {
+            if (isNaN(audioPlayer.duration) || !audioPlayer.duration) return;
+            const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            DOM.musicProgressBar.style.width = `${pct}%`;
+
+            const curMin = String(Math.floor(audioPlayer.currentTime / 60)).padStart(2, '0');
+            const curSec = String(Math.floor(audioPlayer.currentTime % 60)).padStart(2, '0');
+            const durMin = String(Math.floor(audioPlayer.duration / 60)).padStart(2, '0');
+            const durSec = String(Math.floor(audioPlayer.duration % 60)).padStart(2, '0');
+
+            DOM.musicTime.textContent = `${curMin}:${curSec} / ${durMin}:${durSec}`;
+        }
+
+        function updateMusicUI() {
+            if (appState.isPlaying) {
+                DOM.musicPlayIcon.className = 'fa-solid fa-pause text-xs';
+                DOM.musicDiscWrap.classList.add('animate-spin-slow');
+                DOM.musicDiscIcon.classList.add('text-sky-200');
+            } else {
+                DOM.musicPlayIcon.className = 'fa-solid fa-play text-xs ml-0.5';
+                DOM.musicDiscWrap.classList.remove('animate-spin-slow');
+                DOM.musicDiscIcon.classList.remove('text-sky-200');
+            }
+        }
+
+        function renderPlaylist() {
+            DOM.musicPlaylistContainer.innerHTML = '';
+            DOM.playlistCount.textContent = `${appState.playlist.length} track${appState.playlist.length > 1 ? 's' : ''}`;
+
+            appState.playlist.forEach((track, idx) => {
+                const item = document.createElement('div');
+                const isActive = idx === appState.currentTrackIdx;
+                item.className = `p-2.5 rounded-lg border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                    isActive ? 'bg-sky-500/20 border-sky-500/50 text-sky-300 font-semibold' : 'bg-slate-800/80 border-white/5 text-slate-300 hover:bg-slate-800'
+                }`;
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2.5 truncate flex-1 pr-2">
+                        <i class="fa-solid ${isActive && appState.isPlaying ? 'fa-volume-high text-sky-400 animate-pulse' : 'fa-music text-slate-400'} text-xs"></i>
+                        <span class="truncate">${track.title}</span>
+                    </div>
+                    <button class="btn-play-item px-2 py-1 rounded bg-slate-700 hover:bg-sky-500 text-[10px] text-white transition-colors">
+                        ${isActive && appState.isPlaying ? 'Pause' : 'Play'}
+                    </button>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.btn-play-item')) {
+                        if (isActive && appState.isPlaying) {
+                            toggleMusicPlay();
+                        } else {
+                            loadTrack(idx, true);
+                        }
+                    } else {
+                        loadTrack(idx, true);
+                    }
+                });
+
+                DOM.musicPlaylistContainer.appendChild(item);
+            });
+        }
+
+        async function fetchWallpapersFromCSV() {
+            DOM.csvStatusText.textContent = 'Syncing CSV spreadsheet...';
+            try {
+                const res = await fetch(CSV_URL);
+                if (!res.ok) throw new Error('Network error');
+                const text = await res.text();
+                const urls = parseUrlsFromCSV(text);
+
+                if (urls.length > 0) {
+                    appState.wallpapers = urls;
+                    DOM.csvStatusText.textContent = `Loaded ${urls.length} wallpapers from CSV`;
+                    showToast(`Synced ${urls.length} wallpapers from sheet`, 'fa-database');
+                } else {
+                    throw new Error('No valid URLs found in CSV');
+                }
+            } catch (e) {
+                console.warn('CSV load failed, using fallback wallpapers:', e);
+                DOM.csvStatusText.textContent = 'CSV sync failed (using fallback)';
+                appState.wallpapers = [...FALLBACK_WALLPAPERS];
+            }
+            renderGallery();
+            applyWallpaper(0);
+        }
+
+        function parseUrlsFromCSV(text) {
+            const urls = [];
+            const lines = text.split(/\r?\n/);
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                const cells = line.split(',');
+                for (let cell of cells) {
+                    let clean = cell.trim().replace(/^["']|["']$/g, '');
+                    if (clean.match(/^https?:\/\/.+/i)) {
+                        urls.push(clean);
+                    }
+                }
+            }
+            return urls;
+        }
+
+        function loadUnsplashTopic(topic, customKeyword = '') {
+            let urls = UNSPLASH_COLLECTIONS[topic] || [];
+
+            if (customKeyword) {
+                const encoded = encodeURIComponent(customKeyword.trim());
+                urls = [
+                    `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1920&q=80&sig=${encoded}1`,
+                    `https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1920&q=80&sig=${encoded}2`,
+                    `https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1920&q=80&sig=${encoded}3`,
+                    `https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1920&q=80&sig=${encoded}4`
+                ];
+            }
+
+            if (urls.length > 0) {
+                urls.forEach(url => {
+                    if (!appState.wallpapers.includes(url)) {
+                        appState.wallpapers.unshift(url);
+                    }
+                });
+                renderGallery();
+                applyWallpaper(0);
+                showToast(`Loaded wallpapers for "${customKeyword || topic}"`, 'fa-brands fa-unsplash');
+            }
+        }
+
+        function renderGallery() {
+            DOM.galleryGrid.innerHTML = '';
+            DOM.galleryCount.textContent = `${appState.wallpapers.length} loaded`;
+
+            appState.wallpapers.forEach((url, idx) => {
+                const tile = document.createElement('div');
+                tile.className = `relative aspect-video rounded-lg overflow-hidden border-2 cursor-pointer transition-all duration-200 group ${
+                    idx === appState.currentIndex ? 'border-sky-500 scale-95 shadow-lg shadow-sky-500/20' : 'border-transparent hover:border-white/40'
+                }`;
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = `Wallpaper ${idx + 1}`;
+                img.className = 'w-full h-full object-cover transition-transform duration-300 group-hover:scale-110';
+                img.loading = 'lazy';
+                img.onerror = () => {
+                    img.src = 'https://placehold.co/600x400/1e293b/ffffff?text=Image+Error';
+                };
+
+                const badge = document.createElement('div');
+                badge.className = 'absolute bottom-1 right-1 bg-black/60 text-[10px] font-mono text-white px-1.5 py-0.5 rounded backdrop-blur-sm';
+                badge.textContent = `#${idx + 1}`;
+
+                tile.appendChild(img);
+                tile.appendChild(badge);
+
+                tile.addEventListener('click', () => {
+                    applyWallpaper(idx);
+                });
+
+                DOM.galleryGrid.appendChild(tile);
+            });
+        }
+
+        function applyWallpaper(index) {
+            if (!appState.wallpapers.length) return;
+
+            if (index < 0) index = appState.wallpapers.length - 1;
+            if (index >= appState.wallpapers.length) index = 0;
+
+            appState.currentIndex = index;
+            const url = appState.wallpapers[index];
+            
+            const imgPreload = new Image();
+            imgPreload.src = url;
+            imgPreload.onload = () => {
+                DOM.container.style.backgroundImage = `url('${url}')`;
+            };
+            imgPreload.onerror = () => {
+                DOM.container.style.backgroundImage = `url('${url}')`;
+            };
+
+            DOM.currentBgIndex.textContent = `${index + 1} / ${appState.wallpapers.length}`;
+            renderGallery();
+            savePreferences();
+        }
+
+        function nextWallpaper() { applyWallpaper(appState.currentIndex + 1); }
+        function prevWallpaper() { applyWallpaper(appState.currentIndex - 1); }
+        function randomWallpaper() {
+            if (appState.wallpapers.length <= 1) return;
+            let nextIdx;
+            do {
+                nextIdx = Math.floor(Math.random() * appState.wallpapers.length);
+            } while (nextIdx === appState.currentIndex);
+            applyWallpaper(nextIdx);
+        }
+
+        function updateClock() {
+            const now = new Date();
+
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            let period = '';
+
+            if (!appState.use24h) {
+                period = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+            }
+
+            const formattedHours = String(hours).padStart(2, '0');
+
+            let timeStr = `${formattedHours}:${minutes}`;
+            if (appState.showSeconds) {
+                timeStr += `<span class="text-[0.45em] ml-2 opacity-80 font-normal inline-block">${seconds}</span>`;
+            }
+            if (!appState.use24h) {
+                timeStr += `<span class="text-[0.3em] font-medium ml-3 tracking-normal opacity-70 uppercase">${period}</span>`;
+            }
+
+            DOM.clockTime.innerHTML = timeStr;
+
+            if (appState.showDate) {
+                const options = { weekday: 'long', month: 'long', day: 'numeric' };
+                DOM.clockDate.textContent = now.toLocaleDateString('en-US', options).toUpperCase();
+                DOM.clockDate.style.display = 'block';
+            } else {
+                DOM.clockDate.style.display = 'none';
+            }
+
+            if (appState.greeting.trim()) {
+                DOM.clockGreeting.textContent = appState.greeting.toUpperCase();
+                DOM.clockGreeting.classList.remove('hidden');
+            } else {
+                DOM.clockGreeting.classList.add('hidden');
+            }
+        }
+
+        function applyClockStyles() {
+            DOM.clockTime.className = `giant-clock-num font-extrabold tracking-tighter transition-all duration-300 flex items-baseline justify-center ${appState.fontClass} ${appState.glowClass}`;
+            DOM.clockDate.className = `mt-3 sm:mt-5 text-base sm:text-xl md:text-2xl font-semibold tracking-wider uppercase opacity-90 transition-all ${appState.fontClass} ${appState.glowClass}`;
+            DOM.clockGreeting.className = `mt-3 text-xs sm:text-sm font-light tracking-widest opacity-80 max-w-lg transition-all uppercase ${appState.fontClass} ${appState.glowClass}`;
+
+            document.querySelectorAll('.btn-font-choice').forEach(btn => {
+                if (btn.getAttribute('data-font') === appState.fontClass) {
+                    btn.classList.add('border-sky-500', 'text-sky-300');
+                    btn.classList.remove('border-white/10');
+                } else {
+                    btn.classList.remove('border-sky-500', 'text-sky-300');
+                    btn.classList.add('border-white/10');
+                }
+            });
+
+            document.querySelectorAll('.btn-glow-choice').forEach(btn => {
+                if (btn.getAttribute('data-glow') === appState.glowClass) {
+                    btn.classList.add('border-sky-500', 'text-sky-300');
+                    btn.classList.remove('border-white/10');
+                } else {
+                    btn.classList.remove('border-sky-500', 'text-sky-300');
+                    btn.classList.add('border-white/10');
+                }
+            });
+        }
+
+        async function fetchLocalWeather() {
+            DOM.weatherLocation.textContent = 'Detecting location...';
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        await getWeatherByCoords(pos.coords.latitude, pos.coords.longitude, "Local Weather");
+                    },
+                    async () => {
+                        await getWeatherByIP();
+                    },
+                    { timeout: 6000 }
+                );
+            } else {
+                await getWeatherByIP();
+            }
+        }
+
+        async function getWeatherByIP() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                if (data.latitude && data.longitude) {
+                    const city = data.city || data.country_name || "Local";
+                    await getWeatherByCoords(data.latitude, data.longitude, city);
+                    return;
+                }
+            } catch (e) {
+                console.warn('IP location failed, using default location');
+            }
+            await getWeatherByCoords(25.033, 121.565, "Taipei");
+        }
+
+        async function getWeatherByCoords(lat, lon, locationLabel) {
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.current_weather) {
+                    appState.weatherData = {
+                        tempC: Math.round(data.current_weather.temperature),
+                        code: data.current_weather.weathercode,
+                        location: locationLabel
+                    };
+                    updateWeatherDisplay();
+                }
+            } catch (err) {
+                console.error('Weather API error:', err);
+                DOM.weatherLocation.textContent = 'Weather Unavailable';
+            }
+        }
+
+        function updateWeatherDisplay() {
+            if (!appState.showWeather) {
+                DOM.clockWeather.style.display = 'none';
+                return;
+            }
+            DOM.clockWeather.style.display = 'flex';
+
+            if (!appState.weatherData) return;
+
+            const { tempC, code, location } = appState.weatherData;
+            
+            let displayTemp = `${tempC}°C`;
+            if (appState.tempUnit === 'F') {
+                const tempF = Math.round((tempC * 9/5) + 32);
+                displayTemp = `${tempF}°F`;
+            }
+
+            DOM.weatherTemp.textContent = displayTemp;
+            DOM.weatherLocation.textContent = location;
+
+            const weatherInfo = getWeatherInfo(code);
+            DOM.weatherIcon.className = `fa-solid ${weatherInfo.icon} text-sm sm:text-lg`;
+        }
+
+        function getWeatherInfo(code) {
+            switch(code) {
+                case 0: return { icon: 'fa-sun text-amber-400' };
+                case 1: case 2: return { icon: 'fa-cloud-sun text-amber-300' };
+                case 3: return { icon: 'fa-cloud text-slate-300' };
+                case 45: case 48: return { icon: 'fa-smog text-slate-400' };
+                case 51: case 53: case 55: case 61: case 63: case 65: return { icon: 'fa-cloud-rain text-blue-400' };
+                case 71: case 73: case 75: case 85: case 86: return { icon: 'fa-snowflake text-sky-200' };
+                case 95: case 96: case 99: return { icon: 'fa-cloud-bolt text-yellow-400' };
+                default: return { icon: 'fa-temperature-half text-sky-400' };
+            }
+        }
+
+        function updateSlideshowState() {
+            if (appState.slideshowTimer) {
+                clearInterval(appState.slideshowTimer);
+                appState.slideshowTimer = null;
+            }
+
+            if (appState.slideshowActive) {
+                appState.slideshowTimer = setInterval(() => {
+                    nextWallpaper();
+                }, appState.slideshowIntervalMs);
+            }
+        }
+
+        function applyDisplayEffects() {
+            DOM.overlay.style.opacity = appState.darkness / 100;
+            DOM.container.style.filter = `blur(${appState.blur}px)`;
+
+            DOM.valDarkness.textContent = `${appState.darkness}%`;
+            DOM.valBlur.textContent = `${appState.blur}px`;
+        }
+
+        let idleTimer = null;
+        function resetIdleTimer() {
+            DOM.uiOverlay.classList.remove('hidden-ui');
+            DOM.musicPlayerBar.classList.remove('hidden-ui');
+            if (appState.showLyrics) DOM.lyricsPanel.classList.remove('hidden-ui');
+            clearTimeout(idleTimer);
+
+            if (DOM.settingsModal.classList.contains('opacity-100')) return;
+
+            idleTimer = setTimeout(() => {
+                DOM.uiOverlay.classList.add('hidden-ui');
+                DOM.musicPlayerBar.classList.add('hidden-ui');
+                if (appState.showLyrics) DOM.lyricsPanel.classList.add('hidden-ui');
+            }, 3500);
+        }
+
+        let toastTimer = null;
+        function showToast(msg, iconClass = 'fa-circle-info') {
+            DOM.toastText.textContent = msg;
+            const iconElem = document.getElementById('toast-icon');
+            iconElem.className = `fa-solid ${iconClass} text-sky-400`;
+
+            DOM.toastMsg.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            DOM.toastMsg.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                DOM.toastMsg.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+                DOM.toastMsg.classList.remove('opacity-100', 'translate-y-0');
+            }, 2500);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {
+                    showToast('Cannot enter fullscreen mode', 'fa-triangle-exclamation');
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        function savePreferences() {
+            try {
+                const prefs = {
+                    use24h: appState.use24h,
+                    showSeconds: appState.showSeconds,
+                    showDate: appState.showDate,
+                    showWeather: appState.showWeather,
+                    tempUnit: appState.tempUnit,
+                    fontClass: appState.fontClass,
+                    glowClass: appState.glowClass,
+                    greeting: appState.greeting,
+                    darkness: appState.darkness,
+                    blur: appState.blur,
+                    slideshowActive: appState.slideshowActive,
+                    slideshowIntervalMs: appState.slideshowIntervalMs,
+                    volume: appState.volume
+                };
+                localStorage.setItem('wallpaper_clock_prefs', JSON.stringify(prefs));
+            } catch (e) {}
+        }
+
+        function loadSavedPreferences() {
+            try {
+                const data = localStorage.getItem('wallpaper_clock_prefs') || localStorage.getItem('celebrity_clock_prefs');
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    Object.assign(appState, parsed);
+                }
+            } catch (e) {}
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('mousemove', resetIdleTimer);
+            window.addEventListener('mousedown', resetIdleTimer);
+            window.addEventListener('keydown', resetIdleTimer);
+            window.addEventListener('touchstart', resetIdleTimer);
+
+            DOM.btnNext.addEventListener('click', (e) => { e.stopPropagation(); nextWallpaper(); });
+            DOM.btnPrev.addEventListener('click', (e) => { e.stopPropagation(); prevWallpaper(); });
+            DOM.btnRandom.addEventListener('click', (e) => { e.stopPropagation(); randomWallpaper(); });
+            DOM.btnFullscreen.addEventListener('click', toggleFullscreen);
+
+            DOM.clockBox.addEventListener('click', () => { randomWallpaper(); });
+
+            const openModal = () => {
+                DOM.settingsModal.classList.remove('opacity-0', 'pointer-events-none');
+                DOM.settingsModal.classList.add('opacity-100');
+                DOM.settingsDrawer.classList.remove('translate-x-full');
+                DOM.uiOverlay.classList.remove('hidden-ui');
+                DOM.musicPlayerBar.classList.remove('hidden-ui');
+            };
+
+            const closeModal = () => {
+                DOM.settingsDrawer.classList.add('translate-x-full');
+                DOM.settingsModal.classList.remove('opacity-100');
+                DOM.settingsModal.classList.add('opacity-0', 'pointer-events-none');
+                resetIdleTimer();
+            };
+
+            DOM.btnOpenSettings.addEventListener('click', openModal);
+            DOM.btnCloseSettings.addEventListener('click', closeModal);
+            DOM.settingsModal.addEventListener('click', (e) => {
+                if (e.target === DOM.settingsModal) closeModal();
+            });
+
+            const switchTab = (activeTab) => {
+                DOM.tabContentBg.classList.add('hidden');
+                DOM.tabContentClock.classList.add('hidden');
+                DOM.tabContentWeather.classList.add('hidden');
+                DOM.tabContentMusic.classList.add('hidden');
+
+                DOM.tabBtnBg.className = 'flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all';
+                DOM.tabBtnClock.className = 'flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all';
+                DOM.tabBtnWeather.className = 'flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all';
+                DOM.tabBtnMusic.className = 'flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center space-x-1.5 transition-all';
+
+                if (activeTab === 'bg') {
+                    DOM.tabContentBg.classList.remove('hidden');
+                    DOM.tabBtnBg.className = 'flex-1 py-3 border-b-2 border-sky-500 text-sky-400 flex items-center justify-center space-x-1.5 transition-all';
+                } else if (activeTab === 'clock') {
+                    DOM.tabContentClock.classList.remove('hidden');
+                    DOM.tabBtnClock.className = 'flex-1 py-3 border-b-2 border-sky-500 text-sky-400 flex items-center justify-center space-x-1.5 transition-all';
+                } else if (activeTab === 'weather') {
+                    DOM.tabContentWeather.classList.remove('hidden');
+                    DOM.tabBtnWeather.className = 'flex-1 py-3 border-b-2 border-sky-500 text-sky-400 flex items-center justify-center space-x-1.5 transition-all';
+                } else if (activeTab === 'music') {
+                    DOM.tabContentMusic.classList.remove('hidden');
+                    DOM.tabBtnMusic.className = 'flex-1 py-3 border-b-2 border-sky-500 text-sky-400 flex items-center justify-center space-x-1.5 transition-all';
+                }
+            };
+
+            DOM.tabBtnBg.addEventListener('click', () => switchTab('bg'));
+            DOM.tabBtnClock.addEventListener('click', () => switchTab('clock'));
+            DOM.tabBtnWeather.addEventListener('click', () => switchTab('weather'));
+            DOM.tabBtnMusic.addEventListener('click', () => switchTab('music'));
+
+            document.querySelectorAll('.btn-unsplash-tag').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const topic = btn.getAttribute('data-unsplash-topic');
+                    loadUnsplashTopic(topic);
+                });
+            });
+
+            if (DOM.btnFetchUnsplash && DOM.unsplashSearchInput) {
+                DOM.btnFetchUnsplash.addEventListener('click', () => {
+                    const query = DOM.unsplashSearchInput.value.trim();
+                    if (query) {
+                        loadUnsplashTopic('celebrity', query);
+                    } else {
+                        showToast('Please enter a search topic', 'fa-triangle-exclamation');
+                    }
+                });
+
+                DOM.unsplashSearchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const query = DOM.unsplashSearchInput.value.trim();
+                        if (query) {
+                            loadUnsplashTopic('celebrity', query);
+                        }
+                    }
+                });
+            }
+
+            DOM.btnReloadCsv.addEventListener('click', () => fetchWallpapersFromCSV());
+
+            DOM.btnAddCustomUrl.addEventListener('click', () => {
+                const url = DOM.customUrlInput.value.trim();
+                if (url) {
+                    appState.wallpapers.unshift(url);
+                    DOM.customUrlInput.value = '';
+                    renderGallery();
+                    applyWallpaper(0);
+                    showToast('Custom wallpaper added', 'fa-circle-check');
+                }
+            });
+
+            DOM.settingSlideshowToggle.addEventListener('change', (e) => {
+                appState.slideshowActive = e.target.checked;
+                updateSlideshowState();
+                savePreferences();
+                showToast(appState.slideshowActive ? 'Slideshow started' : 'Slideshow paused');
+            });
+
+            DOM.settingSlideshowInterval.addEventListener('change', (e) => {
+                appState.slideshowIntervalMs = parseInt(e.target.value, 10);
+                updateSlideshowState();
+                savePreferences();
+            });
+
+            DOM.setting24h.addEventListener('change', (e) => {
+                appState.use24h = e.target.checked;
+                updateClock();
+                savePreferences();
+            });
+
+            DOM.settingShowSeconds.addEventListener('change', (e) => {
+                appState.showSeconds = e.target.checked;
+                updateClock();
+                savePreferences();
+            });
+
+            DOM.settingShowDate.addEventListener('change', (e) => {
+                appState.showDate = e.target.checked;
+                updateClock();
+                savePreferences();
+            });
+
+            DOM.settingShowWeather.addEventListener('change', (e) => {
+                appState.showWeather = e.target.checked;
+                updateWeatherDisplay();
+                savePreferences();
+            });
+
+            DOM.unitCelsius.addEventListener('click', () => {
+                appState.tempUnit = 'C';
+                DOM.unitCelsius.className = 'flex-1 py-1.5 rounded-md bg-sky-500 text-white font-semibold transition-all';
+                DOM.unitFahrenheit.className = 'flex-1 py-1.5 rounded-md text-slate-400 transition-all';
+                updateWeatherDisplay();
+                savePreferences();
+            });
+
+            DOM.unitFahrenheit.addEventListener('click', () => {
+                appState.tempUnit = 'F';
+                DOM.unitFahrenheit.className = 'flex-1 py-1.5 rounded-md bg-sky-500 text-white font-semibold transition-all';
+                DOM.unitCelsius.className = 'flex-1 py-1.5 rounded-md text-slate-400 transition-all';
+                updateWeatherDisplay();
+                savePreferences();
+            });
+
+            DOM.btnRefreshWeather.addEventListener('click', () => {
+                fetchLocalWeather();
+                showToast('Updating weather data...', 'fa-rotate');
+            });
+
+            DOM.settingGreetingInput.addEventListener('input', (e) => {
+                appState.greeting = e.target.value;
+                updateClock();
+                savePreferences();
+            });
+
+            document.querySelectorAll('.btn-font-choice').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    appState.fontClass = btn.getAttribute('data-font');
+                    applyClockStyles();
+                    savePreferences();
+                });
+            });
+
+            document.querySelectorAll('.btn-glow-choice').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    appState.glowClass = btn.getAttribute('data-glow');
+                    applyClockStyles();
+                    savePreferences();
+                });
+            });
+
+            DOM.sliderDarkness.addEventListener('input', (e) => {
+                appState.darkness = parseInt(e.target.value, 10);
+                applyDisplayEffects();
+                savePreferences();
+            });
+
+            DOM.sliderBlur.addEventListener('input', (e) => {
+                appState.blur = parseInt(e.target.value, 10);
+                applyDisplayEffects();
+                savePreferences();
+            });
+
+            DOM.btnResetSettings.addEventListener('click', () => {
+                appState.use24h = true;
+                appState.showSeconds = true;
+                appState.showDate = true;
+                appState.showWeather = true;
+                appState.tempUnit = 'C';
+                appState.fontClass = 'font-outfit';
+                appState.glowClass = 'glow-shadow';
+                appState.greeting = '';
+                appState.darkness = 35;
+                appState.blur = 0;
+                appState.slideshowActive = false;
+                appState.slideshowIntervalMs = 10000;
+                appState.volume = 70;
+
+                syncFormInputsWithState();
+                applyClockStyles();
+                applyDisplayEffects();
+                updateWeatherDisplay();
+                updateSlideshowState();
+                audioPlayer.volume = 0.7;
+                DOM.valVolume.textContent = '70%';
+                DOM.sliderVolume.value = 70;
+
+                savePreferences();
+                showToast('Settings restored to default', 'fa-arrow-rotate-left');
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+                if (e.key === 'ArrowRight' || e.key === ' ') {
+                    nextWallpaper();
+                } else if (e.key === 'ArrowLeft') {
+                    prevWallpaper();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    randomWallpaper();
+                } else if (e.key === 'f' || e.key === 'F') {
+                    toggleFullscreen();
+                } else if (e.key === 'm' || e.key === 'M') {
+                    toggleMusicPlay();
+                } else if (e.key === 'l' || e.key === 'L') {
+                    toggleLyricsPanel();
+                } else if (e.key === 'Escape') {
+                    closeModal();
+                    toggleLyricsPanel(false);
+                }
+            });
+        }
+
+        function syncFormInputsWithState() {
+            DOM.settingSlideshowToggle.checked = appState.slideshowActive;
+            DOM.settingSlideshowInterval.value = appState.slideshowIntervalMs;
+            DOM.setting24h.checked = appState.use24h;
+            DOM.settingShowSeconds.checked = appState.showSeconds;
+            DOM.settingShowDate.checked = appState.showDate;
+            DOM.settingShowWeather.checked = appState.showWeather;
+            DOM.settingGreetingInput.value = appState.greeting || '';
+            DOM.sliderDarkness.value = appState.darkness;
+            DOM.sliderBlur.value = appState.blur;
+            DOM.sliderVolume.value = appState.volume;
+            DOM.valVolume.textContent = `${appState.volume}%`;
+
+            if (appState.tempUnit === 'F') {
+                DOM.unitFahrenheit.className = 'flex-1 py-1.5 rounded-md bg-sky-500 text-white font-semibold transition-all';
+                DOM.unitCelsius.className = 'flex-1 py-1.5 rounded-md text-slate-400 transition-all';
+            } else {
+                DOM.unitCelsius.className = 'flex-1 py-1.5 rounded-md bg-sky-500 text-white font-semibold transition-all';
+                DOM.unitFahrenheit.className = 'flex-1 py-1.5 rounded-md text-slate-400 transition-all';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedPreferences();
+            syncFormInputsWithState();
+            applyClockStyles();
+            applyDisplayEffects();
+
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            fetchWallpapersFromCSV();
+            fetchLocalWeather();
+            initMusicPlayer();
+
+            setupEventListeners();
+            resetIdleTimer();
+            updateSlideshowState();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNC.MATRIX // 創意代理商跨裝置任務同步</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Space Grotesk & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'Inter', 'Microsoft JhengHei', 'sans-serif'],
+                        mono: ['Courier New', 'monospace']
+                    },
+                    colors: {
+                        neo: {
+                            yellow: '#FFE600',
+                            pink: '#FF007A',
+                            cyan: '#00F0FF',
+                            green: '#00FF66',
+                            purple: '#A855F7',
+                            bg: '#F4F3EF',
+                            dark: '#000000'
+                        }
+                    },
+                    boxShadow: {
+                        'brutal-sm': '2px 2px 0px 0px #000000',
+                        'brutal': '4px 4px 0px 0px #000000',
+                        'brutal-lg': '7px 7px 0px 0px #000000',
+                        'brutal-xl': '10px 10px 0px 0px #000000'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F4F3EF;
+            background-image: radial-gradient(#000000 1.2px, transparent 1.2px);
+            background-size: 18px 18px;
+        }
+        
+        .task-done {
+            text-decoration: line-through;
+            text-decoration-thickness: 3px;
+            text-decoration-color: #FF007A;
+            color: #6b7280;
+        }
+
+        /* Marquee Motion Animation */
+        @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            display: flex;
+            width: 200%;
+            animation: marquee 22s linear infinite;
+        }
+        .animate-marquee:hover {
+            animation-play-state: paused;
+        }
+
+        .brutal-btn {
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px 0px #000;
+            transition: all 0.1s ease;
+        }
+        .brutal-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px 0px #000;
+        }
+        .brutal-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px 0px #000;
+        }
+
+        .brutal-card {
+            border: 3px solid #000;
+            box-shadow: 5px 5px 0px 0px #000;
+            transition: all 0.15s ease;
+        }
+        .brutal-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px 0px #000;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #FFE600;
+            border: 2px solid #000;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #000;
+        }
+    </style>
+</head>
+<body class="h-full text-black antialiased flex flex-col font-sans selection:bg-neo-pink selection:text-white">
+
+    <!-- Creative Marquee Ticker -->
+    <div class="bg-black text-neo-yellow py-1.5 border-b-4 border-black overflow-hidden select-none font-bold text-xs uppercase tracking-widest z-40">
+        <div class="animate-marquee whitespace-nowrap">
+            <span class="mx-4">⚡ CREATIVE MATRIX STUDIO // LIVE TASK ENGINE</span>
+            <span class="mx-4">★ CLOUD FIRESTORE REAL-TIME SYNC</span>
+            <span class="mx-4">⚡ PASSCODE PROTECTED WORKSPACE</span>
+            <span class="mx-4">★ NO DAYS OFF // JUST DELIVERABLES</span>
+            <span class="mx-4">⚡ CREATIVE MATRIX STUDIO // LIVE TASK ENGINE</span>
+            <span class="mx-4">★ CLOUD FIRESTORE REAL-TIME SYNC</span>
+            <span class="mx-4">⚡ PASSCODE PROTECTED WORKSPACE</span>
+            <span class="mx-4">★ NO DAYS OFF // JUST DELIVERABLES</span>
+        </div>
+    </div>
+
+    <!-- Navigation Header -->
+    <header class="bg-neo-yellow border-b-4 border-black sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-neo-pink border-3 border-black shadow-brutal flex items-center justify-center text-white text-2xl font-black rotate-[-3deg]">
+                    <i class="fa-solid fa-bolt-lightning text-neo-yellow"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-xl sm:text-2xl tracking-tighter uppercase leading-none">
+                        SYNC<span class="text-neo-pink">.</span>TASKS
+                    </h1>
+                    <p class="text-[11px] font-black uppercase bg-black text-white px-1.5 py-0.5 mt-1 inline-block">
+                        Brutalist Creative Workspace
+                    </p>
+                </div>
+            </div>
+
+            <!-- Passcode Bar -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Sync Status Badge -->
+                <div id="sync-status-badge" class="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-neo-green border-2 border-black font-black text-xs uppercase shadow-brutal-sm">
+                    <span class="w-3 h-3 bg-black rounded-full animate-ping"></span>
+                    <span id="sync-status-text">CLOUD ONLINE</span>
+                </div>
+
+                <!-- Active Passcode Trigger Button -->
+                <button onclick="openPasscodeModal()" class="brutal-btn bg-white px-3.5 py-2 font-black text-xs sm:text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-neo-pink text-base"></i>
+                    <span>PASSCODE:</span>
+                    <span id="current-passcode-display" class="bg-black text-neo-cyan px-2 py-0.5 font-mono font-bold">----</span>
+                    <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+        <!-- Creative Agency Case Dashboard Header Card -->
+        <div class="bg-white border-4 border-black p-6 sm:p-8 shadow-brutal-xl relative overflow-hidden">
+            <!-- Background Decorative Label -->
+            <div class="absolute -right-6 -bottom-6 opacity-10 font-black text-8xl pointer-events-none select-none">
+                AGENCY
+            </div>
+
+            <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="space-y-2">
+                    <div class="inline-flex items-center space-x-2 bg-neo-cyan border-2 border-black px-2.5 py-1 text-xs font-black uppercase shadow-brutal-sm">
+                        <i class="fa-solid fa-crown"></i>
+                        <span>Studio Brief Matrix</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-black tracking-tight uppercase leading-none">
+                        Deliver High-Impact <span class="bg-neo-yellow px-2 border-2 border-black">Creativity.</span>
+                    </h2>
+                    <p class="text-xs sm:text-sm font-semibold text-slate-700 max-w-xl">
+                        輸入或切換同一組「跨裝置同步碼」，手機、平版、電腦即可同步所有專案 Deliverables！
+                    </p>
+                </div>
+
+                <!-- Agency Metrics Box -->
+                <div class="bg-neo-yellow border-3 border-black p-5 min-w-[280px] shadow-brutal space-y-3">
+                    <div class="flex justify-between items-center font-black text-xs uppercase border-b-2 border-black pb-1.5">
+                        <span>PROJECT DELIVERABLE RATE</span>
+                        <span id="completion-percentage-text" class="text-base bg-black text-white px-2 py-0.5 font-mono">0%</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-white border-2 border-black h-5 p-0.5">
+                        <div id="progress-bar" class="bg-neo-pink border border-black h-full transition-all duration-500 w-0"></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs font-black pt-1">
+                        <div class="bg-white border-2 border-black p-1.5">
+                            <div class="text-[10px] text-slate-500">TOTAL</div>
+                            <div id="stat-total" class="text-lg font-mono">0</div>
+                        </div>
+                        <div class="bg-neo-cyan border-2 border-black p-1.5">
+                            <div class="text-[10px] text-slate-900">ACTIVE</div>
+                            <div id="stat-pending" class="text-lg font-mono">0</div>
+                        </div>
+                        <div class="bg-neo-green border-2 border-black p-1.5">
+                            <div class="text-[10px] text-slate-900">DONE</div>
+                            <div id="stat-completed" class="text-lg font-mono">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Task Creator Form -->
+        <div class="bg-neo-cyan border-4 border-black p-5 shadow-brutal-lg">
+            <form id="add-task-form" onsubmit="handleAddTask(event)" class="space-y-4">
+                <div class="flex flex-col sm:flex-row items-stretch gap-3">
+                    <div class="flex-1 relative flex items-center">
+                        <i class="fa-solid fa-pen-nib absolute left-4 text-slate-600 text-lg"></i>
+                        <input type="text" id="task-input-title" placeholder="輸入全新 Deliverable / 待辦項目... (按 Enter 儲存)" required
+                            class="w-full pl-12 pr-4 py-3 bg-white border-3 border-black text-sm sm:text-base font-bold placeholder:text-slate-400 focus:outline-none focus:bg-neo-yellow/20">
+                    </div>
+
+                    <button type="button" onclick="toggleDetailedInput()" class="brutal-btn bg-white font-black text-xs px-4 py-3 flex items-center justify-center space-x-1 whitespace-nowrap">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>詳細設定</span>
+                    </button>
+
+                    <button type="submit" class="brutal-btn bg-black text-neo-yellow font-black text-sm px-6 py-3 flex items-center justify-center space-x-2 whitespace-nowrap">
+                        <i class="fa-solid fa-plus text-base"></i>
+                        <span>ADD BRIEF</span>
+                    </button>
+                </div>
+
+                <!-- Detailed Settings Drawer -->
+                <div id="detailed-input-box" class="hidden pt-4 border-t-3 border-black grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Priority Select -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">PRIORITY 優先權</label>
+                        <select id="task-input-priority" class="w-full bg-white border-2 border-black font-bold text-xs py-2 px-3 focus:outline-none">
+                            <option value="low">🔵 LOW // 低等級</option>
+                            <option value="medium" selected>🟡 MEDIUM // 一般</option>
+                            <option value="high">🔴 CRITICAL // 高優先</option>
+                        </select>
+                    </div>
+
+                    <!-- Category Select -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">CATEGORY 分類</label>
+                        <select id="task-input-category" class="w-full bg-white border-2 border-black font-bold text-xs py-2 px-3 focus:outline-none">
+                            <option value="工作" selected>💼 CLIENT PROJ (工作)</option>
+                            <option value="個人">👤 IN-HOUSE (個人)</option>
+                            <option value="購物">🛒 SHOP/MERCH (購物)</option>
+                            <option value="學習">📚 R&D / LEARN (學習)</option>
+                            <option value="健康">🏋️ HEALTH (健康)</option>
+                            <option value="其他">📌 OTHER (其他)</option>
+                        </select>
+                    </div>
+
+                    <!-- Due Date Input -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">DEADLINE 到期日</label>
+                        <input type="date" id="task-input-date" class="w-full bg-white border-2 border-black font-bold text-xs py-2 px-3 focus:outline-none">
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
+            
+            <!-- Status Tabs -->
+            <div class="flex flex-wrap bg-white border-3 border-black p-1.5 shadow-brutal gap-1.5 text-xs font-black">
+                <button onclick="setFilter('all')" id="filter-btn-all" class="filter-btn active-tab px-3.5 py-2 border-2 border-black transition">ALL BRIEFS</button>
+                <button onclick="setFilter('active')" id="filter-btn-active" class="filter-btn px-3.5 py-2 border-2 border-transparent transition">IN PROGRESS</button>
+                <button onclick="setFilter('completed')" id="filter-btn-completed" class="filter-btn px-3.5 py-2 border-2 border-transparent transition">COMPLETED</button>
+                <button onclick="setFilter('high')" id="filter-btn-high" class="filter-btn px-3.5 py-2 border-2 border-transparent transition text-rose-600">🔴 CRITICAL</button>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <!-- Search Box -->
+                <div class="relative flex-1 sm:w-56">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜尋關鍵字..." class="w-full pl-8 pr-3 py-2 bg-white border-3 border-black text-xs font-bold focus:outline-none focus:bg-neo-yellow/10">
+                </div>
+
+                <!-- Category Filter -->
+                <select id="category-filter-select" onchange="handleCategoryFilter(this.value)" class="bg-white border-3 border-black font-bold text-xs py-2 px-3 focus:outline-none">
+                    <option value="all">所有分類</option>
+                    <option value="工作">💼 工作</option>
+                    <option value="個人">👤 個人</option>
+                    <option value="購物">🛒 購物</option>
+                    <option value="學習">📚 學習</option>
+                    <option value="健康">🏋️ 健康</option>
+                    <option value="其他">📌 其他</option>
+                </select>
+
+                <!-- Clear Completed Button -->
+                <button onclick="clearCompletedTasks()" title="清空已完成項目" class="brutal-btn bg-neo-pink text-white p-2 text-xs font-black flex items-center justify-center">
+                    <i class="fa-solid fa-trash-can text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Task Cards Grid Container -->
+        <div id="task-list-container" class="space-y-4 min-h-[250px]">
+            <!-- Items rendered dynamically -->
+        </div>
+
+        <!-- Empty State UI -->
+        <div id="empty-state" class="hidden flex-col items-center justify-center py-16 text-center bg-white border-4 border-black shadow-brutal-lg">
+            <div class="w-20 h-20 bg-neo-yellow border-3 border-black flex items-center justify-center text-3xl mb-4 rotate-[6deg] shadow-brutal">
+                <i class="fa-solid fa-folder-open"></i>
+            </div>
+            <h3 class="text-xl font-black uppercase">NO ACTIVE BRIEFS FOUND</h3>
+            <p class="text-xs font-bold text-slate-600 mt-2">點擊上方新增，或嘗試更換搜尋條件。</p>
+        </div>
+
+    </main>
+
+    <!-- Edit Task Modal Dialog -->
+    <div id="edit-task-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-black max-w-lg w-full p-6 shadow-brutal-xl space-y-5 relative">
+            
+            <div class="flex justify-between items-center pb-3 border-b-3 border-black">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-neo-purple text-white p-2 border-2 border-black font-black text-xs">
+                        EDIT
+                    </div>
+                    <h3 class="text-lg font-black uppercase">修改 BRIEF 詳細設定</h3>
+                </div>
+                <button onclick="closeEditModal()" class="w-8 h-8 bg-black text-white font-black hover:bg-neo-pink transition flex items-center justify-center border-2 border-black">
+                    ✕
+                </button>
+            </div>
+
+            <form id="edit-task-form" onsubmit="handleSaveEditedTask(event)" class="space-y-4">
+                <!-- Title Input -->
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">BRIEF TITLE 事項名稱</label>
+                    <input type="text" id="edit-task-title" required class="w-full bg-slate-50 border-3 border-black text-sm font-bold p-3 focus:outline-none focus:bg-neo-yellow/20">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Priority -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">PRIORITY 優先權</label>
+                        <select id="edit-task-priority" class="w-full bg-slate-50 border-2 border-black text-xs font-bold p-2.5 focus:outline-none">
+                            <option value="low">🔵 LOW (低)</option>
+                            <option value="medium">🟡 MEDIUM (中)</option>
+                            <option value="high">🔴 CRITICAL (高)</option>
+                        </select>
+                    </div>
+
+                    <!-- Category -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">CATEGORY 分類</label>
+                        <select id="edit-task-category" class="w-full bg-slate-50 border-2 border-black text-xs font-bold p-2.5 focus:outline-none">
+                            <option value="工作">💼 工作</option>
+                            <option value="個人">👤 個人</option>
+                            <option value="購物">🛒 購物</option>
+                            <option value="學習">📚 學習</option>
+                            <option value="健康">🏋️ 健康</option>
+                            <option value="其他">📌 其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">DEADLINE 到期日</label>
+                    <input type="date" id="edit-task-date" class="w-full bg-slate-50 border-2 border-black text-xs font-bold p-2.5 focus:outline-none">
+                </div>
+
+                <div class="pt-4 border-t-3 border-black flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditModal()" class="brutal-btn bg-slate-200 font-black text-xs px-4 py-2.5">
+                        CANCEL
+                    </button>
+                    <button type="submit" class="brutal-btn bg-neo-yellow font-black text-xs px-6 py-2.5">
+                        SAVE CHANGES
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Passcode Modal Dialog -->
+    <div id="passcode-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-neo-yellow border-4 border-black max-w-md w-full p-6 shadow-brutal-xl space-y-5 relative">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="inline-block bg-black text-white text-[10px] font-black uppercase px-2 py-0.5 mb-1">
+                        CLOUD ROOM ENGINE
+                    </div>
+                    <h3 class="text-xl font-black uppercase">跨裝置同步通行碼</h3>
+                    <p class="text-xs font-bold text-slate-800 mt-1">只要在任何裝置輸入此 Code，即可毫秒級實時同步任務看板。</p>
+                </div>
+                <button onclick="closePasscodeModal()" class="w-8 h-8 bg-black text-white font-black hover:bg-neo-pink transition flex items-center justify-center border-2 border-black">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Current Code Banner -->
+            <div class="bg-white p-4 border-3 border-black text-center space-y-2 shadow-brutal">
+                <span class="text-[11px] font-black uppercase text-slate-500">CURRENT WORKSPACE CODE</span>
+                <div class="flex items-center justify-center space-x-3">
+                    <span id="modal-passcode-text" class="text-3xl font-mono font-black text-neo-pink tracking-wider">SYNC-8819</span>
+                    <button onclick="copyPasscodeToClipboard()" class="brutal-btn bg-black text-white p-2 text-xs" title="複製同步碼">
+                        <i class="fa-regular fa-copy text-base"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Switch Code Form -->
+            <div class="space-y-2 pt-2">
+                <label class="block text-xs font-black uppercase">輸入新 Passcode 切換工作區：</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="new-passcode-input" placeholder="例如: STUDIO-99" class="flex-1 bg-white border-3 border-black px-3 py-2 text-sm font-mono font-black uppercase focus:outline-none">
+                    <button onclick="switchPasscodeFromInput()" class="brutal-btn bg-black text-neo-yellow font-black text-xs px-4 py-2">
+                        CONNECT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="pt-3 border-t-2 border-black flex justify-between items-center text-xs">
+                <button onclick="generateRandomNewPasscode()" class="font-black underline hover:text-neo-pink flex items-center space-x-1">
+                    <i class="fa-solid fa-dice"></i>
+                    <span>隨機建立全新工作區</span>
+                </button>
+                <button onclick="closePasscodeModal()" class="brutal-btn bg-white font-black px-4 py-2">
+                    CLOSE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Toast UI -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- Custom Dialog Modal -->
+    <div id="dialog-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-black max-w-sm w-full p-6 shadow-brutal-xl space-y-4">
+            <h4 id="dialog-title" class="font-black text-lg uppercase text-black">CONFIRMATION</h4>
+            <p id="dialog-message" class="text-xs font-bold text-slate-700 leading-relaxed">您確定要執行此操作嗎？</p>
+            <div class="flex justify-end space-x-3 pt-3 border-t-2 border-black">
+                <button id="dialog-cancel-btn" class="brutal-btn bg-slate-200 font-black text-xs px-3.5 py-2">CANCEL</button>
+                <button id="dialog-confirm-btn" class="brutal-btn bg-neo-pink text-white font-black text-xs px-4 py-2">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Environment Variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'todo-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "demo", authDomain: "demo.firebaseapp.com", projectId: "demo" };
+
+        // Firebase Services
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // App States
+        let currentUser = null;
+        let currentPasscode = localStorage.getItem('todo_passcode') || generatePasscode();
+        let todos = [];
+        let currentFilter = 'all';
+        let currentCategoryFilter = 'all';
+        let currentSearchQuery = '';
+        let currentEditingTaskId = null;
+        let unsubscribeSync = null;
+
+        // Active Tab Brutalist Classes
+        const activeTabClasses = ['bg-black', 'text-neo-yellow', 'shadow-brutal-sm'];
+        const inactiveTabClasses = ['bg-white', 'text-black'];
+
+        // Rule 3: Auth First before any Firestore operations
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+            } catch (err) {
+                console.warn("Auth token fallback to anonymous:", err);
+                try {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                } catch (e) {
+                    console.error("Auth failed:", e);
+                }
+            }
+
+            if (currentUser) {
+                updatePasscodeUI();
+                setupFirestoreListener();
+            }
+        }
+
+        // Firestore Realtime Listener (Rule 1 & Rule 2)
+        function setupFirestoreListener() {
+            if (unsubscribeSync) {
+                unsubscribeSync();
+            }
+            if (!currentUser || !currentPasscode) return;
+
+            updateSyncStatusUI('syncing', 'CONNECTING...');
+
+            // Strict path: /artifacts/{appId}/public/data/todo_sync_rooms/{passcode}
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'todo_sync_rooms', currentPasscode);
+
+            unsubscribeSync = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data && Array.isArray(data.items)) {
+                        todos = data.items;
+                        renderTodos();
+                        updateStats();
+                    }
+                } else {
+                    saveTodosToCloud(todos);
+                }
+                updateSyncStatusUI('synced', 'SYNCED LIVE');
+            }, (error) => {
+                console.error("Firestore listener error:", error);
+                updateSyncStatusUI('error', 'OFFLINE');
+                showToast("雲端連線中斷，切換為本地離線模式", "error");
+            });
+        }
+
+        async function saveTodosToCloud(newTodos) {
+            todos = newTodos;
+            renderTodos();
+            updateStats();
+
+            if (!currentUser || !currentPasscode) return;
+
+            try {
+                updateSyncStatusUI('syncing', 'SAVING...');
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'todo_sync_rooms', currentPasscode);
+                await setDoc(docRef, {
+                    passcode: currentPasscode,
+                    items: todos,
+                    lastUpdated: Date.now(),
+                    updatedBy: currentUser.uid
+                }, { merge: true });
+                updateSyncStatusUI('synced', 'SYNCED LIVE');
+            } catch (err) {
+                console.error("Save error:", err);
+                updateSyncStatusUI('error', 'SYNC ERROR');
+            }
+        }
+
+        window.handleAddTask = function (event) {
+            event.preventDefault();
+            const titleInput = document.getElementById('task-input-title');
+            const priorityInput = document.getElementById('task-input-priority');
+            const categoryInput = document.getElementById('task-input-category');
+            const dateInput = document.getElementById('task-input-date');
+
+            const title = titleInput.value.trim();
+            if (!title) return;
+
+            const newTask = {
+                id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                title: title,
+                completed: false,
+                priority: priorityInput.value,
+                category: categoryInput.value,
+                dueDate: dateInput.value || '',
+                subtasks: [],
+                createdAt: Date.now()
+            };
+
+            const updated = [newTask, ...todos];
+            saveTodosToCloud(updated);
+
+            titleInput.value = '';
+            showToast('⚡ 新增 Deliverable 成功！');
+        };
+
+        window.toggleTaskComplete = function (taskId) {
+            const updated = todos.map(t => {
+                if (t.id === taskId) {
+                    const nextCompleted = !t.completed;
+                    if (nextCompleted && todos.every(item => item.id === taskId || item.completed)) {
+                        triggerConfetti();
+                    }
+                    return { ...t, completed: nextCompleted };
+                }
+                return t;
+            });
+            saveTodosToCloud(updated);
+        };
+
+        window.deleteTask = function (taskId) {
+            showConfirmModal("確認刪除", "確定要刪除這項 Brief Deliverable 嗎？刪除後無法復原。", () => {
+                const updated = todos.filter(t => t.id !== taskId);
+                saveTodosToCloud(updated);
+                showToast("已成功刪除項目");
+            });
+        };
+
+        window.addSubtask = function (taskId, inputEl) {
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            const updated = todos.map(t => {
+                if (t.id === taskId) {
+                    const subtasks = t.subtasks || [];
+                    const newSub = { id: 'sub_' + Date.now(), title: text, completed: false };
+                    return { ...t, subtasks: [...subtasks, newSub] };
+                }
+                return t;
+            });
+
+            saveTodosToCloud(updated);
+            inputEl.value = '';
+        };
+
+        window.toggleSubtask = function (taskId, subtaskId) {
+            const updated = todos.map(t => {
+                if (t.id === taskId) {
+                    const subtasks = (t.subtasks || []).map(s => {
+                        if (s.id === subtaskId) return { ...s, completed: !s.completed };
+                        return s;
+                    });
+                    return { ...t, subtasks };
+                }
+                return t;
+            });
+            saveTodosToCloud(updated);
+        };
+
+        window.deleteSubtask = function (taskId, subtaskId) {
+            const updated = todos.map(t => {
+                if (t.id === taskId) {
+                    const subtasks = (t.subtasks || []).filter(s => s.id !== subtaskId);
+                    return { ...t, subtasks };
+                }
+                return t;
+            });
+            saveTodosToCloud(updated);
+        };
+
+        window.clearCompletedTasks = function () {
+            const completedCount = todos.filter(t => t.completed).length;
+            if (completedCount === 0) {
+                showToast("目前沒有已完成項目", "info");
+                return;
+            }
+
+            showConfirmModal("CLEAR COMPLETED", `確定要清除 ${completedCount} 個已完成項目嗎？`, () => {
+                const updated = todos.filter(t => !t.completed);
+                saveTodosToCloud(updated);
+                showToast(`已清空 ${completedCount} 個項目`);
+            });
+        };
+
+        window.openEditModal = function(taskId) {
+            const task = todos.find(t => t.id === taskId);
+            if (!task) return;
+
+            currentEditingTaskId = taskId;
+            document.getElementById('edit-task-title').value = task.title || '';
+            document.getElementById('edit-task-priority').value = task.priority || 'medium';
+            document.getElementById('edit-task-category').value = task.category || '工作';
+            document.getElementById('edit-task-date').value = task.dueDate || '';
+
+            document.getElementById('edit-task-modal').classList.remove('hidden');
+        };
+
+        window.closeEditModal = function() {
+            currentEditingTaskId = null;
+            document.getElementById('edit-task-modal').classList.add('hidden');
+        };
+
+        window.handleSaveEditedTask = function(event) {
+            event.preventDefault();
+            if (!currentEditingTaskId) return;
+
+            const newTitle = document.getElementById('edit-task-title').value.trim();
+            if (!newTitle) return;
+
+            const newPriority = document.getElementById('edit-task-priority').value;
+            const newCategory = document.getElementById('edit-task-category').value;
+            const newDate = document.getElementById('edit-task-date').value;
+
+            const updated = todos.map(t => {
+                if (t.id === currentEditingTaskId) {
+                    return {
+                        ...t,
+                        title: newTitle,
+                        priority: newPriority,
+                        category: newCategory,
+                        dueDate: newDate
+                    };
+                }
+                return t;
+            });
+
+            saveTodosToCloud(updated);
+            closeEditModal();
+            showToast('已儲存 Brief 詳細變更');
+        };
+
+        function renderTodos() {
+            const container = document.getElementById('task-list-container');
+            const emptyState = document.getElementById('empty-state');
+
+            let filtered = todos.filter(t => {
+                if (currentFilter === 'active' && t.completed) return false;
+                if (currentFilter === 'completed' && !t.completed) return false;
+                if (currentFilter === 'high' && t.priority !== 'high') return false;
+                if (currentCategoryFilter !== 'all' && t.category !== currentCategoryFilter) return false;
+
+                if (currentSearchQuery) {
+                    const q = currentSearchQuery.toLowerCase();
+                    return t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+                }
+
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            container.innerHTML = filtered.map(t => {
+                const isOverdue = t.dueDate && new Date(t.dueDate) < new Date().setHours(0,0,0,0) && !t.completed;
+                const subtasks = t.subtasks || [];
+                const subtasksDone = subtasks.filter(s => s.completed).length;
+
+                return `
+                <div class="brutal-card bg-white p-5 relative overflow-hidden ${t.completed ? 'bg-slate-100/90' : ''}">
+                    <div class="flex items-start justify-between gap-4">
+                        
+                        <!-- Checkbox & Main Info -->
+                        <div class="flex items-start space-x-3.5 flex-1 min-w-0">
+                            <!-- Custom Brutalist Checkbox Button -->
+                            <button onclick="toggleTaskComplete('${t.id}')" class="mt-0.5 w-7 h-7 border-3 border-black flex items-center justify-center font-black transition ${t.completed ? 'bg-neo-pink text-white' : 'bg-white hover:bg-neo-yellow text-transparent'}">
+                                ✕
+                            </button>
+                            
+                            <div class="flex-1 min-w-0">
+                                <p onclick="openEditModal('${t.id}')" class="text-base sm:text-lg font-black leading-snug break-words cursor-pointer hover:text-neo-pink transition ${t.completed ? 'task-done' : 'text-black'}" title="點擊修改詳細內容">
+                                    ${escapeHtml(t.title)}
+                                </p>
+                                
+                                <!-- Meta Badges -->
+                                <div class="flex flex-wrap items-center gap-2 mt-3 font-black text-xs">
+                                    ${renderPriorityBadge(t.priority)}
+
+                                    <!-- Category Tag -->
+                                    <span class="px-2.5 py-1 border-2 border-black bg-neo-yellow text-black uppercase">
+                                        ${escapeHtml(t.category)}
+                                    </span>
+
+                                    <!-- Due Date Tag -->
+                                    ${t.dueDate ? `
+                                        <span class="px-2.5 py-1 border-2 border-black ${isOverdue ? 'bg-neo-pink text-white' : 'bg-slate-100 text-black'} flex items-center space-x-1">
+                                            <i class="fa-regular fa-clock text-[11px]"></i>
+                                            <span>${t.dueDate} ${isOverdue ? '(EXPIRED)' : ''}</span>
+                                        </span>
+                                    ` : ''}
+
+                                    <!-- Subtasks Counter -->
+                                    ${subtasks.length > 0 ? `
+                                        <span class="px-2.5 py-1 border-2 border-black bg-neo-cyan text-black">
+                                            <i class="fa-solid fa-list-check mr-1"></i>${subtasksDone}/${subtasks.length} SUB
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex items-center space-x-1">
+                            <button onclick="openEditModal('${t.id}')" class="w-8 h-8 brutal-btn bg-neo-purple text-white font-black text-xs flex items-center justify-center" title="編輯項目">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="toggleSubtasksDrawer('${t.id}')" class="w-8 h-8 brutal-btn bg-neo-cyan text-black font-black text-xs flex items-center justify-center" title="子步驟/備註">
+                                <i class="fa-solid fa-sitemap"></i>
+                            </button>
+                            <button onclick="deleteTask('${t.id}')" class="w-8 h-8 brutal-btn bg-neo-pink text-white font-black text-xs flex items-center justify-center" title="刪除">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Subtasks Drawer -->
+                    <div id="subtasks-drawer-${t.id}" class="hidden pt-4 mt-4 border-t-3 border-black space-y-3">
+                        <div class="text-xs font-black uppercase text-slate-600">STEPS & CHECKLIST:</div>
+                        <div class="space-y-2 pl-1">
+                            ${subtasks.map(s => `
+                                <div class="flex items-center justify-between text-xs font-bold group">
+                                    <label class="flex items-center space-x-2 flex-1 cursor-pointer">
+                                        <input type="checkbox" ${s.completed ? 'checked' : ''} onchange="toggleSubtask('${t.id}', '${s.id}')" class="w-4 h-4 border-2 border-black accent-black">
+                                        <span class="${s.completed ? 'line-through text-slate-400' : 'text-black'}">${escapeHtml(s.title)}</span>
+                                    </label>
+                                    <button onclick="deleteSubtask('${t.id}', '${s.id}')" class="text-slate-400 hover:text-neo-pink px-2">
+                                        ✕
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="flex items-center space-x-2 pt-1">
+                            <input type="text" placeholder="+ 新增子任務步驟..." onkeydown="if(event.key==='Enter'){ addSubtask('${t.id}', this); }" class="flex-1 bg-slate-50 border-2 border-black px-3 py-1.5 text-xs font-bold focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderPriorityBadge(priority) {
+            switch(priority) {
+                case 'high':
+                    return `<span class="px-2.5 py-1 border-2 border-black bg-neo-pink text-white uppercase">🔴 CRITICAL</span>`;
+                case 'medium':
+                    return `<span class="px-2.5 py-1 border-2 border-black bg-neo-cyan text-black uppercase">🟡 MEDIUM</span>`;
+                default:
+                    return `<span class="px-2.5 py-1 border-2 border-black bg-slate-200 text-black uppercase">🔵 LOW</span>`;
+            }
+        }
+
+        function updateStats() {
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const pending = total - completed;
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('completion-percentage-text').textContent = percentage + '%';
+            document.getElementById('progress-bar').style.width = percentage + '%';
+        }
+
+        window.setFilter = function(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove(...activeTabClasses);
+                btn.classList.add(...inactiveTabClasses);
+            });
+            const activeBtn = document.getElementById(`filter-btn-${filter}`);
+            if (activeBtn) {
+                activeBtn.classList.remove(...inactiveTabClasses);
+                activeBtn.classList.add(...activeTabClasses);
+            }
+            renderTodos();
+        };
+
+        window.handleSearch = function() {
+            currentSearchQuery = document.getElementById('search-input').value.trim();
+            renderTodos();
+        };
+
+        window.handleCategoryFilter = function(val) {
+            currentCategoryFilter = val;
+            renderTodos();
+        };
+
+        window.toggleDetailedInput = function() {
+            const box = document.getElementById('detailed-input-box');
+            box.classList.toggle('hidden');
+        };
+
+        window.toggleSubtasksDrawer = function(taskId) {
+            const drawer = document.getElementById(`subtasks-drawer-${taskId}`);
+            if (drawer) drawer.classList.toggle('hidden');
+        };
+
+        function generatePasscode() {
+            const rand = Math.floor(1000 + Math.random() * 9000);
+            return `MATRIX-${rand}`;
+        }
+
+        function updatePasscodeUI() {
+            document.getElementById('current-passcode-display').textContent = currentPasscode;
+            document.getElementById('modal-passcode-text').textContent = currentPasscode;
+        }
+
+        function updateSyncStatusUI(status, text) {
+            const badge = document.getElementById('sync-status-badge');
+            const statusText = document.getElementById('sync-status-text');
+
+            if (!badge) return;
+            statusText.textContent = text;
+
+            if (status === 'synced') {
+                badge.className = "hidden md:flex items-center space-x-2 px-3 py-1.5 bg-neo-green border-2 border-black font-black text-xs uppercase shadow-brutal-sm";
+            } else if (status === 'syncing') {
+                badge.className = "hidden md:flex items-center space-x-2 px-3 py-1.5 bg-neo-yellow border-2 border-black font-black text-xs uppercase shadow-brutal-sm";
+            } else {
+                badge.className = "hidden md:flex items-center space-x-2 px-3 py-1.5 bg-slate-300 border-2 border-black font-black text-xs uppercase shadow-brutal-sm";
+            }
+        }
+
+        window.openPasscodeModal = function() {
+            document.getElementById('passcode-modal').classList.remove('hidden');
+        };
+
+        window.closePasscodeModal = function() {
+            document.getElementById('passcode-modal').classList.add('hidden');
+        };
+
+        window.switchPasscodeFromInput = function() {
+            const input = document.getElementById('new-passcode-input');
+            const code = input.value.trim().toUpperCase();
+
+            if (!code) {
+                showToast("請輸入有效 Passcode 碼", "error");
+                return;
+            }
+
+            currentPasscode = code;
+            localStorage.setItem('todo_passcode', currentPasscode);
+            updatePasscodeUI();
+            setupFirestoreListener();
+            input.value = '';
+            closePasscodeModal();
+            showToast(`已成功連線至同步碼：${currentPasscode}`);
+        };
+
+        window.generateRandomNewPasscode = function() {
+            currentPasscode = generatePasscode();
+            localStorage.setItem('todo_passcode', currentPasscode);
+            updatePasscodeUI();
+            setupFirestoreListener();
+            showToast(`已生成全新同步碼：${currentPasscode}`);
+        };
+
+        window.copyPasscodeToClipboard = function() {
+            const tempInput = document.createElement('input');
+            tempInput.value = currentPasscode;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast('Passcode 已複製至剪貼簿！');
+        };
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const bgClass = type === 'error' ? 'bg-neo-pink text-white' : 'bg-black text-neo-yellow';
+
+            toast.className = `${bgClass} border-3 border-black p-3 text-xs font-black shadow-brutal flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-bolt-lightning'}"></i><span>${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('dialog-modal');
+            document.getElementById('dialog-title').textContent = title;
+            document.getElementById('dialog-message').textContent = message;
+
+            const confirmBtn = document.getElementById('dialog-confirm-btn');
+            const cancelBtn = document.getElementById('dialog-cancel-btn');
+
+            modal.classList.remove('hidden');
+
+            const close = () => {
+                modal.classList.add('hidden');
+                confirmBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            confirmBtn.onclick = () => {
+                close();
+                onConfirm();
+            };
+            cancelBtn.onclick = close;
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            setFilter('all');
+            initAuth();
+        });
+    </script>
+</body>
+</html>

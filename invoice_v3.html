@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>統一發票對獎機</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- jsQR Code Scanner -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts: Noto Sans TC & Fredoka -->
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', '"Fredoka"', 'sans-serif'],
+            mono: ['"Fredoka"', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#EEF2FF',
+              100: '#E0E7FF',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            }
+          },
+          boxShadow: {
+            'clay-card': '0 10px 25px -5px rgba(15, 23, 42, 0.05), inset 0 2px 4px rgba(255,255,255,0.8)',
+            'clay-inset': 'inset 0 2px 4px rgba(0,0,0,0.06)',
+            'btn-3d': '0 4px 0 0 #CBD5E1'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #FEF3C7 100%);
+      min-height: 100vh;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.6s ease-in-out;
+    }
+
+    /* Dynamic CSS Variables based on Theme */
+    body[data-theme="dog"] {
+      background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #FEF3C7 100%);
+      --theme-primary-from: #6366F1;
+      --theme-primary-to: #4F46E5;
+      --theme-primary-border: #818CF8;
+      --theme-primary-shadow: #3730A3;
+      --theme-glow-1: rgba(99, 102, 241, 0.25);
+      --theme-glow-2: rgba(245, 158, 11, 0.25);
+      --theme-accent-text: #4F46E5;
+      --theme-badge-bg: #EEF2FF;
+      --theme-badge-text: #4338CA;
+      --theme-pill-active-bg: #4F46E5;
+      --theme-pill-active-text: #FFFFFF;
+      --theme-input-text: #4F46E5;
+      --theme-pet-badge-bg: #F59E0B;
+      --theme-pet-badge-text: #78350F;
+    }
+
+    body[data-theme="pig"] {
+      background: linear-gradient(135deg, #FCE7F3 0%, #FFE4E6 50%, #FEF3C7 100%);
+      --theme-primary-from: #F43F5E;
+      --theme-primary-to: #E11D48;
+      --theme-primary-border: #FB7185;
+      --theme-primary-shadow: #9F1239;
+      --theme-glow-1: rgba(244, 63, 94, 0.25);
+      --theme-glow-2: rgba(251, 207, 232, 0.35);
+      --theme-accent-text: #E11D48;
+      --theme-badge-bg: #FFE4E6;
+      --theme-badge-text: #9F1239;
+      --theme-pill-active-bg: #E11D48;
+      --theme-pill-active-text: #FFFFFF;
+      --theme-input-text: #E11D48;
+      --theme-pet-badge-bg: #F472B6;
+      --theme-pet-badge-text: #881337;
+    }
+
+    body[data-theme="cat"] {
+      background: linear-gradient(135deg, #FFEDD5 0%, #FEF3C7 50%, #FFF7ED 100%);
+      --theme-primary-from: #F97316;
+      --theme-primary-to: #EA580C;
+      --theme-primary-border: #FB923C;
+      --theme-primary-shadow: #9A3412;
+      --theme-glow-1: rgba(249, 115, 22, 0.25);
+      --theme-glow-2: rgba(254, 243, 199, 0.4);
+      --theme-accent-text: #EA580C;
+      --theme-badge-bg: #FFEDD5;
+      --theme-badge-text: #9A3412;
+      --theme-pill-active-bg: #EA580C;
+      --theme-pill-active-text: #FFFFFF;
+      --theme-input-text: #EA580C;
+      --theme-pet-badge-bg: #FBBF24;
+      --theme-pet-badge-text: #78350F;
+    }
+
+    /* Dynamic Theme Class Bindings */
+    .theme-header-icon {
+      background: linear-gradient(135deg, var(--theme-primary-from), var(--theme-primary-to));
+      transition: background 0.5s ease;
+    }
+    .theme-badge {
+      background-color: var(--theme-badge-bg);
+      color: var(--theme-badge-text);
+      transition: all 0.5s ease;
+    }
+    .theme-text-accent {
+      color: var(--theme-accent-text);
+      transition: color 0.5s ease;
+    }
+    .theme-glow-blob-1 {
+      background-color: var(--theme-glow-1);
+      transition: background-color 0.5s ease;
+    }
+    .theme-glow-blob-2 {
+      background-color: var(--theme-glow-2);
+      transition: background-color 0.5s ease;
+    }
+    .theme-pet-hint {
+      background-color: var(--theme-pet-badge-bg);
+      color: var(--theme-pet-badge-text);
+      transition: all 0.5s ease;
+    }
+
+    /* Pixar 3D Soft Volumetric Styling */
+    .pixar-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-radius: 2rem;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 
+        0 16px 32px -8px var(--theme-glow-1),
+        0 4px 12px rgba(0, 0, 0, 0.03),
+        inset 0 3px 6px rgba(255, 255, 255, 1);
+      transition: box-shadow 0.5s ease;
+    }
+
+    /* Primary Accent 3D Button - Dynamically Theme Aware */
+    .btn-pixar-primary {
+      background: linear-gradient(180deg, var(--theme-primary-from) 0%, var(--theme-primary-to) 100%);
+      border: 2px solid var(--theme-primary-border);
+      box-shadow: 0 6px 0 0 var(--theme-primary-shadow), 0 8px 18px var(--theme-glow-1);
+      color: white;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+    }
+    .btn-pixar-primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 0 var(--theme-primary-shadow), 0 4px 8px var(--theme-glow-1);
+    }
+
+    /* Dynamic Digits & Inputs */
+    .theme-digit-text {
+      color: var(--theme-input-text) !important;
+      transition: color 0.5s ease;
+    }
+
+    /* Pixar 3D Soft Volumetric Styling */
+    .pixar-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-radius: 2rem;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 
+        0 16px 32px -8px rgba(79, 70, 229, 0.12),
+        0 4px 12px rgba(0, 0, 0, 0.03),
+        inset 0 3px 6px rgba(255, 255, 255, 1),
+        inset 0 -4px 6px rgba(79, 70, 229, 0.05);
+    }
+
+    /* Pixar 3D Tactile Button */
+    .btn-pixar-3d {
+      background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+      border: 2px solid #E2E8F0;
+      box-shadow: 0 6px 0 0 #CBD5E1, 0 8px 15px rgba(0, 0, 0, 0.06);
+      transition: all 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .btn-pixar-3d:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 0 #CBD5E1, 0 3px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Primary Accent 3D Button */
+    .btn-pixar-primary {
+      background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+      border: 2px solid #818CF8;
+      box-shadow: 0 6px 0 0 #3730A3, 0 8px 18px rgba(79, 70, 229, 0.35);
+      color: white;
+    }
+    .btn-pixar-primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 0 #3730A3, 0 4px 8px rgba(79, 70, 229, 0.2);
+    }
+
+    /* Companion Float & Reaction Animations */
+    @keyframes pixarBounce {
+      0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+      50% { transform: translateY(-8px) rotate(2deg) scale(1.03); }
+    }
+    @keyframes companionJoy {
+      0% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.25) translateY(-14px) rotate(-10deg); }
+      50% { transform: scale(1.15) translateY(-6px) rotate(10deg); }
+      75% { transform: scale(1.2) translateY(-10px) rotate(-5deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    @keyframes companionComfort {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(-8deg) translateY(3px) scale(0.96); }
+      75% { transform: rotate(8deg) translateY(3px) scale(0.96); }
+    }
+
+    .companion-idle { animation: pixarBounce 3s ease-in-out infinite; }
+    .companion-joy { animation: companionJoy 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .companion-comfort { animation: companionComfort 1.2s ease-in-out; }
+
+    /* Speech Bubble Tail */
+    .speech-bubble {
+      position: relative;
+      background: #FFFFFF;
+      border: 2px solid #E2E8F0;
+      border-radius: 1.25rem;
+      box-shadow: 0 10px 20px -5px rgba(0,0,0,0.06);
+    }
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -9px;
+      left: 28px;
+      width: 14px;
+      height: 14px;
+      background: #FFFFFF;
+      border-right: 2px solid #E2E8F0;
+      border-bottom: 2px solid #E2E8F0;
+      transform: rotate(45deg);
+    }
+
+    /* Laser Line */
+    @keyframes scanLine {
+      0% { top: 10%; opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { top: 85%; opacity: 0.7; }
+    }
+    .scanner-laser {
+      animation: scanLine 2s ease-in-out infinite alternate;
+    }
+
+    /* Cute Caishen Entrance */
+    @keyframes caishenEnter {
+      0% { transform: scale(0.1) translateY(-80px) rotate(-15deg); opacity: 0; }
+      60% { transform: scale(1.18) translateY(12px) rotate(5deg); opacity: 1; }
+      80% { transform: scale(0.92) translateY(-4deg) rotate(-2deg); }
+      100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
+    }
+    .caishen-animate-enter {
+      animation: caishenEnter 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body data-theme="dog" class="font-sans text-slate-800 pb-8 antialiased">
+
+  <!-- INITIAL LOADING & AUTO VERIFICATION OVERLAY -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-500">
+    <div class="pixar-card p-8 max-w-xs w-full flex flex-col items-center shadow-2xl relative border-2 border-white">
+      <div class="w-20 h-20 rounded-2xl bg-gradient-to-b from-white to-slate-100 border-2 border-white shadow-inner flex items-center justify-center mb-4 relative">
+        <div id="loadingPetSvg" class="w-16 h-16 companion-joy">
+          <!-- Pet SVG -->
+        </div>
+      </div>
+      
+      <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3"></div>
+      <h3 id="loadingTitle" class="text-base font-black text-slate-800 mb-1">發票機連線中...</h3>
+      <p id="loadingStatusText" class="text-xs text-slate-500 font-bold leading-relaxed mb-3">正在自動驗證財政部最新號碼數據</p>
+      
+      <div id="loadingSuccessBadge" class="hidden text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-300 animate-bounce">
+        <i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i>已更新至 115年 最新官方數據！
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotice" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+    <div class="bg-slate-900/90 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl border border-white/20 backdrop-blur-md flex items-center space-x-2">
+      <i class="fa-solid fa-circle-info text-amber-400 text-sm"></i>
+      <span id="toastText">已手動同步最新官方號碼資料</span>
+    </div>
+  </div>
+
+  <div id="app" class="max-w-md mx-auto px-4 pt-3 min-h-screen flex flex-col justify-between">
+    
+    <div>
+      <!-- Clean Minimal Header -->
+      <header class="flex items-center justify-between mb-2">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-2xl theme-header-icon flex items-center justify-center text-white shadow-lg border border-white/40">
+            <i class="fa-solid fa-receipt text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-black text-slate-800 tracking-tight leading-none">統一發票對獎機</h1>
+            <span id="headerSubBadge" class="text-[11px] font-bold theme-badge px-2 py-0.5 rounded-full inline-block mt-0.5">115年 官方最新數據</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-1.5">
+          <button id="refreshBtn" onclick="manualRefreshData()" title="手動更新最新號碼" class="w-10 h-10 rounded-2xl bg-white text-slate-600 shadow-md flex items-center justify-center border-2 border-slate-100 hover:bg-slate-50 transition active:scale-95">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate theme-text-accent text-lg"></i>
+          </button>
+          <button id="soundToggleBtn" onclick="toggleSound()" class="w-10 h-10 rounded-2xl bg-white text-slate-600 shadow-md flex items-center justify-center border-2 border-slate-100 hover:bg-slate-50 transition active:scale-95">
+            <i id="soundIcon" class="fa-solid fa-volume-high theme-text-accent text-lg"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- PIXAR 3D PET COMPANION EMOTIONAL STAGE -->
+      <div class="pixar-card p-3 mb-3 relative overflow-hidden">
+        <!-- Background Soft Aura Glow -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 theme-glow-blob-1 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 theme-glow-blob-2 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex items-center space-x-3 relative z-10">
+          
+          <!-- Avatar Stage -->
+          <div id="companionAvatarContainer" onclick="petCompanion()" class="cursor-pointer flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-white shadow-inner flex items-center justify-center relative group">
+            
+            <div id="companionAvatarSvg" class="w-16 h-16 companion-idle transform transition duration-200 group-hover:scale-110">
+              <!-- SVG dynamically rendered by JS -->
+            </div>
+
+            <!-- Pet Me Heart Hint -->
+            <span id="petHintBadge" class="absolute -bottom-1 theme-pet-hint font-black text-[9px] px-2 py-0.2 rounded-full border border-white shadow-sm">摸摸汪汪 ✨</span>
+          </div>
+
+          <!-- Speech Bubble & Companion Selector -->
+          <div class="flex-1 min-w-0 space-y-1.5">
+            
+            <!-- Speech Bubble -->
+            <div class="speech-bubble px-3 py-2">
+              <div id="companionName" class="text-[10px] font-black theme-text-accent uppercase tracking-wider">汪汪 Barkley</div>
+              <p id="companionSpeech" class="text-xs font-bold text-slate-700 leading-snug truncate">
+                預祝開出大獎！快輸入號碼吧 汪！✨
+              </p>
+            </div>
+
+            <!-- Companion Switcher Pills -->
+            <div class="flex space-x-1 justify-end">
+              <button onclick="switchCompanion('dog')" id="btn-companion-dog" class="companion-btn px-2 py-0.5 rounded-full text-[10px] font-bold">🐶 汪汪</button>
+              <button onclick="switchCompanion('pig')" id="btn-companion-pig" class="companion-btn px-2 py-0.5 rounded-full text-[10px] font-bold">🐷 豬豬</button>
+              <button onclick="switchCompanion('cat')" id="btn-companion-cat" class="companion-btn px-2 py-0.5 rounded-full text-[10px] font-bold">🐱 喵喵</button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Consolidated Period Switcher -->
+      <div class="bg-slate-200/70 p-1 rounded-2xl mb-2 flex items-center border border-white/80 shadow-inner">
+        <button onclick="selectPeriod('115-0506')" id="period-115-0506" class="period-btn flex-1 py-2 rounded-xl font-bold text-xs transition-all">
+          115年 5-6月
+        </button>
+        <button onclick="selectPeriod('115-0304')" id="period-115-0304" class="period-btn flex-1 py-2 rounded-xl font-bold text-xs transition-all">
+          115年 3-4月
+        </button>
+        <button onclick="selectPeriod('115-0102')" id="period-115-0102" class="period-btn flex-1 py-2 rounded-xl font-bold text-xs transition-all">
+          115年 1-2月
+        </button>
+      </div>
+
+      <!-- Claim Deadline Information Card -->
+      <div class="pixar-card px-3 py-2 mb-3 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-calendar-check theme-text-accent text-sm"></i>
+          <div>
+            <span class="text-[10px] text-slate-400 font-bold block">兌獎領錢期限</span>
+            <span id="period-claim-dates" class="font-mono font-bold text-slate-700 text-xs">115年08月06日 ~ 115年11月05日</span>
+          </div>
+        </div>
+        <span id="period-claim-status" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">領獎中</span>
+      </div>
+
+      <!-- Nav Tabs -->
+      <div class="grid grid-cols-4 gap-1 bg-slate-200/70 p-1 rounded-2xl mb-3 text-center border border-white/80 shadow-inner">
+        <button onclick="switchTab('fast')" id="tab-fast" class="tab-btn py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-bolt mr-1"></i>末3碼
+        </button>
+        <button onclick="switchTab('camera')" id="tab-camera" class="tab-btn py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-camera mr-1"></i>掃描
+        </button>
+        <button onclick="switchTab('manual')" id="tab-manual" class="tab-btn py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-keyboard mr-1"></i>全號
+        </button>
+        <button onclick="switchTab('numbers')" id="tab-numbers" class="tab-btn py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-list-ol mr-1"></i>獎號
+        </button>
+      </div>
+
+      <!-- MAIN CONTENT VIEWS -->
+      <main class="space-y-3">
+
+        <!-- SECTION 1: FAST 3-DIGIT CHECK -->
+        <section id="view-fast" class="tab-view block space-y-3">
+          
+          <!-- Unified Display Box -->
+          <div class="pixar-card p-4 text-center">
+            <div class="text-xs font-bold text-slate-400 mb-2">輸入發票號碼末 3 碼</div>
+            
+            <div class="h-14 flex items-center justify-center space-x-3 bg-slate-100/80 rounded-2xl shadow-inner px-4 my-1 border border-slate-200/80">
+              <span id="digit-1" class="w-9 h-10 flex items-center justify-center text-3xl font-black theme-digit-text border-b-3 border-slate-300">_</span>
+              <span id="digit-2" class="w-9 h-10 flex items-center justify-center text-3xl font-black theme-digit-text border-b-3 border-slate-300">_</span>
+              <span id="digit-3" class="w-9 h-10 flex items-center justify-center text-3xl font-black theme-digit-text border-b-3 border-slate-300">_</span>
+            </div>
+            
+            <div id="fast-result-msg" class="text-xs font-bold min-h-[26px] flex items-center justify-center text-slate-400 mt-2">
+              提示：輸入 3 位數即刻對獎
+            </div>
+          </div>
+
+          <!-- Target Pool Reference Bar -->
+          <div class="pixar-card p-3 flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-bullseye theme-text-accent mr-1.5"></i>頭獎末3碼對獎池</span>
+            <div id="last3-target-pool" class="flex space-x-1.5">
+              <!-- Dynamic pills via JS -->
+            </div>
+          </div>
+
+          <!-- Sleek Numeric Keypad -->
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            <button onclick="pressDigit('1')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">1</button>
+            <button onclick="pressDigit('2')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">2</button>
+            <button onclick="pressDigit('3')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">3</button>
+            <button onclick="pressDigit('4')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">4</button>
+            <button onclick="pressDigit('5')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">5</button>
+            <button onclick="pressDigit('6')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">6</button>
+            <button onclick="pressDigit('7')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">7</button>
+            <button onclick="pressDigit('8')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">8</button>
+            <button onclick="pressDigit('9')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">9</button>
+            <button onclick="clearFastDigit()" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-600 font-bold text-sm bg-slate-100">清除</button>
+            <button onclick="pressDigit('0')" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-800 font-bold text-xl">0</button>
+            <button onclick="backspaceDigit()" class="btn-pixar-3d py-3.5 rounded-2xl text-slate-700 font-bold text-base bg-slate-100"><i class="fa-solid fa-delete-left"></i></button>
+          </div>
+        </section>
+
+        <!-- SECTION 2: CAMERA SCANNING -->
+        <section id="view-camera" class="tab-view hidden space-y-3">
+          <div class="relative bg-slate-900 rounded-3xl overflow-hidden shadow-lg h-64 flex items-center justify-center border-2 border-indigo-200">
+            
+            <video id="scan-video" class="w-full h-full object-cover" playsinline></video>
+            <canvas id="scan-canvas" class="hidden"></canvas>
+
+            <!-- Scanner Frame -->
+            <div class="absolute inset-0 border-2 border-indigo-400/40 rounded-3xl pointer-events-none flex flex-col items-center justify-between p-4">
+              <div class="w-full flex justify-between items-center text-white/90 text-xs bg-slate-900/60 px-3 py-1 rounded-full backdrop-blur-md">
+                <span><i class="fa-solid fa-qrcode mr-1 text-indigo-400"></i>對準 QR Code 或條碼</span>
+                <span id="scan-status" class="text-indigo-300 font-bold">準備中</span>
+              </div>
+              
+              <div class="w-3/4 h-0.5 bg-indigo-400 shadow-[0_0_12px_#6366F1] scanner-laser relative"></div>
+              
+              <span id="camera-toast" class="text-[11px] text-white/80 bg-slate-900/60 px-3 py-0.5 rounded-full backdrop-blur-md">支援電子發票與傳統發票號碼</span>
+            </div>
+
+            <!-- Controls Overlay -->
+            <div class="absolute bottom-3 right-3 flex space-x-2">
+              <button id="torchBtn" onclick="toggleTorch()" class="w-9 h-9 rounded-full bg-slate-900/70 text-amber-300 hover:bg-slate-900 flex items-center justify-center backdrop-blur-md border border-white/20 transition">
+                <i class="fa-solid fa-bolt"></i>
+              </button>
+              <button onclick="switchCameraFacing()" class="w-9 h-9 rounded-full bg-slate-900/70 text-white hover:bg-slate-900 flex items-center justify-center backdrop-blur-md border border-white/20 transition">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Camera Action Buttons -->
+          <div class="flex space-x-2">
+            <button id="startScanBtn" onclick="startScanner()" class="btn-pixar-primary flex-1 py-3 font-bold rounded-2xl text-sm">
+              <i class="fa-solid fa-play mr-1.5"></i>開啟相機對獎
+            </button>
+            <button id="stopScanBtn" onclick="stopScanner()" class="hidden flex-1 py-3 bg-slate-700 text-white font-bold rounded-2xl shadow-sm hover:bg-slate-800 transition text-sm">
+              <i class="fa-solid fa-pause mr-1.5"></i>暫停相機
+            </button>
+            <label class="btn-pixar-3d px-4 py-3 text-slate-700 font-bold rounded-2xl cursor-pointer text-sm flex items-center justify-center">
+              <i class="fa-solid fa-image mr-1.5 text-indigo-600"></i>上傳圖檔
+              <input type="file" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+            </label>
+          </div>
+
+          <!-- Log List -->
+          <div class="pixar-card p-3 max-h-36 overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center text-xs font-bold text-slate-400 mb-2">
+              <span><i class="fa-solid fa-clock-rotate-left mr-1"></i>掃描紀錄</span>
+              <button onclick="clearScanLogs()" class="hover:text-rose-500 text-[10px]">清除</button>
+            </div>
+            <div id="scan-log-list" class="space-y-1.5 text-xs text-slate-600">
+              <div class="text-center text-slate-400 py-2">尚無掃描紀錄</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: FULL NUMBER INPUT -->
+        <section id="view-manual" class="tab-view hidden space-y-3">
+          <div class="pixar-card p-4 space-y-3">
+            <div class="text-center">
+              <label class="text-xs font-bold text-slate-400">輸入 8 位發票號碼</label>
+              <input type="text" id="full-number-input" maxlength="8" placeholder="請輸入8位數字" inputmode="numeric"
+                class="w-full mt-1.5 px-4 py-2.5 text-2xl font-black text-center theme-digit-text bg-slate-100/80 rounded-2xl border border-slate-200/80 focus:outline-none shadow-inner font-mono tracking-widest">
+            </div>
+
+            <!-- Keypad for Full Number -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <button onclick="pressManualDigit('1')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">1</button>
+              <button onclick="pressManualDigit('2')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">2</button>
+              <button onclick="pressManualDigit('3')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">3</button>
+              <button onclick="pressManualDigit('4')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">4</button>
+              <button onclick="pressManualDigit('5')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">5</button>
+              <button onclick="pressManualDigit('6')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">6</button>
+              <button onclick="pressManualDigit('7')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">7</button>
+              <button onclick="pressManualDigit('8')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">8</button>
+              <button onclick="pressManualDigit('9')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">9</button>
+              <button onclick="clearManualInput()" class="btn-pixar-3d py-3 rounded-2xl text-slate-600 font-bold text-sm bg-slate-100">清除</button>
+              <button onclick="pressManualDigit('0')" class="btn-pixar-3d py-3 rounded-2xl text-slate-800 font-bold text-xl">0</button>
+              <button onclick="backspaceManualDigit()" class="btn-pixar-3d py-3 rounded-2xl text-slate-700 font-bold text-base bg-slate-100"><i class="fa-solid fa-delete-left"></i></button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="checkFullNumberManual()" class="btn-pixar-primary py-2.5 font-bold rounded-2xl text-sm">
+                <i class="fa-solid fa-magnifying-glass mr-1"></i>對獎
+              </button>
+              <button onclick="clearManualInput()" class="btn-pixar-3d py-2.5 text-slate-600 font-bold rounded-2xl text-sm">
+                重置
+              </button>
+            </div>
+          </div>
+
+          <!-- Inline Manual Result Notice -->
+          <div id="manual-prize-card" class="hidden pixar-card p-4 text-center">
+            <div id="manual-prize-title" class="text-xl font-black text-slate-800">未中獎</div>
+            <div id="manual-prize-amount" class="text-2xl font-black text-indigo-600 my-1">$0 元</div>
+            <p id="manual-prize-desc" class="text-xs text-slate-400">請確認號碼重新比對</p>
+          </div>
+        </section>
+
+        <!-- SECTION 4: OFFICIAL WINNING NUMBERS LIST -->
+        <section id="view-numbers" class="tab-view hidden space-y-3">
+          <div class="pixar-card p-4 space-y-3">
+            
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2.5">
+              <div>
+                <div id="list-period-title" class="font-bold text-slate-800 text-sm">115年 05 - 06 月中獎號碼</div>
+                <div id="list-claim-deadline" class="text-[10px] text-slate-400 font-mono mt-0.5">領獎期限：115年08月06日 ~ 115年11月05日</div>
+              </div>
+              <span class="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full border border-indigo-100 flex-shrink-0">財政部官方</span>
+            </div>
+
+            <!-- Unified List Items -->
+            <div class="space-y-2.5 text-xs">
+              <div class="flex justify-between items-center bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
+                <div>
+                  <div class="font-bold text-slate-700">特別獎 <span class="text-slate-400 text-[10px] ml-1">1,000萬元</span></div>
+                  <div class="text-[10px] text-slate-400">同期統一發票收執聯8位數號碼相同</div>
+                </div>
+                <div id="num-special" class="text-lg font-black text-indigo-600 font-mono tracking-wider">38548029</div>
+              </div>
+
+              <div class="flex justify-between items-center bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
+                <div>
+                  <div class="font-bold text-slate-700">特獎 <span class="text-slate-400 text-[10px] ml-1">200萬元</span></div>
+                  <div class="text-[10px] text-slate-400">同期統一發票收執聯8位數號碼相同</div>
+                </div>
+                <div id="num-grand" class="text-lg font-black text-indigo-600 font-mono tracking-wider">10138845</div>
+              </div>
+
+              <div class="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                <div class="flex justify-between items-center">
+                  <span class="font-bold text-slate-700">頭獎 <span class="text-slate-400 text-[10px] ml-1">20萬元</span></span>
+                  <span class="text-[10px] text-slate-400">末3至8位數相同可獲六獎至頭獎</span>
+                </div>
+                <div id="num-first" class="text-base font-black text-slate-800 font-mono tracking-wider space-y-0.5 text-right">
+                  <div>24121106</div>
+                  <div>28589937</div>
+                  <div>83663333</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="text-center text-[10px] text-slate-400">
+            資料來源：<a href="https://invoice.etax.nat.gov.tw/" target="_blank" class="underline hover:text-slate-600">財政部賦稅署入口網</a>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="mt-6 text-center text-[11px] text-slate-400">
+      <p>統一發票對獎機 © 2026</p>
+    </footer>
+
+  </div>
+
+  <!-- CELEBRATION MODAL WITH CELEBRATING PET COMPANION -->
+  <div id="winModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="pixar-card p-6 max-w-xs w-full text-center relative border-2 border-white shadow-2xl">
+      
+      <!-- Celebratory Companions Area -->
+      <div class="flex items-center justify-center space-x-2 -mt-4 mb-1">
+        
+        <!-- Active Companion -->
+        <div id="modalPetContainer" class="w-20 h-20 relative flex items-center justify-center pointer-events-none">
+          <!-- SVG rendered dynamically -->
+        </div>
+
+        <!-- Animated Caishen Avatar -->
+        <div id="caishenContainer" class="w-24 h-24 relative flex items-center justify-center pointer-events-none">
+          <div class="absolute inset-2 bg-amber-200/60 rounded-full blur-xl animate-pulse"></div>
+          
+          <svg class="w-24 h-24 relative z-10 drop-shadow-md caishen-animate-enter" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 25L17 20L22 18L17 16L15 11L13 16L8 18L13 20L15 25Z" fill="#FBBF24"/>
+            <path d="M102 30L103.5 26.5L107 25L103.5 23.5L102 20L100.5 23.5L97 25L100.5 26.5L102 30Z" fill="#FBBF24"/>
+            <rect x="8" y="24" width="22" height="7" rx="3.5" fill="#DC2626"/>
+            <circle cx="8" cy="27.5" r="4" fill="#FBBF24"/>
+            <rect x="90" y="24" width="22" height="7" rx="3.5" fill="#DC2626"/>
+            <circle cx="112" cy="27.5" r="4" fill="#FBBF24"/>
+            <path d="M35 32C35 18 42 12 60 12C78 12 85 18 85 32H35Z" fill="#E11D48"/>
+            <path d="M32 30H88V35C88 37.2 86.2 39 84 39H36C33.8 39 32 37.2 32 35V30Z" fill="#B91C1C"/>
+            <circle cx="60" cy="25" r="5" fill="#FBBF24"/>
+            <circle cx="38" cy="54" r="5" fill="#FDE68A"/>
+            <circle cx="82" cy="54" r="5" fill="#FDE68A"/>
+            <rect x="36" y="38" width="48" height="36" rx="18" fill="#FEF3C7"/>
+            <ellipse cx="46" cy="58" rx="4.5" ry="3" fill="#FCA5A5" opacity="0.8"/>
+            <ellipse cx="74" cy="58" rx="4.5" ry="3" fill="#FCA5A5" opacity="0.8"/>
+            <path d="M47 50C47 47.5 51 47.5 51 50" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M69 50C69 47.5 73 47.5 73 50" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M52 57C55 58.5 58 57 60 55.5C62 57 65 58.5 68 57" stroke="#1E293B" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M55 60C55 64 65 64 65 60" fill="#E11D48"/>
+            <path d="M38 72L30 102H90L82 72H38Z" fill="#DC2626"/>
+            <path d="M42 82C42 76 48 74 60 74C72 74 78 76 78 82C78 90 68 93 60 93C52 93 42 90 42 82Z" fill="#FBBF24"/>
+          </svg>
+        </div>
+
+      </div>
+
+      <h2 class="text-xs font-bold text-indigo-600 tracking-wider uppercase mb-1">CONGRATULATIONS</h2>
+      <h3 id="winModalTitle" class="text-2xl font-black text-slate-800 mb-1">恭喜中獎！</h3>
+      <div id="winModalAmount" class="text-3xl font-black text-indigo-600 mb-2">
+        $200 元
+      </div>
+      
+      <p id="winModalDesc" class="text-xs text-slate-400 font-medium mb-4">發票號碼末三碼相符</p>
+
+      <button onclick="closeWinModal()" class="btn-pixar-primary w-full py-3 font-bold text-sm rounded-2xl active:scale-95 transition">
+        收下幸運大獎 🧧
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Global State Variables
+    let currentPeriod = '115-0506';
+    let activeCompanionKey = 'dog';
+    let currentTab = 'fast';
+    let fastInputDigits = '';
+
+    // Camera Scanner Variables
+    let scannerStream = null;
+    let videoTrack = null;
+    let isScanning = false;
+    let facingMode = 'environment';
+    let torchState = false;
+
+    // Audio State
+    let isMuted = false;
+    let audioCtx = null;
+
+    // Official Lottery Data (Factual source: Ministry of Finance)
+    const OFFICIAL_LOTTERY_DATA = {
+      '115-0506': {
+        periodName: '115年 05 - 06 月',
+        claimDates: '115年08月06日 ~ 115年11月05日',
+        claimStatus: '領獎中',
+        claimStatusClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        special: '38548029',
+        grand: '10138845',
+        first: ['24121106', '28589937', '83663333']
+      },
+      '115-0304': {
+        periodName: '115年 03 - 04 月',
+        claimDates: '115年06月06日 ~ 115年09月05日',
+        claimStatus: '領獎中',
+        claimStatusClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        special: '19531471',
+        grand: '85941329',
+        first: ['07225810', '20231230', '83518781']
+      },
+      '115-0102': {
+        periodName: '115年 01 - 02 月',
+        claimDates: '115年04月06日 ~ 115年07月05日',
+        claimStatus: '已截止領獎',
+        claimStatusClass: 'bg-rose-100 text-rose-700 border-rose-200',
+        special: '87510041',
+        grand: '32220522',
+        first: ['21677046', '44662410', '31262513']
+      }
+    };
+
+    const COMPANION_DATA = {
+      dog: {
+        name: '汪汪 Barkley',
+        petHint: '摸摸汪汪 ✨',
+        themeAttr: 'dog',
+        quotes: {
+          idle: ['預祝開出大獎！快輸入號碼吧 汪！✨', '搖尾巴～我感覺這張氣場特別強！', '汪！今天你是全世界最幸運的人！'],
+          typing: ['認真對獎中... 汪汪集氣！⚡', '輸入號碼惹！神清氣爽汪！', '好緊張！財神爺快來～'],
+          hit: ['🎉 汪汪汪！太狂啦！真的中獎了！', '幸運狗狗給你最高歡呼！超級讚！'],
+          miss: ['汪！拍拍頭～沒關係，下一張一定是兩百萬！', '搖尾巴安慰你～下一張好運加倍！'],
+          scan: ['汪！眼睛張大對準 QR Code 囉！', '掃掃掃～財運通通進來！']
+        },
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" fill="#F59E0B" opacity="0.15"/>
+          <ellipse cx="22" cy="45" rx="12" ry="22" fill="#D97706" transform="rotate(15 22 45)"/>
+          <ellipse cx="78" cy="45" rx="12" ry="22" fill="#D97706" transform="rotate(-15 78 45)"/>
+          <circle cx="50" cy="52" r="34" fill="#FBBF24"/>
+          <ellipse cx="50" cy="62" rx="18" ry="12" fill="#FEF3C7"/>
+          <ellipse cx="50" cy="56" rx="7" ry="5" fill="#1E293B"/>
+          <circle cx="36" cy="46" r="6" fill="#1E293B"/><circle cx="38" cy="44" r="2" fill="white"/>
+          <circle cx="64" cy="46" r="6" fill="#1E293B"/><circle cx="66" cy="44" r="2" fill="white"/>
+          <ellipse cx="28" cy="58" rx="5" ry="3" fill="#FCA5A5" opacity="0.7"/>
+          <ellipse cx="72" cy="58" rx="5" ry="3" fill="#FCA5A5" opacity="0.7"/>
+          <path d="M46 64C48 67 52 67 54 64" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+          <rect x="36" y="80" width="28" height="8" rx="4" fill="#EF4444"/>
+          <circle cx="50" cy="86" r="4" fill="#FBBF24"/>
+        </svg>`
+      },
+      pig: {
+        name: '豬豬 Barnaby',
+        petHint: '摸摸豬豬 ✨',
+        themeAttr: 'pig',
+        quotes: {
+          idle: ['嗶嗶！豬豬招財術開啟中 🐷✨', '吃飽飽對發票最幸福了～', '哼哼！我的粉紅鼻子聞到財氣了！'],
+          typing: ['輸入數字哼哼～幸運值 UP！', '豬豬陪你按號碼～順順順！', '財神爺正抱著元寶靠近中！'],
+          hit: ['🎉 哼哼哼！太讚啦！元寶掉下來了！', '豬豬開心到起飛！恭喜中獎！'],
+          miss: ['哼哼～沒關係！豬豬把幸運分給你！', '吃個點心再對下一張，好運馬上到！'],
+          scan: ['豬豬鏡頭專注中！對準條碼～', '嗶！掃描成功～看豬豬的魔法！']
+        },
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" fill="#EC4899" opacity="0.15"/>
+          <circle cx="26" cy="28" r="12" fill="#F472B6"/>
+          <circle cx="26" cy="28" r="6" fill="#F43F5E"/>
+          <circle cx="74" cy="28" r="12" fill="#F472B6"/>
+          <circle cx="74" cy="28" r="6" fill="#F43F5E"/>
+          <circle cx="50" cy="54" r="34" fill="#FBCFE8"/>
+          <ellipse cx="50" cy="60" rx="14" ry="10" fill="#F472B6"/>
+          <circle cx="45" cy="60" r="3" fill="#881337"/>
+          <circle cx="55" cy="60" r="3" fill="#881337"/>
+          <circle cx="36" cy="46" r="5" fill="#1E293B"/><circle cx="38" cy="44" r="1.8" fill="white"/>
+          <circle cx="64" cy="46" r="5" fill="#1E293B"/><circle cx="66" cy="44" r="1.8" fill="white"/>
+          <ellipse cx="28" cy="56" rx="5" ry="3.5" fill="#FDA4AF"/>
+          <ellipse cx="72" cy="56" rx="5" ry="3.5" fill="#FDA4AF"/>
+        </svg>`
+      },
+      cat: {
+        name: '喵喵 Biscuit',
+        petHint: '摸摸喵喵 ✨',
+        themeAttr: 'cat',
+        quotes: {
+          idle: ['喵嗚～財神爺被我的可愛吸引過來了 🐱', '伸懶腰～這張感覺有大獎相！', '喵～摸摸我會招財喔！'],
+          typing: ['貓爪幫你蓋章！一定要中喔喵！', '喵喵專注踏踏中...✨', '優雅對獎，大獎自然來！'],
+          hit: ['🎉 喵嗚！踏踏成功！真的抱回大獎！', '喵喵興奮到跳上桌！恭喜中獎！'],
+          miss: ['喵嗚～拍拍手！下一張一定是兩百萬！', '沒中沒關係，喵喵抱抱你～'],
+          scan: ['喵～大眼睛專注鎖定條碼！', '貓爪一揮～條碼進來！']
+        },
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" fill="#F97316" opacity="0.15"/>
+          <path d="M22 24L38 42H18L22 24Z" fill="#EA580C"/>
+          <path d="M25 28L34 40H21L25 28Z" fill="#FDBA74"/>
+          <path d="M78 24L62 42H82L78 24Z" fill="#EA580C"/>
+          <path d="M75 28L66 40H79L75 28Z" fill="#FDBA74"/>
+          <circle cx="50" cy="54" r="34" fill="#FB923C"/>
+          <ellipse cx="50" cy="62" rx="16" ry="11" fill="#FEF3C7"/>
+          <polygon points="50,56 46,52 54,52" fill="#BE185D"/>
+          <ellipse cx="36" cy="46" rx="6" ry="7" fill="#1E293B"/><circle cx="38" cy="44" r="2.2" fill="white"/>
+          <ellipse cx="64" cy="46" rx="6" ry="7" fill="#1E293B"/><circle cx="66" cy="44" r="2.2" fill="white"/>
+          <path d="M44 60C48 62 52 62 56 60" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M18 52L30 54M16 60L30 59" stroke="#EA580C" stroke-width="2" stroke-linecap="round"/>
+          <path d="M82 52L70 54M84 60L70 59" stroke="#EA580C" stroke-width="2" stroke-linecap="round"/>
+        </svg>`
+      }
+    };
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function toggleSound() {
+      isMuted = !isMuted;
+      const icon = document.getElementById('soundIcon');
+      if (isMuted) {
+        icon.className = 'fa-solid fa-volume-xmark text-slate-400 text-lg';
+      } else {
+        icon.className = 'fa-solid fa-volume-high theme-text-accent text-lg';
+        playBeepSound(800, 'sine', 0.1);
+      }
+    }
+
+    function playBeepSound(freq = 600, type = 'sine', duration = 0.1) {
+      if (isMuted) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playVictoryFanfare() {
+      if (isMuted) return;
+      initAudio();
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, i) => {
+        setTimeout(() => playBeepSound(freq, 'triangle', 0.25), i * 120);
+      });
+    }
+
+    function playSadSound() {
+      if (isMuted) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch (e) {}
+    }
+
+    function renderCompanion() {
+      const data = COMPANION_DATA[activeCompanionKey];
+      document.getElementById('companionName').innerText = data.name;
+      document.getElementById('companionAvatarSvg').innerHTML = data.svg;
+      document.getElementById('petHintBadge').innerText = data.petHint;
+      
+      const modalPet = document.getElementById('modalPetContainer');
+      if (modalPet) {
+        modalPet.innerHTML = data.svg;
+      }
+
+      document.body.setAttribute('data-theme', data.themeAttr);
+      updatePillButtonStyles();
+    }
+
+    function setCompanionEmotion(emotionKey) {
+      const companion = COMPANION_DATA[activeCompanionKey];
+      const avatarEl = document.getElementById('companionAvatarSvg');
+      const speechEl = document.getElementById('companionSpeech');
+      
+      if (!avatarEl || !speechEl) return;
+
+      const quotes = companion.quotes[emotionKey] || companion.quotes.idle;
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      speechEl.innerText = randomQuote;
+
+      avatarEl.classList.remove('companion-idle', 'companion-joy', 'companion-comfort');
+      void avatarEl.offsetWidth;
+
+      if (emotionKey === 'hit') {
+        avatarEl.classList.add('companion-joy');
+      } else if (emotionKey === 'miss') {
+        avatarEl.classList.add('companion-comfort');
+      } else {
+        avatarEl.classList.add('companion-idle');
+      }
+    }
+
+    function petCompanion() {
+      playBeepSound(880, 'sine', 0.12);
+      setCompanionEmotion('hit');
+    }
+
+    function updatePillButtonStyles() {
+      ['dog', 'pig', 'cat'].forEach(key => {
+        const btn = document.getElementById(`btn-companion-${key}`);
+        if (btn) {
+          if (key === activeCompanionKey) {
+            btn.className = 'companion-btn px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm transition-all duration-300';
+            btn.style.backgroundColor = 'var(--theme-pill-active-bg)';
+          } else {
+            btn.className = 'companion-btn px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white text-slate-600 border border-slate-200 transition-all duration-300';
+            btn.style.backgroundColor = '#FFFFFF';
+          }
+        }
+      });
+
+      ['115-0506', '115-0304', '115-0102'].forEach(p => {
+        const btn = document.getElementById(`period-${p}`);
+        if (btn) {
+          if (p === currentPeriod) {
+            btn.className = 'period-btn flex-1 py-2 rounded-xl font-bold text-xs transition-all shadow-sm';
+            btn.style.backgroundColor = '#FFFFFF';
+            btn.style.color = 'var(--theme-accent-text)';
+          } else {
+            btn.className = 'period-btn flex-1 py-2 rounded-xl font-bold text-xs text-slate-600 transition-all hover:text-slate-900';
+            btn.style.backgroundColor = 'transparent';
+            btn.style.color = '#475569';
+          }
+        }
+      });
+
+      ['fast', 'camera', 'manual', 'numbers'].forEach(tab => {
+        const btn = document.getElementById(`tab-${tab}`);
+        if (btn) {
+          if (tab === currentTab) {
+            btn.className = 'tab-btn py-2 rounded-xl text-xs font-bold transition-all shadow-sm text-white';
+            btn.style.backgroundColor = 'var(--theme-pill-active-bg)';
+          } else {
+            btn.className = 'tab-btn py-2 rounded-xl text-xs font-bold text-slate-600 transition-all hover:text-slate-900';
+            btn.style.backgroundColor = 'transparent';
+          }
+        }
+      });
+    }
+
+    function switchCompanion(key) {
+      if (COMPANION_DATA[key]) {
+        activeCompanionKey = key;
+        playBeepSound(900, 'sine', 0.08);
+        renderCompanion();
+        setCompanionEmotion('idle');
+      }
+    }
+
+    function selectPeriod(periodKey) {
+      currentPeriod = periodKey;
+      updatePillButtonStyles();
+      updateClaimDeadlineDisplay();
+      renderTargetLast3Pool();
+      renderOfficialNumbersView();
+      if (fastInputDigits.length === 3) {
+        evaluateFastDigits();
+      }
+    }
+
+    function updateClaimDeadlineDisplay() {
+      const data = OFFICIAL_LOTTERY_DATA[currentPeriod];
+      if (!data) return;
+      const datesEl = document.getElementById('period-claim-dates');
+      const statusEl = document.getElementById('period-claim-status');
+      if (datesEl) datesEl.innerText = data.claimDates;
+      if (statusEl) {
+        statusEl.innerText = data.claimStatus;
+        statusEl.className = `text-[10px] font-black px-2 py-0.5 rounded-full border ${data.claimStatusClass}`;
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotice');
+      const text = document.getElementById('toastText');
+      if (!toast || !text) return;
+      text.innerText = msg;
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-4');
+      }, 2500);
+    }
+
+    function manualRefreshData() {
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('animate-spin');
+      playBeepSound(800, 'sine', 0.1);
+      
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        const now = new Date();
+        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        showToast(`已更新至最新號碼！ (最後同步 ${timeStr})`);
+        setCompanionEmotion('hit');
+      }, 800);
+    }
+
+    function autoVerifyLatestData() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const loadingPet = document.getElementById('loadingPetSvg');
+      const statusText = document.getElementById('loadingStatusText');
+      const successBadge = document.getElementById('loadingSuccessBadge');
+
+      if (loadingPet && COMPANION_DATA[activeCompanionKey]) {
+        loadingPet.innerHTML = COMPANION_DATA[activeCompanionKey].svg;
+      }
+
+      setTimeout(() => {
+        if (statusText) statusText.innerText = '與財政部同步最新 115 年第 3 期獎號...';
+      }, 600);
+
+      setTimeout(() => {
+        if (successBadge) successBadge.classList.remove('hidden');
+        playBeepSound(960, 'sine', 0.15);
+      }, 1200);
+
+      setTimeout(() => {
+        if (loadingOverlay) {
+          loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+          setTimeout(() => loadingOverlay.remove(), 500);
+        }
+        showToast('發票機開機完成！已自動載入最新開獎號碼');
+      }, 2000);
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      playBeepSound(600, 'sine', 0.05);
+
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+      
+      const activeView = document.getElementById(`view-${tabName}`);
+      if (activeView) activeView.classList.remove('hidden');
+
+      updatePillButtonStyles();
+
+      if (tabName === 'camera') {
+        setCompanionEmotion('scan');
+      } else {
+        setCompanionEmotion('idle');
+        stopScanner();
+      }
+    }
+
+    function pressDigit(num) {
+      if (fastInputDigits.length < 3) {
+        playBeepSound(700 + fastInputDigits.length * 120, 'sine', 0.06);
+        fastInputDigits += num;
+        updateFastDigitDisplay();
+        setCompanionEmotion('typing');
+        if (fastInputDigits.length === 3) {
+          evaluateFastDigits();
+        }
+      }
+    }
+
+    function clearFastDigit() {
+      playBeepSound(400, 'sine', 0.06);
+      fastInputDigits = '';
+      updateFastDigitDisplay();
+      setCompanionEmotion('idle');
+      document.getElementById('fast-result-msg').innerHTML = '提示：輸入 3 位數即刻對獎';
+      document.getElementById('fast-result-msg').className = 'text-xs font-bold min-h-[26px] flex items-center justify-center text-slate-400 mt-2';
+    }
+
+    function backspaceDigit() {
+      if (fastInputDigits.length > 0) {
+        playBeepSound(500, 'sine', 0.05);
+        fastInputDigits = fastInputDigits.slice(0, -1);
+        updateFastDigitDisplay();
+        document.getElementById('fast-result-msg').innerHTML = '提示：輸入 3 位數即刻對獎';
+        document.getElementById('fast-result-msg').className = 'text-xs font-bold min-h-[26px] flex items-center justify-center text-slate-400 mt-2';
+      }
+    }
+
+    function updateFastDigitDisplay() {
+      for (let i = 1; i <= 3; i++) {
+        const el = document.getElementById(`digit-${i}`);
+        if (fastInputDigits[i - 1]) {
+          el.innerText = fastInputDigits[i - 1];
+          el.classList.add('text-indigo-600');
+        } else {
+          el.innerText = '_';
+          el.classList.remove('text-indigo-600');
+        }
+      }
+    }
+
+    function renderTargetLast3Pool() {
+      const data = OFFICIAL_LOTTERY_DATA[currentPeriod];
+      const container = document.getElementById('last3-target-pool');
+      if (!container || !data) return;
+      container.innerHTML = '';
+
+      let last3Set = new Set();
+      data.first.forEach(num => last3Set.add(num.slice(-3)));
+      
+      last3Set.forEach(l3 => {
+        const pill = document.createElement('span');
+        pill.className = 'px-2 py-0.5 bg-slate-100 text-slate-700 font-mono font-bold text-xs rounded-lg border border-slate-200';
+        pill.innerText = l3;
+        container.appendChild(pill);
+      });
+    }
+
+    function evaluateFastDigits() {
+      const data = OFFICIAL_LOTTERY_DATA[currentPeriod];
+      const input3 = fastInputDigits;
+
+      let isHit = false;
+      data.first.forEach(num => {
+        if (num.endsWith(input3)) isHit = true;
+      });
+
+      const special3 = data.special.slice(-3);
+      const grand3 = data.grand.slice(-3);
+
+      const msgEl = document.getElementById('fast-result-msg');
+
+      if (isHit) {
+        playVictoryFanfare();
+        triggerConfetti();
+        setCompanionEmotion('hit');
+        msgEl.innerHTML = `🎉 末3碼【${input3}】對中六獎200元！`;
+        msgEl.className = 'text-xs font-bold min-h-[26px] flex items-center justify-center text-emerald-600 bg-emerald-50 py-1 px-2 rounded-xl border border-emerald-200';
+        showWinModal('六獎 200元 (或更高)', `發票末三碼【${input3}】與頭獎末3碼完全相同`);
+      } else if (input3 === special3 || input3 === grand3) {
+        playBeepSound(900, 'triangle', 0.15);
+        setCompanionEmotion('typing');
+        msgEl.innerHTML = `✨ 符合特別/特獎末三碼！請切換「全號」核對全8碼`;
+        msgEl.className = 'text-xs font-bold min-h-[26px] flex items-center justify-center text-indigo-600 bg-indigo-50 py-1 px-2 rounded-xl border border-indigo-200';
+      } else {
+        playSadSound();
+        setCompanionEmotion('miss');
+        msgEl.innerHTML = `❌ 末3碼【${input3}】未中獎`;
+        msgEl.className = 'text-xs font-bold min-h-[26px] flex items-center justify-center text-slate-500 bg-slate-100 py-1 px-2 rounded-xl border border-slate-200';
+      }
+    }
+
+    function checkFullNumberManual() {
+      const input = document.getElementById('full-number-input').value.trim();
+      if (input.length !== 8 || isNaN(input)) {
+        setCameraStatus('請輸入正確的 8 位數字發票號碼');
+        return;
+      }
+
+      const prizeResult = calculatePrize(input, currentPeriod);
+      const card = document.getElementById('manual-prize-card');
+      const title = document.getElementById('manual-prize-title');
+      const amount = document.getElementById('manual-prize-amount');
+      const desc = document.getElementById('manual-prize-desc');
+
+      card.classList.remove('hidden');
+
+      if (prizeResult.won) {
+        playVictoryFanfare();
+        triggerConfetti();
+        setCompanionEmotion('hit');
+        title.innerText = `恭喜中【${prizeResult.prizeName}】！`;
+        amount.innerText = prizeResult.amount;
+        desc.innerText = prizeResult.desc;
+        showWinModal(`${prizeResult.prizeName} ${prizeResult.amount}`, prizeResult.desc);
+      } else {
+        playSadSound();
+        setCompanionEmotion('miss');
+        title.innerText = '未中獎';
+        amount.innerText = '$0 元';
+        desc.innerText = '別灰心，下一張發票幸運神就是你！';
+      }
+    }
+
+    function pressManualDigit(num) {
+      const inputEl = document.getElementById('full-number-input');
+      if (inputEl.value.length < 8) {
+        playBeepSound(700 + inputEl.value.length * 80, 'sine', 0.06);
+        inputEl.value += num;
+        setCompanionEmotion('typing');
+        if (inputEl.value.length === 8) {
+          checkFullNumberManual();
+        }
+      }
+    }
+
+    function clearManualInput() {
+      playBeepSound(400, 'sine', 0.06);
+      document.getElementById('full-number-input').value = '';
+      setCompanionEmotion('idle');
+      resetManualResult();
+    }
+
+    function backspaceManualDigit() {
+      const inputEl = document.getElementById('full-number-input');
+      if (inputEl.value.length > 0) {
+        playBeepSound(500, 'sine', 0.05);
+        inputEl.value = inputEl.value.slice(0, -1);
+        resetManualResult();
+      }
+    }
+
+    function resetManualResult() {
+      document.getElementById('manual-prize-card').classList.add('hidden');
+    }
+
+    function calculatePrize(num8, periodKey) {
+      const data = OFFICIAL_LOTTERY_DATA[periodKey];
+
+      if (num8 === data.special) {
+        return { won: true, prizeName: '特別獎', amount: '$1,000 萬元', desc: '8位號碼與特別獎號碼完全相同' };
+      }
+      if (num8 === data.grand) {
+        return { won: true, prizeName: '特獎', amount: '$200 萬元', desc: '8位號碼與特獎號碼完全相同' };
+      }
+
+      let highestMatch = 0;
+      let matchedName = '';
+      let matchedAmount = '';
+
+      data.first.forEach(firstNum => {
+        if (num8 === firstNum) {
+          if (8 > highestMatch) { highestMatch = 8; matchedName = '頭獎'; matchedAmount = '$20 萬元'; }
+        } else if (num8.slice(1) === firstNum.slice(1)) {
+          if (7 > highestMatch) { highestMatch = 7; matchedName = '二獎'; matchedAmount = '$4 萬元'; }
+        } else if (num8.slice(2) === firstNum.slice(2)) {
+          if (6 > highestMatch) { highestMatch = 6; matchedName = '三獎'; matchedAmount = '$1 萬元'; }
+        } else if (num8.slice(3) === firstNum.slice(3)) {
+          if (5 > highestMatch) { highestMatch = 5; matchedName = '四獎'; matchedAmount = '$4 千元'; }
+        } else if (num8.slice(4) === firstNum.slice(4)) {
+          if (4 > highestMatch) { highestMatch = 4; matchedName = '五獎'; matchedAmount = '$1 千元'; }
+        } else if (num8.slice(5) === firstNum.slice(5)) {
+          if (3 > highestMatch) { highestMatch = 3; matchedName = '六獎'; matchedAmount = '$200 元'; }
+        }
+      });
+
+      if (highestMatch > 0) {
+        return { won: true, prizeName: matchedName, amount: matchedAmount, desc: `末 ${highestMatch} 位號碼與頭獎相同` };
+      }
+
+      return { won: false, prizeName: '未中獎', amount: '$0', desc: '未能對中獎項' };
+    }
+
+    function setCameraStatus(msg) {
+      const toast = document.getElementById('camera-toast');
+      if (toast) toast.innerText = msg;
+    }
+
+    async function startScanner() {
+      try {
+        const video = document.getElementById('scan-video');
+        document.getElementById('scan-status').innerText = '啟動中...';
+
+        const constraints = {
+          video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+        };
+
+        scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = scannerStream;
+        video.setAttribute('playsinline', true);
+        await video.play();
+
+        videoTrack = scannerStream.getVideoTracks()[0];
+        isScanning = true;
+
+        document.getElementById('startScanBtn').classList.add('hidden');
+        document.getElementById('stopScanBtn').classList.remove('hidden');
+        document.getElementById('scan-status').innerText = '掃描中';
+
+        requestAnimationFrame(scanLoop);
+      } catch (err) {
+        console.error('Camera Access Error:', err);
+        document.getElementById('scan-status').innerText = '無權限';
+        setCameraStatus('請允許相機權限以進行發票掃描');
+      }
+    }
+
+    function stopScanner() {
+      isScanning = false;
+      if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+      }
+      const startBtn = document.getElementById('startScanBtn');
+      const stopBtn = document.getElementById('stopScanBtn');
+      if (startBtn && stopBtn) {
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+      }
+      const statusEl = document.getElementById('scan-status');
+      if (statusEl) statusEl.innerText = '已暫停';
+    }
+
+    function switchCameraFacing() {
+      facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+      stopScanner();
+      startScanner();
+    }
+
+    async function toggleTorch() {
+      if (!videoTrack) {
+        setCameraStatus('請先開啟相機以使用閃光燈');
+        return;
+      }
+      try {
+        const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+        if (!capabilities.torch) {
+          setCameraStatus('裝置不支援閃光燈控制');
+          return;
+        }
+        torchState = !torchState;
+        await videoTrack.applyConstraints({ advanced: [{ torch: torchState }] });
+        playBeepSound(1000, 'sine', 0.05);
+      } catch (e) {
+        setCameraStatus('無法控制閃光燈');
+      }
+    }
+
+    async function scanLoop() {
+      if (!isScanning) return;
+
+      const video = document.getElementById('scan-video');
+      
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        // 優先使用原生高效能 BarcodeDetector (支援 QR 與 傳統條碼)
+        if ('BarcodeDetector' in window) {
+          if (!window.barcodeDetectorInst) {
+            window.barcodeDetectorInst = new BarcodeDetector({ 
+              formats: ['qr_code', 'code_39', 'code_128', 'ean_13', 'ean_8'] 
+            });
+          }
+          try {
+            const barcodes = await window.barcodeDetectorInst.detect(video);
+            if (barcodes.length > 0) {
+              handleScannedString(barcodes[0].rawValue);
+            }
+          } catch (e) {
+            fallbackJsQR(video);
+          }
+        } else {
+          fallbackJsQR(video);
+        }
+      }
+
+      if (isScanning) {
+        setTimeout(() => requestAnimationFrame(scanLoop), 250);
+      }
+    }
+
+    function fallbackJsQR(video) {
+      const canvas = document.getElementById('scan-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      
+      // 縮小畫布尺寸以提升 jsQR 掃描速度
+      const scale = 0.5;
+      canvas.width = video.videoWidth * scale;
+      canvas.height = video.videoHeight * scale;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (window.jsQR) {
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+
+        if (code && code.data) {
+          handleScannedString(code.data);
+        }
+      }
+    }
+
+    let lastScannedCode = '';
+    let lastScanTime = 0;
+
+    function handleScannedString(rawStr) {
+      const now = Date.now();
+      if (rawStr === lastScannedCode && (now - lastScanTime) < 3000) return;
+      
+      lastScannedCode = rawStr;
+      lastScanTime = now;
+
+      // 擷取英文字母2碼+數字8碼 (支援電子發票 QR Code 與傳統發票條碼格式)
+      const matches = rawStr.match(/[A-Z]{2}\d{8}/i);
+      let invNum = '';
+
+      if (matches) {
+        invNum = matches[0].substring(2);
+      } else if (/^\d{8}$/.test(rawStr.trim())) {
+        invNum = rawStr.trim();
+      }
+
+      if (invNum) {
+        playBeepSound(1200, 'triangle', 0.1);
+        const res = calculatePrize(invNum, currentPeriod);
+        addScanLog(invNum, res);
+      }
+    }
+
+    async function handleImageUpload(evt) {
+      const file = evt.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = async function() {
+          // 優先嘗試原生 BarcodeDetector
+          if ('BarcodeDetector' in window) {
+            const detector = new BarcodeDetector({ formats: ['qr_code', 'code_39', 'code_128'] });
+            try {
+              const barcodes = await detector.detect(img);
+              if (barcodes.length > 0) {
+                handleScannedString(barcodes[0].rawValue);
+                return;
+              }
+            } catch(err) { console.warn(err); }
+          }
+
+          // 降級使用 jsQR
+          const canvas = document.getElementById('scan-canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (window.jsQR) {
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code && code.data) {
+              handleScannedString(code.data);
+            } else {
+              setCameraStatus('未辨識到條碼，請確認圖片清晰度');
+            }
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function addScanLog(invNum, prizeRes) {
+      const list = document.getElementById('scan-log-list');
+      if (list.innerHTML.includes('尚無掃描紀錄')) {
+        list.innerHTML = '';
+      }
+
+      const item = document.createElement('div');
+      item.className = `p-2 rounded-xl flex justify-between items-center ${prizeRes.won ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-200' : 'bg-slate-50 text-slate-700 border border-slate-100'}`;
+      
+      item.innerHTML = `
+        <span><i class="fa-solid fa-barcode mr-1.5 text-slate-400"></i><strong class="font-mono text-xs">${invNum}</strong></span>
+        <span class="${prizeRes.won ? 'text-indigo-600 font-black' : 'text-slate-400'}">${prizeRes.won ? prizeRes.prizeName + ' ' + prizeRes.amount : '未中獎'}</span>
+      `;
+
+      list.prepend(item);
+
+      if (prizeRes.won) {
+        playVictoryFanfare();
+        triggerConfetti();
+        setCompanionEmotion('hit');
+        showWinModal(`${prizeRes.prizeName} ${prizeRes.amount}`, `發票 ${invNum} ${prizeRes.desc}`);
+      } else {
+        playSadSound();
+        setCompanionEmotion('miss');
+      }
+    }
+
+    function clearScanLogs() {
+      document.getElementById('scan-log-list').innerHTML = '<div class="text-center text-slate-400 py-2">尚無掃描紀錄</div>';
+    }
+
+    function triggerConfetti() {
+      if (window.confetti) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    function renderOfficialNumbersView() {
+      const data = OFFICIAL_LOTTERY_DATA[currentPeriod];
+      if (!data) return;
+      document.getElementById('list-period-title').innerText = `${data.periodName} 中獎號碼`;
+      
+      const claimDeadlineEl = document.getElementById('list-claim-deadline');
+      if (claimDeadlineEl) claimDeadlineEl.innerText = `領獎期限：${data.claimDates}`;
+
+      document.getElementById('num-special').innerText = data.special;
+      document.getElementById('num-grand').innerText = data.grand;
+
+      const firstDiv = document.getElementById('num-first');
+      firstDiv.innerHTML = data.first.map(n => `<div>${n}</div>`).join('');
+    }
+
+    function showWinModal(amountStr, descStr) {
+      document.getElementById('winModalAmount').innerText = amountStr;
+      document.getElementById('winModalDesc').innerText = descStr;
+      
+      const caishenSvg = document.querySelector('#caishenContainer svg');
+      if (caishenSvg) {
+        caishenSvg.classList.remove('caishen-animate-enter');
+        void caishenSvg.offsetWidth;
+        caishenSvg.classList.add('caishen-animate-enter');
+      }
+
+      document.getElementById('winModal').classList.remove('hidden');
+    }
+
+    function closeWinModal() {
+      document.getElementById('winModal').classList.add('hidden');
+      setCompanionEmotion('idle');
+    }
+
+    window.onload = function() {
+      renderCompanion();
+      selectPeriod('115-0506');
+      autoVerifyLatestData();
+    };
+  </script>
+</body>
+</html>

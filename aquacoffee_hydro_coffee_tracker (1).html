@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaCoffee 每日水分與咖啡因智算追蹤器 (電腦版)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas for screenshot generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Canvas Confetti for game rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        coffee: {
+                            50: '#fdf8f6',
+                            100: '#f2e8e5',
+                            300: '#d5b9b1',
+                            500: '#a7796d',
+                            700: '#6f4e37',
+                            800: '#4a3324',
+                            900: '#2c1a10',
+                            950: '#1a0e08',
+                        },
+                        aqua: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Bottle and Tumbler Glow Effects */
+        .bottle-glow {
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2), inset 0 0 15px rgba(255,255,255,0.4);
+        }
+        .dark .bottle-glow {
+            box-shadow: 0 0 35px rgba(14, 165, 233, 0.25), inset 0 0 20px rgba(255,255,255,0.15);
+        }
+        
+        .tumbler-glow {
+            box-shadow: 0 10px 30px rgba(217, 119, 6, 0.2), inset 0 0 15px rgba(255,255,255,0.4);
+        }
+        .dark .tumbler-glow {
+            box-shadow: 0 0 35px rgba(217, 119, 6, 0.25), inset 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        /* Glassmorphism Cards for Light Mode */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 sticky top-0 z-30 px-6 py-2.5 flex-shrink-0">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div id="headerLogo" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 transition-all duration-300">
+                    <i id="headerIcon" class="fa-solid fa-droplet text-white text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 dark:from-blue-400 dark:via-sky-300 dark:to-cyan-200 bg-clip-text text-transparent">
+                        AquaCoffee Desktop
+                    </h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">每日喝水 & 咖啡因智慧整合工作台</p>
+                </div>
+            </div>
+
+            <!-- Header Tools & Theme Switcher -->
+            <div class="flex items-center space-x-3">
+                <!-- Light/Dark Mode Switcher Button -->
+                <button onclick="toggleTheme()" id="themeToggleBtn" class="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all shadow-sm">
+                    <i id="themeToggleIcon" class="fa-solid fa-moon text-amber-500 text-sm"></i>
+                    <span id="themeToggleText">深色模式</span>
+                </button>
+
+                <button onclick="openModal('caffeineCalcModal')" class="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-600/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-xs font-bold flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-bolt text-amber-600 dark:text-amber-400 text-xs"></i>
+                    咖啡因 <span id="headerCaffeineVal">0</span>mg
+                </button>
+                
+                <button onclick="openModal('achievementsModal')" class="p-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors relative" title="成就徽章">
+                    <i class="fa-solid fa-trophy text-amber-500 text-sm"></i>
+                    <span id="badgeDot" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-500 rounded-full animate-ping hidden"></span>
+                </button>
+
+                <button onclick="generateShareCard()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-xs font-bold text-white shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>分享卡片</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Desktop Workspace (3-Column Layout, fitting into 100vh) -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 gap-4 grid grid-cols-12 overflow-hidden h-[calc(100vh-60px)]">
+
+        <!-- COLUMN 1: Quick Action Panel & Goal Calculators (3 Cols) -->
+        <div class="col-span-3 flex flex-col gap-3 h-full overflow-y-auto pr-1">
+            
+            <!-- XP & Level Progress Card -->
+            <div class="glass-card rounded-2xl p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30 font-bold" id="userLevel">LV.1 補水新手</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium" id="xpText">XP 0 / 500</span>
+                </div>
+                
+                <div class="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-300 dark:border-slate-700/50">
+                    <div id="xpBar" class="bg-gradient-to-r from-cyan-500 via-sky-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
+                    <span>每日目標: <strong id="goalText" class="text-cyan-600 dark:text-cyan-300 font-bold">2000</strong> ml</span>
+                    <button onclick="openModal('waterCalcModal')" class="text-cyan-600 dark:text-cyan-400 hover:underline font-semibold flex items-center gap-1 text-[11px]">
+                        <i class="fa-solid fa-calculator"></i> 重新計算
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category Switcher Tabs -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="switchDrinkType('water')" id="tabWater" class="flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-cyan-500 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 font-black text-xs shadow-md shadow-cyan-500/10">
+                    <i class="fa-solid fa-bottle-water text-base"></i>
+                    <span>喝水</span>
+                </button>
+                <button onclick="switchDrinkType('coffee')" id="tabCoffee" class="flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-500 hover:border-amber-600/50 font-black text-xs">
+                    <i class="fa-solid fa-mug-saucer text-base"></i>
+                    <span>喝咖啡</span>
+                </button>
+            </div>
+
+            <!-- Quick Add Action Box -->
+            <div id="actionPanel" class="glass-card rounded-2xl p-4 space-y-3 flex-1 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                        <span class="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-2" id="quickLogTitle">
+                            <i class="fa-solid fa-plus-circle text-cyan-500 text-sm"></i> 快速喝水選項
+                        </span>
+                    </div>
+
+                    <!-- Quick Add Water Preset Grid -->
+                    <div id="waterQuickAdd" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="addDrink('純淨白開水', 150, 'water')" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800/80 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-slate-700/80 text-cyan-700 dark:text-cyan-300 font-bold text-xs transition-all active:scale-95 shadow-sm text-center">
+                                +150 ml
+                            </button>
+                            <button onclick="addDrink('純淨白開水', 250, 'water')" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800/80 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-slate-700/80 text-cyan-700 dark:text-cyan-300 font-bold text-xs transition-all active:scale-95 shadow-sm text-center">
+                                +250 ml
+                            </button>
+                            <button onclick="addDrink('純淨白開水', 350, 'water')" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800/80 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-slate-700/80 text-cyan-700 dark:text-cyan-300 font-bold text-xs transition-all active:scale-95 shadow-sm text-center">
+                                +350 ml
+                            </button>
+                            <button onclick="addDrink('純淨白開水', 500, 'water')" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800/80 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-slate-700/80 text-cyan-700 dark:text-cyan-300 font-bold text-xs transition-all active:scale-95 shadow-sm text-center">
+                                +500 ml
+                            </button>
+                        </div>
+
+                        <!-- Custom Water Input -->
+                        <div class="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                            <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block">自訂喝水量 (ml)</label>
+                            <div class="flex items-center gap-2">
+                                <div class="relative flex-1">
+                                    <input type="number" id="customWaterVol" placeholder="如 400" min="10" max="2000" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-cyan-800/50 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500" />
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400 font-medium pointer-events-none">ml</span>
+                                </div>
+                                <button onclick="addCustomWater()" class="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-md transition-all active:scale-95 flex items-center gap-1 shrink-0">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>新增</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coffee Quick Presets -->
+                    <div id="coffeeQuickAdd" class="hidden space-y-2.5">
+                        <div class="grid grid-cols-1 gap-2">
+                            <button onclick="quickAddCoffee('美式咖啡', 250, '中焙', 150)" class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200 dark:border-amber-800/40 text-left transition-all active:scale-95 flex items-center space-x-3">
+                                <div class="w-7 h-7 rounded-lg bg-amber-200 dark:bg-amber-800/40 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs"><i class="fa-solid fa-mug-saucer"></i></div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800 dark:text-amber-200">美式咖啡</div>
+                                    <div class="text-[10px] text-amber-700 dark:text-amber-400/80">250ml • ☕~150mg</div>
+                                </div>
+                            </button>
+                            <button onclick="quickAddCoffee('拿鐵咖啡', 350, '淺中焙', 120)" class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200 dark:border-amber-800/40 text-left transition-all active:scale-95 flex items-center space-x-3">
+                                <div class="w-7 h-7 rounded-lg bg-amber-200 dark:bg-amber-800/40 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs"><i class="fa-solid fa-cow"></i></div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800 dark:text-amber-200">拿鐵咖啡</div>
+                                    <div class="text-[10px] text-amber-700 dark:text-amber-400/80">350ml • ☕~120mg</div>
+                                </div>
+                            </button>
+                            <button onclick="quickAddCoffee('卡布奇諾', 200, '深焙', 120)" class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200 dark:border-amber-800/40 text-left transition-all active:scale-95 flex items-center space-x-3">
+                                <div class="w-7 h-7 rounded-lg bg-amber-200 dark:bg-amber-800/40 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs"><i class="fa-solid fa-whiskey-glass"></i></div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800 dark:text-amber-200">卡布奇諾</div>
+                                    <div class="text-[10px] text-amber-700 dark:text-amber-400/80">200ml • ☕~120mg</div>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <button onclick="openModal('coffeeDetailModal')" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>進階咖啡品飲細節 (豆種/焙度/品牌)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[11px] text-slate-500">
+                    <button onclick="openModal('caffeineCalcModal')" class="hover:text-cyan-600 dark:hover:text-cyan-400 font-semibold flex items-center gap-1.5 transition-colors">
+                        <i class="fa-solid fa-shield-heart text-blue-500"></i>
+                        <span>每日安全飲用提醒與指南</span>
+                    </button>
+                    <button onclick="openModal('caffeineCalcModal')" class="text-amber-600 dark:text-amber-400 hover:underline font-semibold">咖啡因諮詢</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: Center Interactive Water/Tumbler Visualizer (5 Cols) -->
+        <div class="col-span-5 flex flex-col items-center justify-between h-full glass-card rounded-2xl p-5 relative overflow-hidden">
+            
+            <!-- Realtime Totals Top Bar -->
+            <div class="w-full grid grid-cols-2 gap-3 z-20">
+                <div class="p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/40 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-droplet text-cyan-600 dark:text-cyan-400 text-base"></i>
+                        <div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">白開水累積</div>
+                            <div id="summaryWaterText" class="text-sm font-black text-cyan-700 dark:text-cyan-300">0 ml</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-mug-hot text-amber-600 dark:text-amber-400 text-base"></i>
+                        <div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">咖啡累積</div>
+                            <div id="summaryCoffeeText" class="text-sm font-black text-amber-700 dark:text-amber-300">0 ml</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Interactive Vessel Graphics Container -->
+            <div class="relative flex-1 w-full flex flex-col items-center justify-center my-2">
+                
+                <!-- Volume Meter Displayed Above Bottle / Tumbler -->
+                <div class="text-center mb-7 select-none z-20">
+                    <div id="volumeBadge" class="inline-block px-4 py-1.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 backdrop-blur border border-cyan-500/30 shadow-md transition-all">
+                        <span id="currentVolumeText" class="text-2xl font-black text-slate-800 dark:text-white">0</span>
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">/ <span id="maxVolumeText">2000</span> ml</span>
+                    </div>
+                    <div id="percentageText" class="text-xs font-bold text-cyan-600 dark:text-cyan-300 mt-1 transition-all">0% 已達成</div>
+                </div>
+
+                <div id="vesselContainer" class="relative w-56 h-72 transition-all duration-500 flex flex-col justify-end bottle-glow">
+                    
+                    <!-- WATER BOTTLE CAP OVERLAY -->
+                    <div id="waterCapOverlay" class="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-7 bg-slate-300 dark:bg-slate-800 border-2 border-slate-400 dark:border-slate-600 rounded-t-xl z-20 flex items-center justify-center shadow-md">
+                        <div class="w-12 h-1.5 bg-cyan-500/80 rounded-full"></div>
+                    </div>
+                    
+                    <!-- COFFEE TUMBLER TOP OVERLAY -->
+                    <div id="tumblerTopOverlay" class="hidden absolute -top-3 left-1/2 -translate-x-1/2 w-56 z-20 flex flex-col items-center">
+                        <div class="w-48 h-5 bg-gradient-to-r from-amber-900 via-slate-800 to-amber-900 border border-amber-700/60 rounded-t-lg flex justify-between px-4 items-center">
+                            <div class="w-6 h-2 bg-amber-500/80 rounded-full"></div>
+                            <div class="w-3 h-3 bg-amber-400 rounded-full border border-amber-950"></div>
+                        </div>
+                        <div class="w-56 h-3 bg-amber-800/90 border-y border-amber-700/50"></div>
+                    </div>
+
+                    <!-- Fluid Canvas Container Window -->
+                    <div id="vesselShape" class="relative w-full h-full rounded-t-3xl rounded-b-[2.5rem] border-4 border-slate-300 dark:border-slate-700/80 bg-slate-50/80 dark:bg-slate-900/60 backdrop-blur-md overflow-hidden flex flex-col justify-end">
+                        
+                        <!-- Measurement Ticks -->
+                        <div class="absolute right-3 top-10 bottom-10 flex flex-col justify-between items-end z-20 pointer-events-none opacity-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 select-none">
+                            <span>100%</span>
+                            <span>75%</span>
+                            <span>50%</span>
+                            <span>25%</span>
+                            <span>0%</span>
+                        </div>
+
+                        <!-- Fluid Waves Canvas -->
+                        <canvas id="liquidCanvas" class="w-full h-full absolute top-0 left-0 z-10"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health & Safety Warning Banner -->
+            <div id="healthWarningBox" class="w-full hidden rounded-2xl p-3 text-xs font-bold transition-all shadow-lg flex items-start gap-2.5 z-20">
+                <i id="warningIcon" class="fa-solid fa-triangle-exclamation text-base mt-0.5 flex-shrink-0"></i>
+                <div id="warningMessage" class="leading-relaxed"></div>
+            </div>
+
+            <!-- Floating Reward Toast -->
+            <div id="rewardToast" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/95 text-amber-300 border border-amber-500/40 px-5 py-3 rounded-2xl shadow-2xl z-30 font-bold text-center scale-0 opacity-0 transition-all duration-300 pointer-events-none flex items-center space-x-2">
+                <i class="fa-solid fa-crown text-2xl text-amber-400"></i>
+                <span id="toastMessage">水分補充成功！+50 XP</span>
+            </div>
+        </div>
+
+        <!-- COLUMN 3: Today's Drink Logs & History Records (4 Cols) -->
+        <div class="col-span-4 flex flex-col gap-3 h-full overflow-hidden">
+            
+            <!-- Tab Navigation for Logs vs History -->
+            <div class="flex bg-slate-200 dark:bg-slate-800/80 p-1 rounded-2xl">
+                <button onclick="switchRightTab('today')" id="tabRightToday" class="flex-1 py-1.5 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm">
+                    <i class="fa-solid fa-clock-rotate-left mr-1 text-cyan-500"></i>今日日誌
+                </button>
+                <button onclick="switchRightTab('history')" id="tabRightHistory" class="flex-1 py-1.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all">
+                    <i class="fa-solid fa-calendar-days mr-1 text-amber-500"></i>歷史紀錄表
+                </button>
+            </div>
+
+            <!-- TAB CONTENT 1: Today's Log List -->
+            <div id="panelToday" class="glass-card rounded-2xl p-4 flex-1 flex flex-col overflow-hidden space-y-3">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-cyan-500"></i>
+                        今日飲用明細
+                    </h3>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-semibold" id="logCountText">0 筆記錄</span>
+                </div>
+
+                <div id="logList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamic Log Items Render Here -->
+                </div>
+            </div>
+
+            <!-- TAB CONTENT 2: History Records Table -->
+            <div id="panelHistory" class="glass-card rounded-2xl p-4 flex-1 flex flex-col overflow-hidden space-y-3 hidden">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-amber-500"></i>
+                        過往喝水與咖啡歷史
+                    </h3>
+                    <button onclick="addMockHistory()" class="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline">
+                        + 模擬歷史數據
+                    </button>
+                </div>
+
+                <!-- History Summary Stats Row -->
+                <div class="grid grid-cols-3 gap-2 shrink-0">
+                    <div class="p-2 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-center">
+                        <div class="text-[10px] text-slate-500">平均日喝水</div>
+                        <div class="text-xs font-bold text-cyan-600 dark:text-cyan-300" id="histAvgWater">2,150 ml</div>
+                    </div>
+                    <div class="p-2 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-center">
+                        <div class="text-[10px] text-slate-500">累積喝水天數</div>
+                        <div class="text-xs font-bold text-amber-600 dark:text-amber-300" id="histTotalDays">14 天</div>
+                    </div>
+                    <div class="p-2 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-center">
+                        <div class="text-[10px] text-slate-500">連續連勝</div>
+                        <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400" id="histStreak">5 天 🔥</div>
+                    </div>
+                </div>
+
+                <!-- History Records List Table -->
+                <div id="historyTableList" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                    <!-- Dynamic History Items Render Here -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL: Water Target Calculator -->
+    <div id="waterCalcModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-800/60 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-slate-800 dark:text-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-cyan-600 dark:text-cyan-300 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-calculator text-cyan-500"></i>
+                    科學喝水量計算機
+                </h3>
+                <button onclick="closeModal('waterCalcModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+                <div>
+                    <label class="font-semibold text-slate-600 dark:text-slate-300 mb-1 block">您的體重 (kg)</label>
+                    <input type="number" id="calcWeight" value="65" min="30" max="200" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-cyan-700/50 rounded-xl px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:border-cyan-500" oninput="calculateWaterIntake()" />
+                </div>
+
+                <div>
+                    <label class="font-semibold text-slate-600 dark:text-slate-300 mb-1 block">每日運動時間 (分鐘)</label>
+                    <select id="calcExercise" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-cyan-700/50 rounded-xl px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:border-cyan-500" onchange="calculateWaterIntake()">
+                        <option value="0">久坐 / 無運動 (0 分鐘)</option>
+                        <option value="30">輕度運動 (30 分鐘)</option>
+                        <option value="60" selected>中度運動 (60 分鐘)</option>
+                        <option value="90">高強度運動/健身 (90+ 分鐘)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="font-semibold text-slate-600 dark:text-slate-300 mb-1 block">環境氣候 / 工作環境</label>
+                    <select id="calcClimate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-cyan-700/50 rounded-xl px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:border-cyan-500" onchange="calculateWaterIntake()">
+                        <option value="normal">舒適冷氣房 / 室內</option>
+                        <option value="hot">高溫戶外 / 易出汗環境 (+300ml)</option>
+                    </select>
+                </div>
+
+                <!-- Result Box -->
+                <div class="p-3.5 rounded-2xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-500/40 text-center space-y-1">
+                    <div class="text-slate-500 dark:text-slate-300 text-[11px]">建議每日基礎喝水量</div>
+                    <div class="text-3xl font-black text-cyan-600 dark:text-cyan-300"><span id="calcResultWater">2275</span> <span class="text-sm font-normal">ml</span></div>
+                    <p class="text-[10px] text-cyan-700 dark:text-cyan-400/80">公式：體重×35ml + 運動補充 + 氣候調整</p>
+                </div>
+            </div>
+
+            <div class="pt-1 flex space-x-2">
+                <button type="button" onclick="closeModal('waterCalcModal')" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-600 hover:bg-slate-100">取消</button>
+                <button type="button" onclick="applyWaterTarget()" class="flex-1 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-lg">套用為每日目標</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Caffeine Tracker & Advisory Calculator -->
+    <div id="caffeineCalcModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-slate-800 dark:text-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
+                    咖啡因安全警報與睡眠建議
+                </h3>
+                <button onclick="closeModal('caffeineCalcModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+                <!-- Live Intake Meter -->
+                <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700/50 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-300 font-semibold">今日累積攝取咖啡因</span>
+                        <span class="text-amber-700 dark:text-amber-300 font-black text-base"><span id="caffeineModalCurrent">0</span> / 400 mg</span>
+                    </div>
+                    
+                    <div class="w-full bg-slate-200 dark:bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-amber-300 dark:border-amber-900/50">
+                        <div id="caffeineProgressBar" class="h-full rounded-full bg-emerald-500 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>0mg</span>
+                        <span>安全建議上限: 400mg/天</span>
+                    </div>
+                </div>
+
+                <!-- Status & Advisory Message -->
+                <div id="caffeineStatusBox" class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-700/40 text-emerald-800 dark:text-emerald-200 text-xs space-y-1">
+                    <div class="font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-shield-halved"></i> 狀態：安全標準範圍內
+                    </div>
+                    <p class="text-[11px] opacity-90" id="caffeineAdviceText">精神充沛！咖啡因攝取適中，有助於提升專注力與工作效率。</p>
+                </div>
+
+                <!-- Sleep Advisory Half-life Estimator -->
+                <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-amber-200 dark:border-amber-800/30 space-y-1.5">
+                    <div class="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-moon"></i> 睡眠影響評估 (代謝半衰期約 5小時)
+                    </div>
+                    <p class="text-[11px] text-slate-600 dark:text-slate-300" id="sleepAdvisoryText">
+                        若您預計今晚 11:00 睡覺，建議下午 2:00 之後避免再攝取高咖啡因飲品，以維持深層睡眠品質。
+                    </p>
+                </div>
+            </div>
+
+            <button type="button" onclick="closeModal('caffeineCalcModal')" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-xs text-white">知道囉，繼續記錄</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Advanced Coffee Input Modal -->
+    <div id="coffeeDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-slate-800 dark:text-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-mug-hot"></i>
+                    新增自訂咖啡細節
+                </h3>
+                <button onclick="closeModal('coffeeDetailModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="coffeeForm" onsubmit="handleCoffeeSubmit(event)" class="space-y-3.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">咖啡類型</label>
+                        <select id="coffeeType" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-slate-800 dark:text-slate-200" onchange="updateCaffeineDefaultVal()">
+                            <option value="美式咖啡">美式咖啡 (Americano)</option>
+                            <option value="拿鐵咖啡">拿鐵咖啡 (Latte)</option>
+                            <option value="卡布奇諾">卡布奇諾 (Cappuccino)</option>
+                            <option value="精品手沖">精品手沖 (Hand Drip)</option>
+                            <option value="濃縮咖啡">濃縮咖啡 (Espresso)</option>
+                            <option value="燕麥奶拿鐵">燕麥奶拿鐵</option>
+                            <option value="冷萃咖啡">冷萃咖啡 (Cold Brew)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">容量 (ml)</label>
+                        <input type="number" id="coffeeVolume" value="250" min="30" max="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-slate-800 dark:text-slate-200" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">焙度 (Roast Level)</label>
+                        <select id="coffeeRoast" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-slate-800 dark:text-slate-200">
+                            <option value="極淺焙">極淺焙</option>
+                            <option value="淺焙" selected>淺焙</option>
+                            <option value="中焙">中焙</option>
+                            <option value="中深焙">中深焙</option>
+                            <option value="深焙">深焙</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1 block">預估咖啡因 (mg)</label>
+                        <input type="number" id="coffeeCaffeine" value="150" min="0" max="600" class="w-full bg-slate-50 dark:bg-slate-800 border border-amber-300 dark:border-amber-700/60 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-amber-800 dark:text-amber-200 font-bold" required />
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-1">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">品牌 / 咖啡館</label>
+                        <input type="text" id="coffeeBrand" placeholder="例如：星巴克 / 自家烘焙工作室" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-slate-800 dark:text-slate-200" />
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">豆種 / 產區名稱</label>
+                        <input type="text" id="coffeeBeans" placeholder="例如：衣索比亞 耶加雪菲 G1 日曬" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 text-slate-800 dark:text-slate-200" />
+                    </div>
+                </div>
+
+                <div class="pt-2 flex space-x-2">
+                    <button type="button" onclick="closeModal('coffeeDetailModal')" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white shadow-md">儲存咖啡紀錄</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Share Graphic Card Modal -->
+    <div id="shareModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="max-w-sm w-full space-y-4">
+            
+            <div id="exportCard" class="bg-gradient-to-br from-slate-900 via-slate-850 to-amber-950/80 p-6 rounded-3xl border border-slate-700 shadow-2xl text-slate-100 relative overflow-hidden">
+                <div class="absolute -top-12 -right-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+
+                <div class="relative z-10 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-amber-500 flex items-center justify-center font-bold text-white text-xs">💧</div>
+                            <div>
+                                <h4 class="font-bold text-sm bg-gradient-to-r from-cyan-300 to-amber-200 bg-clip-text text-transparent">AquaCoffee Daily</h4>
+                                <p class="text-[10px] text-slate-400" id="shareCardDate">2026.08.17</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] px-2.5 py-1 rounded-full bg-slate-800 text-amber-300 border border-amber-500/30 font-bold" id="shareCardStreak">🔥 1 天連勝</span>
+                    </div>
+
+                    <div class="text-center py-3 bg-slate-800/50 rounded-2xl border border-white/5 space-y-1">
+                        <div class="text-[11px] text-slate-400 font-medium">今日總補充量</div>
+                        <div class="text-3xl font-black text-white">
+                            <span id="shareTotalVolume">0</span> <span class="text-xs text-cyan-400 font-normal">ml</span>
+                        </div>
+                        <div class="text-xs text-cyan-300 font-bold" id="shareGoalPercent">水達成率 0%</div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="p-2 bg-cyan-950/40 border border-cyan-800/30 rounded-xl">
+                            <div class="text-[9px] text-cyan-400">白開水 💧</div>
+                            <div class="font-bold text-cyan-200 text-xs" id="shareWaterVolume">0 ml</div>
+                        </div>
+                        <div class="p-2 bg-amber-950/40 border border-amber-800/30 rounded-xl">
+                            <div class="text-[9px] text-amber-400">咖啡 ☕</div>
+                            <div class="font-bold text-amber-200 text-xs" id="shareCoffeeVolume">0 ml</div>
+                        </div>
+                        <div class="p-2 bg-amber-950/40 border border-amber-800/30 rounded-xl">
+                            <div class="text-[9px] text-amber-400">咖啡因 ⚡</div>
+                            <div class="font-bold text-amber-300 text-xs" id="shareCaffeineTotal">0 mg</div>
+                        </div>
+                    </div>
+
+                    <div id="shareCoffeeFeature" class="bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 text-xs space-y-1 hidden">
+                        <div class="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-mug-hot"></i> 特選咖啡
+                        </div>
+                        <div class="font-semibold text-amber-100" id="shareCoffeeTitle">精品手沖 (淺焙)</div>
+                        <div class="text-[10px] text-slate-400" id="shareCoffeeBeanDetails">衣索比亞 耶加雪菲</div>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800">
+                        <span>水潤生活，品味咖啡 ☕</span>
+                        <span class="font-bold text-cyan-400">#AquaCoffee</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-2">
+                <button onclick="closeModal('shareModal')" class="flex-1 py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">關閉</button>
+                <button onclick="downloadShareCard()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-xs font-bold text-white shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-all">
+                    <i class="fa-solid fa-download"></i>
+                    <span>下載打卡圖卡</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Achievements Modal -->
+    <div id="achievementsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-slate-800 dark:text-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-trophy"></i>
+                    成就徽章與等級
+                </h3>
+                <button onclick="closeModal('achievementsModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-lg"><i class="fa-solid fa-seedling"></i></div>
+                    <div class="flex-1">
+                        <div class="text-xs font-bold">水潤起航</div>
+                        <div class="text-[10px] text-slate-500">完成首次喝水紀錄</div>
+                    </div>
+                    <span class="text-xs text-emerald-600 dark:text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> 已解鎖</span>
+                </div>
+
+                <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center text-lg"><i class="fa-solid fa-mug-hot"></i></div>
+                    <div class="flex-1">
+                        <div class="text-xs font-bold">咖啡鑑賞家</div>
+                        <div class="text-[10px] text-slate-500">紀錄一次自訂咖啡品飲</div>
+                    </div>
+                    <span id="badgeCoffee" class="text-xs text-slate-400 font-bold">未解鎖</span>
+                </div>
+
+                <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg"><i class="fa-solid fa-bullseye"></i></div>
+                    <div class="flex-1">
+                        <div class="text-xs font-bold">補水達人</div>
+                        <div class="text-[10px] text-slate-500">單日水量達到 100% 目標</div>
+                    </div>
+                    <span id="badgeGoal" class="text-xs text-slate-400 font-bold">未解鎖</span>
+                </div>
+            </div>
+
+            <button onclick="closeModal('achievementsModal')" class="w-full py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-300 dark:hover:bg-slate-700">返回</button>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            isDarkMode: false,    // Theme state: false (Light) | true (Dark)
+            waterVolume: 0,       // Current pure water intake (ml)
+            waterGoal: 2000,      // Daily pure water target (ml)
+            coffeeVolume: 0,      // Current coffee volume intake (ml)
+            coffeeMaxLimit: 600,  // Recommended daily max coffee volume limit (ml)
+            caffeineTotal: 0,     // Total caffeine consumed (mg)
+            caffeineLimit: 400,   // Daily caffeine safety threshold (mg)
+            activeType: 'water',  // Active view tab: 'water' | 'coffee'
+            streak: 5,
+            xp: 120,
+            level: 1,
+            logs: [],
+            history: [
+                { date: '2026-08-16', water: 2200, coffee: 300, caffeine: 150, targetMet: true },
+                { date: '2026-08-15', water: 2050, coffee: 250, caffeine: 120, targetMet: true },
+                { date: '2026-08-14', water: 1900, coffee: 350, caffeine: 180, targetMet: false },
+                { date: '2026-08-13', water: 2400, coffee: 200, caffeine: 100, targetMet: true },
+                { date: '2026-08-12', water: 2100, coffee: 280, caffeine: 140, targetMet: true }
+            ],
+            badges: {
+                firstWater: true,
+                coffeeConnoisseur: false,
+                goalReached: false
+            }
+        };
+
+        // --- DOM Elements ---
+        const vesselContainer = document.getElementById('vesselContainer');
+        const waterCapOverlay = document.getElementById('waterCapOverlay');
+        const tumblerTopOverlay = document.getElementById('tumblerTopOverlay');
+        const liquidCanvas = document.getElementById('liquidCanvas');
+        const ctx = liquidCanvas.getContext('2d');
+        const currentVolumeText = document.getElementById('currentVolumeText');
+        const maxVolumeText = document.getElementById('maxVolumeText');
+        const percentageText = document.getElementById('percentageText');
+        const healthWarningBox = document.getElementById('healthWarningBox');
+        const warningIcon = document.getElementById('warningIcon');
+        const warningMessage = document.getElementById('warningMessage');
+        const summaryWaterText = document.getElementById('summaryWaterText');
+        const summaryCoffeeText = document.getElementById('summaryCoffeeText');
+        const logList = document.getElementById('logList');
+        const xpBar = document.getElementById('xpBar');
+        const xpText = document.getElementById('xpText');
+        const rewardToast = document.getElementById('rewardToast');
+        const headerCaffeineVal = document.getElementById('headerCaffeineVal');
+
+        // --- Theme Toggle Logic ---
+        function toggleTheme() {
+            state.isDarkMode = !state.isDarkMode;
+            const htmlEl = document.documentElement;
+            const themeBtn = document.getElementById('themeToggleBtn');
+            const themeIcon = document.getElementById('themeToggleIcon');
+            const themeText = document.getElementById('themeToggleText');
+
+            if (state.isDarkMode) {
+                htmlEl.classList.add('dark');
+                themeIcon.className = 'fa-solid fa-sun text-amber-400 text-sm';
+                themeText.innerText = '淺色模式';
+            } else {
+                htmlEl.classList.remove('dark');
+                themeIcon.className = 'fa-solid fa-moon text-amber-500 text-sm';
+                themeText.innerText = '深色模式';
+            }
+        }
+
+        // --- Fluid Wave Animation Engine ---
+        let waveOffset = 0;
+        let targetFillRatio = 0;
+        let currentFillRatio = 0;
+
+        function resizeCanvas() {
+            if (vesselContainer) {
+                liquidCanvas.width = vesselContainer.clientWidth;
+                liquidCanvas.height = vesselContainer.clientHeight;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawLiquid() {
+            const width = liquidCanvas.width;
+            const height = liquidCanvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            currentFillRatio += (targetFillRatio - currentFillRatio) * 0.05;
+
+            const fillHeight = height * currentFillRatio;
+            const waveY = height - fillHeight;
+
+            let primaryColor, secondaryColor;
+            if (state.activeType === 'water') {
+                primaryColor = state.isDarkMode ? 'rgba(14, 165, 233, 0.85)' : 'rgba(2, 132, 199, 0.85)';
+                secondaryColor = state.isDarkMode ? 'rgba(56, 189, 248, 0.45)' : 'rgba(56, 189, 248, 0.55)';
+            } else {
+                primaryColor = 'rgba(110, 58, 28, 0.92)';
+                secondaryColor = 'rgba(180, 115, 65, 0.65)';
+            }
+
+            // Secondary Back Wave
+            ctx.fillStyle = secondaryColor;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            for (let x = 0; x <= width; x += 10) {
+                const y = waveY + Math.sin((x * 0.035) + waveOffset + 1.5) * 6;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Primary Front Wave
+            ctx.fillStyle = primaryColor;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            for (let x = 0; x <= width; x += 10) {
+                const y = waveY + Math.sin((x * 0.035) + waveOffset) * 8;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Render Crema / Bubbles
+            if (fillHeight > 25) {
+                ctx.fillStyle = state.activeType === 'water' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(235, 195, 145, 0.45)';
+                for (let i = 0; i < 4; i++) {
+                    const bx = (Math.sin(waveOffset + i * 2) * 0.4 + 0.5) * width;
+                    const by = height - (((waveOffset * 30 + i * 45) % fillHeight));
+                    ctx.beginPath();
+                    ctx.arc(bx, by, 2.5 + (i % 2), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            waveOffset += 0.04;
+            requestAnimationFrame(drawLiquid);
+        }
+
+        // --- UI & State Updates ---
+        function updateUI() {
+            summaryWaterText.innerText = `${state.waterVolume} ml`;
+            summaryCoffeeText.innerText = `${state.coffeeVolume} ml (${state.caffeineTotal}mg ⚡)`;
+
+            if (state.activeType === 'water') {
+                currentVolumeText.innerText = state.waterVolume;
+                maxVolumeText.innerText = state.waterGoal;
+                
+                const percent = Math.min(Math.round((state.waterVolume / state.waterGoal) * 100), 100);
+                percentageText.innerText = `${percent}% 已達成`;
+                targetFillRatio = percent / 100;
+
+                if (state.waterVolume > 3500 || state.waterVolume >= state.waterGoal * 1.5) {
+                    healthWarningBox.classList.remove('hidden');
+                    healthWarningBox.className = 'w-full rounded-2xl p-3 text-xs font-bold shadow-lg flex items-start gap-2.5 bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:border-rose-600/60 dark:text-rose-200 z-20';
+                    warningIcon.className = 'fa-solid fa-triangle-exclamation text-base text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0';
+                    warningMessage.innerHTML = `⚠️ <strong>飲水過量警報：</strong>您今日白開水已達 ${state.waterVolume}ml！短時間內大量飲水可能導致水中毒，請暫緩飲用。`;
+                } else {
+                    healthWarningBox.classList.add('hidden');
+                }
+
+            } else {
+                currentVolumeText.innerText = state.coffeeVolume;
+                maxVolumeText.innerText = state.coffeeMaxLimit;
+                
+                const percent = Math.min(Math.round((state.coffeeVolume / state.coffeeMaxLimit) * 100), 100);
+                percentageText.innerText = `建議容量 ${percent}%`;
+                targetFillRatio = percent / 100;
+
+                if (state.caffeineTotal > 400 || state.coffeeVolume > 600) {
+                    healthWarningBox.classList.remove('hidden');
+                    healthWarningBox.className = 'w-full rounded-2xl p-3 text-xs font-bold shadow-lg flex items-start gap-2.5 bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:border-amber-500/60 dark:text-amber-200 z-20';
+                    warningIcon.className = 'fa-solid fa-radiation text-base text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0';
+                    warningMessage.innerHTML = `⚠️ <strong>咖啡因過量提醒：</strong>您已攝取 ${state.coffeeVolume}ml 咖啡 (${state.caffeineTotal}mg 咖啡因)！超越 400mg 建議上限，請多喝白開水代謝。`;
+                } else {
+                    healthWarningBox.classList.add('hidden');
+                }
+            }
+
+            headerCaffeineVal.innerText = state.caffeineTotal;
+
+            const levelRequirement = state.level * 500;
+            const xpPercent = Math.min((state.xp / levelRequirement) * 100, 100);
+            xpBar.style.width = `${xpPercent}%`;
+            xpText.innerText = `XP ${state.xp} / ${levelRequirement}`;
+
+            renderLogs();
+            renderHistoryTable();
+            updateCaffeineModalView();
+        }
+
+        function switchDrinkType(type) {
+            state.activeType = type;
+            const tabWater = document.getElementById('tabWater');
+            const tabCoffee = document.getElementById('tabCoffee');
+            const waterAdd = document.getElementById('waterQuickAdd');
+            const coffeeAdd = document.getElementById('coffeeQuickAdd');
+            const quickTitle = document.getElementById('quickLogTitle');
+            const volumeBadge = document.getElementById('volumeBadge');
+
+            if (type === 'water') {
+                tabWater.className = 'flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-cyan-500 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 font-black text-xs shadow-md shadow-cyan-500/10';
+                tabCoffee.className = 'flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-500 hover:border-amber-600/50 font-black text-xs';
+                
+                waterAdd.classList.remove('hidden');
+                coffeeAdd.classList.add('hidden');
+                quickTitle.innerHTML = '<i class="fa-solid fa-plus-circle text-cyan-500 text-sm"></i> 快速喝水選項';
+                
+                vesselContainer.className = 'relative w-56 h-72 transition-all duration-500 flex flex-col justify-end bottle-glow';
+                waterCapOverlay.classList.remove('hidden');
+                tumblerTopOverlay.classList.add('hidden');
+
+                volumeBadge.className = 'inline-block px-4 py-1.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 backdrop-blur border border-cyan-500/30 shadow-md transition-all';
+                percentageText.className = 'text-xs font-bold text-cyan-600 dark:text-cyan-300 mt-1 transition-all';
+
+            } else {
+                tabCoffee.className = 'flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-amber-600 bg-amber-600/10 text-amber-700 dark:text-amber-300 font-black text-xs shadow-md shadow-amber-600/10';
+                tabWater.className = 'flex items-center justify-center space-x-2 py-3 px-3 rounded-2xl border-2 transition-all duration-300 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-500 hover:border-cyan-500/50 font-black text-xs';
+                
+                waterAdd.classList.add('hidden');
+                coffeeAdd.classList.remove('hidden');
+                quickTitle.innerHTML = '<i class="fa-solid fa-mug-hot text-amber-500 text-sm"></i> 精選咖啡隨行飲用';
+
+                vesselContainer.className = 'relative w-56 h-72 transition-all duration-500 flex flex-col justify-end tumbler-glow';
+                waterCapOverlay.classList.add('hidden');
+                tumblerTopOverlay.classList.remove('hidden');
+
+                volumeBadge.className = 'inline-block px-4 py-1.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 backdrop-blur border border-amber-500/40 shadow-md transition-all';
+                percentageText.className = 'text-xs font-bold text-amber-600 dark:text-amber-300 mt-1 transition-all';
+            }
+
+            updateUI();
+        }
+
+        function switchRightTab(tab) {
+            const tabToday = document.getElementById('tabRightToday');
+            const tabHistory = document.getElementById('tabRightHistory');
+            const panelToday = document.getElementById('panelToday');
+            const panelHistory = document.getElementById('panelHistory');
+
+            if (tab === 'today') {
+                tabToday.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm';
+                tabHistory.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all';
+                panelToday.classList.remove('hidden');
+                panelHistory.classList.add('hidden');
+            } else {
+                tabHistory.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm';
+                tabToday.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all';
+                panelHistory.classList.remove('hidden');
+                panelToday.classList.add('hidden');
+            }
+        }
+
+        function addCustomWater() {
+            const input = document.getElementById('customWaterVol');
+            const vol = parseInt(input.value);
+            if (vol && vol > 0) {
+                addDrink('純淨白開水', vol, 'water');
+                input.value = '';
+            } else {
+                showToast('請輸入有效的毫升數 (ml)');
+            }
+        }
+
+        function addDrink(name, volume, type, extraData = {}) {
+            const caffeineAmount = extraData.caffeine || (type === 'coffee' ? 120 : 0);
+            
+            const logItem = {
+                id: Date.now(),
+                name: name,
+                volume: parseInt(volume),
+                caffeine: parseInt(caffeineAmount),
+                type: type,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                ...extraData
+            };
+
+            state.logs.unshift(logItem);
+
+            if (type === 'water') {
+                state.waterVolume += parseInt(volume);
+            } else {
+                state.coffeeVolume += parseInt(volume);
+                state.caffeineTotal += parseInt(caffeineAmount);
+            }
+            
+            const earnedXP = Math.round(volume / 5);
+            addXP(earnedXP);
+
+            if (type === 'water' && state.waterVolume >= state.waterGoal && !state.badges.goalReached) {
+                state.badges.goalReached = true;
+                document.getElementById('badgeGoal').innerHTML = '<i class="fa-solid fa-check"></i> 已解鎖';
+                document.getElementById('badgeGoal').className = 'text-xs text-emerald-600 dark:text-emerald-400 font-bold';
+                triggerConfetti();
+                showToast(`🎉 恭喜達成今日 ${state.waterGoal}ml 喝水目標！`);
+            } else {
+                showToast(`+${volume}ml ${name}！獲得 +${earnedXP} XP`);
+            }
+
+            updateUI();
+        }
+
+        function quickAddCoffee(typeName, volume, roast, caffeine) {
+            addDrink(typeName, volume, 'coffee', { roast: roast, caffeine: caffeine });
+        }
+
+        function deleteLog(id) {
+            const idx = state.logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                const deleted = state.logs[idx];
+                if (deleted.type === 'water') {
+                    state.waterVolume = Math.max(0, state.waterVolume - deleted.volume);
+                } else {
+                    state.coffeeVolume = Math.max(0, state.coffeeVolume - deleted.volume);
+                    state.caffeineTotal = Math.max(0, state.caffeineTotal - (deleted.caffeine || 0));
+                }
+                state.logs.splice(idx, 1);
+                updateUI();
+            }
+        }
+
+        function renderLogs() {
+            const logCountText = document.getElementById('logCountText');
+            if (logCountText) logCountText.innerText = `${state.logs.length} 筆記錄`;
+
+            if (state.logs.length === 0) {
+                logList.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 text-xs flex flex-col items-center">
+                        <i class="fa-solid fa-glass-water-droplet text-3xl mb-2 opacity-30"></i>
+                        今日尚無紀錄，點擊左側開始補充水分吧！
+                    </div>
+                `;
+                return;
+            }
+
+            logList.innerHTML = state.logs.map(log => {
+                const isWater = log.type === 'water';
+                const iconClass = isWater ? 'fa-droplet text-cyan-500' : 'fa-mug-hot text-amber-500';
+                const bgClass = isWater 
+                    ? 'bg-cyan-50/80 border-cyan-200 text-slate-800 dark:bg-cyan-950/30 dark:border-cyan-800/30 dark:text-slate-200' 
+                    : 'bg-amber-50/80 border-amber-200 text-slate-800 dark:bg-amber-950/30 dark:border-amber-800/30 dark:text-slate-200';
+                
+                let detailSub = `${log.volume} ml`;
+                if (!isWater && log.caffeine) detailSub += ` • ☕ ${log.caffeine}mg`;
+                if (log.roast) detailSub += ` • ${log.roast}`;
+
+                return `
+                    <div class="p-2.5 rounded-xl border ${bgClass} flex items-center justify-between text-xs transition-all hover:opacity-90">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                                <i class="fa-solid ${iconClass}"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800 dark:text-slate-200">${log.name}</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">${detailSub}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[10px] text-slate-400 font-mono">${log.time}</span>
+                            <button onclick="deleteLog(${log.id})" class="text-slate-400 hover:text-rose-500 p-1" title="刪除">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderHistoryTable() {
+            const historyList = document.getElementById('historyTableList');
+            if (!historyList) return;
+
+            historyList.innerHTML = state.history.map(item => `
+                <div class="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/60 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-slate-700 dark:text-slate-200 text-xs">${item.date}</div>
+                        <div class="text-[10px] text-slate-500 flex gap-2 mt-0.5">
+                            <span class="text-cyan-600 dark:text-cyan-400">💧 ${item.water}ml</span>
+                            <span class="text-amber-600 dark:text-amber-400">☕ ${item.coffee}ml (${item.caffeine}mg)</span>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.targetMet ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}">
+                        ${item.targetMet ? '✓ 達標' : '未達標'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function addMockHistory() {
+            const today = new Date();
+            const pastDate = new Date(today.setDate(today.getDate() - (state.history.length + 1)));
+            const dateStr = pastDate.toISOString().split('T')[0];
+            
+            state.history.unshift({
+                date: dateStr,
+                water: 2000 + Math.floor(Math.random() * 500),
+                coffee: 250 + Math.floor(Math.random() * 100),
+                caffeine: 120 + Math.floor(Math.random() * 60),
+                targetMet: true
+            });
+
+            updateUI();
+            showToast('已新增一筆歷史模擬數據！');
+        }
+
+        function calculateWaterIntake() {
+            const weight = parseFloat(document.getElementById('calcWeight')?.value) || 60;
+            const exerciseMins = parseFloat(document.getElementById('calcExercise')?.value) || 0;
+            const climate = document.getElementById('calcClimate')?.value || 'normal';
+
+            let target = weight * 35;
+            target += (exerciseMins / 60) * 500;
+            if (climate === 'hot') target += 300;
+
+            target = Math.round(target / 50) * 50;
+            const calcResultEl = document.getElementById('calcResultWater');
+            if (calcResultEl) calcResultEl.innerText = target;
+            return target;
+        }
+
+        function applyWaterTarget() {
+            const newTarget = parseInt(document.getElementById('calcResultWater').innerText);
+            if (newTarget && newTarget > 500) {
+                state.waterGoal = newTarget;
+                document.getElementById('goalText').innerText = state.waterGoal;
+                showToast(`已成功套用喝水目標: ${state.waterGoal} ml`);
+                updateUI();
+                closeModal('waterCalcModal');
+            }
+        }
+
+        function updateCaffeineModalView() {
+            const currentEl = document.getElementById('caffeineModalCurrent');
+            const progressBar = document.getElementById('caffeineProgressBar');
+            const statusBox = document.getElementById('caffeineStatusBox');
+            const adviceText = document.getElementById('caffeineAdviceText');
+            
+            if (!currentEl || !progressBar) return;
+
+            currentEl.innerText = state.caffeineTotal;
+            const percent = Math.min(100, Math.round((state.caffeineTotal / state.caffeineLimit) * 100));
+            progressBar.style.width = `${percent}%`;
+
+            if (state.caffeineTotal > 400) {
+                progressBar.className = 'h-full rounded-full bg-rose-500 transition-all duration-500';
+                statusBox.className = 'p-3 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700/60 text-rose-800 dark:text-rose-200 text-xs space-y-1';
+                statusBox.querySelector('div').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> 狀態：已超過每日安全上限！';
+                if (adviceText) adviceText.innerText = '咖啡因過量可能引發心悸與失眠，請停止飲用咖啡並補充白開水。';
+            } else if (state.caffeineTotal > 250) {
+                progressBar.className = 'h-full rounded-full bg-amber-500 transition-all duration-500';
+                statusBox.className = 'p-3 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-200 text-xs space-y-1';
+                statusBox.querySelector('div').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 狀態：接近上限（中高攝取量）';
+                if (adviceText) adviceText.innerText = '咖啡因累積較高，建議今日勿再增加咖啡，請適度補充白開水協助代謝。';
+            } else {
+                progressBar.className = 'h-full rounded-full bg-emerald-500 transition-all duration-500';
+                statusBox.className = 'p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/40 text-emerald-800 dark:text-emerald-200 text-xs space-y-1';
+                statusBox.querySelector('div').innerHTML = '<i class="fa-solid fa-shield-halved text-emerald-500"></i> 狀態：安全標準範圍內';
+                if (adviceText) adviceText.innerText = '精神充沛！咖啡因攝取適中，有助於提升專注力與工作效率。';
+            }
+        }
+
+        function generateShareCard() {
+            const now = new Date();
+            document.getElementById('shareCardDate').innerText = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+            document.getElementById('shareCardStreak').innerText = `🔥 ${state.streak} 天連勝`;
+            
+            const totalVol = state.waterVolume + state.coffeeVolume;
+            document.getElementById('shareTotalVolume').innerText = totalVol;
+            document.getElementById('shareCaffeineTotal').innerText = `${state.caffeineTotal} mg`;
+            
+            const percent = Math.min(Math.round((state.waterVolume / state.waterGoal) * 100), 100);
+            document.getElementById('shareGoalPercent').innerText = `水達成率 ${percent}%`;
+
+            document.getElementById('shareWaterVolume').innerText = `${state.waterVolume} ml`;
+            document.getElementById('shareCoffeeVolume').innerText = `${state.coffeeVolume} ml`;
+
+            const latestCoffee = state.logs.find(l => l.type === 'coffee');
+            const coffeeFeatureEl = document.getElementById('shareCoffeeFeature');
+
+            if (latestCoffee) {
+                coffeeFeatureEl.classList.remove('hidden');
+                document.getElementById('shareCoffeeTitle').innerText = `${latestCoffee.name} (${latestCoffee.roast || '淺焙'})`;
+                document.getElementById('shareCoffeeBeanDetails').innerText = latestCoffee.beans || latestCoffee.brand || '特選咖啡豆';
+            } else {
+                coffeeFeatureEl.classList.add('hidden');
+            }
+
+            openModal('shareModal');
+        }
+
+        function downloadShareCard() {
+            const cardEl = document.getElementById('exportCard');
+            html2canvas(cardEl, {
+                scale: 2,
+                backgroundColor: null,
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `AquaCoffee-Card-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function addXP(amount) {
+            state.xp += amount;
+            const requiredXP = state.level * 500;
+            if (state.xp >= requiredXP) {
+                state.xp -= requiredXP;
+                state.level += 1;
+                document.getElementById('userLevel').innerText = `LV.${state.level} 補水大師`;
+                triggerConfetti();
+                showToast(`🎉 恭喜升級至 LV.${state.level}！`);
+            }
+        }
+
+        let toastTimeout;
+        function showToast(msg) {
+            const toast = document.getElementById('rewardToast');
+            const toastMsg = document.getElementById('toastMessage');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.innerText = msg;
+            toast.classList.remove('scale-0', 'opacity-0');
+            toast.classList.add('scale-100', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('scale-100', 'opacity-100');
+                toast.classList.add('scale-0', 'opacity-0');
+            }, 2500);
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function updateCaffeineDefaultVal() {
+            const type = document.getElementById('coffeeType').value;
+            const caffeineInput = document.getElementById('coffeeCaffeine');
+            const volumeInput = document.getElementById('coffeeVolume');
+
+            const defaults = {
+                '美式咖啡': { caffeine: 150, volume: 250 },
+                '拿鐵咖啡': { caffeine: 120, volume: 350 },
+                '卡布奇諾': { caffeine: 120, volume: 200 },
+                '精品手沖': { caffeine: 160, volume: 220 },
+                '濃縮咖啡': { caffeine: 75, volume: 40 },
+                '燕麥奶拿鐵': { caffeine: 120, volume: 350 },
+                '冷萃咖啡': { caffeine: 200, volume: 300 }
+            };
+
+            if (defaults[type]) {
+                if (caffeineInput) caffeineInput.value = defaults[type].caffeine;
+                if (volumeInput) volumeInput.value = defaults[type].volume;
+            }
+        }
+
+        function handleCoffeeSubmit(event) {
+            event.preventDefault();
+            const type = document.getElementById('coffeeType').value;
+            const volume = parseInt(document.getElementById('coffeeVolume').value) || 250;
+            const roast = document.getElementById('coffeeRoast').value;
+            const caffeine = parseInt(document.getElementById('coffeeCaffeine').value) || 120;
+            const brand = document.getElementById('coffeeBrand').value.trim();
+            const beans = document.getElementById('coffeeBeans').value.trim();
+
+            addDrink(type, volume, 'coffee', {
+                roast: roast,
+                caffeine: caffeine,
+                brand: brand,
+                beans: beans
+            });
+
+            if (!state.badges.coffeeConnoisseur) {
+                state.badges.coffeeConnoisseur = true;
+                const badgeEl = document.getElementById('badgeCoffee');
+                if (badgeEl) {
+                    badgeEl.innerHTML = '<i class="fa-solid fa-check"></i> 已解鎖';
+                    badgeEl.className = 'text-xs text-emerald-600 dark:text-emerald-400 font-bold';
+                }
+            }
+
+            closeModal('coffeeDetailModal');
+            document.getElementById('coffeeForm').reset();
+            updateCaffeineDefaultVal();
+        }
+
+        // --- Initializer ---
+        window.onload = function () {
+            resizeCanvas();
+            drawLiquid();
+            calculateWaterIntake();
+            updateUI();
+        };
+    </script>
+</body>
+</html>

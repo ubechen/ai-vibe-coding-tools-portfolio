@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">寶貝 - 嬰兒成長與護理數據分析系統</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        warm: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309'
+                        },
+                        baby: {
+                            pink: '#fca5a5',
+                            rose: '#fda4af',
+                            peach: '#ffedd5',
+                            sky: '#bae6fd',
+                            mint: '#a7f3d0',
+                            purple: '#e9d5ff',
+                            cream: '#fefce8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- SheetJS (XLSX) CDN for parsing CSV/Excel files -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom scrollbar and soft styling for baby warm theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fef3c7;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fcd34d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+        .chart-box {
+            min-height: 320px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased selection:bg-rose-100 selection:text-rose-800">
+
+    <!-- Header -->
+    <header class="border-b border-amber-200/60 bg-white sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between min-h-[4rem]">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-br from-rose-100 to-amber-100 text-rose-500 rounded-2xl border border-rose-200/50 shadow-sm shrink-0">
+                    <i data-lucide="baby" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <h1 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-1.5">
+                            <span id="babyNameDisplay" class="text-rose-600 font-extrabold">寶貝</span>
+                            <span>的育兒數據分析</span>
+                        </h1>
+                        <!-- Gear Settings Button for Name Change -->
+                        <button onclick="openSettingsModal()" class="px-2 py-1 bg-amber-100/80 hover:bg-amber-200 text-amber-800 rounded-lg transition border border-amber-200 flex items-center gap-1 text-xs font-medium shrink-0" title="設定寶寶暱稱">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                            <span class="inline">設定暱稱</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500 leading-normal pt-0.5">護理日誌多報表對齊、指標計算與視覺化洞察 (100% 本機端隱私防護)</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                <button id="clearDataBtn" onclick="clearData()" class="hidden px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 rounded-xl border border-slate-200/80 transition shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="trash-2" class="w-4 h-4 text-slate-500"></i>
+                    <span class="hidden sm:inline">清除數據</span>
+                </button>
+                <button onclick="loadSampleData()" class="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 text-amber-900 rounded-xl border border-amber-200/80 transition shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+                    <span class="hidden sm:inline">載入</span>測試數據
+                </button>
+                <button onclick="openUploadModal()" class="px-3.5 py-1.5 text-xs font-medium bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition shadow-md shadow-rose-500/20 flex items-center gap-1.5">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    上傳報表
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Name Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-amber-100 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-rose-500"></i>
+                    設定寶寶姓名 / 暱稱
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">寶寶名稱或暱稱：</label>
+                    <input type="text" id="modalBabyNameInput" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 text-slate-800 font-medium text-sm" placeholder="請輸入姓名或暱稱">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">快速選取預設稱呼：</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="setModalName('寶貝')" class="px-2.5 py-1 text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg border border-rose-200">寶貝</button>
+                        <button onclick="setModalName('寶寶')" class="px-2.5 py-1 text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg border border-amber-200">寶寶</button>
+                        <button onclick="setModalName('小寶')" class="px-2.5 py-1 text-xs bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-lg border border-sky-200">小寶</button>
+                        <button onclick="setModalName('妹仔')" class="px-2.5 py-1 text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg border border-purple-200">妹仔</button>
+                        <button onclick="setModalName('弟弟')" class="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200">弟弟</button>
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
+                    <button onclick="saveSettings()" class="px-4 py-2 text-xs font-medium bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition shadow-sm">儲存設定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Report Modal -->
+    <div id="uploadModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-amber-100 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="upload-cloud" class="w-5 h-5 text-rose-500"></i>
+                    上傳護理報表 (CSV / Excel)
+                </h3>
+                <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div id="dropZone" class="border-2 border-dashed border-amber-200 hover:border-rose-400 rounded-2xl p-6 text-center bg-amber-50 hover:bg-amber-100 transition-all duration-200 cursor-pointer group" onclick="document.getElementById('fileInput').click()">
+                <div class="flex flex-col items-center justify-center space-y-2.5">
+                    <div class="p-3 bg-rose-50 text-rose-500 rounded-full group-hover:scale-110 transition-transform duration-200 shadow-sm border border-rose-100">
+                        <i data-lucide="file-heart" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-slate-700">
+                            點擊選擇檔案或將報表拖曳至此區域
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            支援 .csv, .xlsx, .xls 格式 (可同時選取多檔)
+                        </p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-200">
+                        自動支援：尿布、餵食、擠奶、睡眠、體溫、生長曲線、用藥、疫苗與發展里程碑等
+                    </p>
+                    <input type="file" id="fileInput" multiple accept=".csv, .xlsx, .xls" class="hidden" onchange="handleFileUpload(event)">
+                </div>
+            </div>
+
+            <div id="fileListTags" class="flex flex-wrap justify-center gap-1.5 pt-3"></div>
+
+            <div class="pt-4 flex justify-end">
+                <button onclick="closeUploadModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Active Data Summary & Time Range Control Bar -->
+        <div id="activeDataSummary" class="hidden bg-white border border-amber-200 rounded-2xl p-3 sm:px-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-bold text-slate-700 flex items-center gap-1.5 bg-amber-100 px-2.5 py-1 rounded-xl text-amber-900 border border-amber-200">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-rose-500"></i>
+                    <span id="dataTimeRangeText">紀錄區間：-- ~ --</span>
+                </span>
+                <!-- Sample Data Hint Badge -->
+                <span id="sampleDataBadge" class="hidden px-2.5 py-1 text-xs font-semibold bg-amber-200 text-amber-900 rounded-xl flex items-center gap-1 border border-amber-300 shadow-xs">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-700"></i>
+                    <span>目前顯示範例數據</span>
+                </span>
+                <span id="dataCountSummary" class="text-slate-500 text-xs pl-1"></span>
+            </div>
+
+            <div class="flex items-center space-x-2 shrink-0">
+                <!-- Time Range Quick Selector -->
+                <div class="inline-flex rounded-xl bg-slate-100 p-0.5 text-xs font-medium text-slate-600 border border-slate-200/50">
+                    <button onclick="setTimeFilter('ALL')" id="timeBtnALL" class="time-filter-btn px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-rose-600 transition">全部</button>
+                    <button onclick="setTimeFilter('7D')" id="timeBtn7D" class="time-filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">近 7 天</button>
+                    <button onclick="setTimeFilter('14D')" id="timeBtn14D" class="time-filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">近 14 天</button>
+                    <button onclick="setTimeFilter('30D')" id="timeBtn30D" class="time-filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">近 30 天</button>
+                </div>
+
+                <button onclick="openUploadModal()" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl font-medium text-xs flex items-center gap-1 transition shrink-0">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-amber-600"></i>
+                    <span>更換報表</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notification Message Box -->
+        <div id="toast" class="hidden p-4 rounded-2xl text-sm border flex items-center justify-between transition-all shadow-sm">
+            <span id="toastMsg"></span>
+            <button onclick="closeToast()" class="text-xs opacity-70 hover:opacity-100">✕</button>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <!-- Metric 1: Total Milk -->
+            <div class="bg-white border border-sky-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>每日總奶量</span>
+                    <div class="p-1.5 bg-sky-50 text-sky-500 rounded-lg"><i data-lucide="milk" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiMilk">0 <span class="text-xs font-normal text-slate-400">ml</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiMilkSub">配方奶 + 擠奶</div>
+                </div>
+            </div>
+
+            <!-- Metric 2: Sleep Duration -->
+            <div class="bg-white border border-indigo-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>每日平均睡眠</span>
+                    <div class="p-1.5 bg-indigo-50 text-indigo-500 rounded-lg"><i data-lucide="moon" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiSleep">0 <span class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiSleepSub">夜間 + 小憩</div>
+                </div>
+            </div>
+
+            <!-- Metric 3: Diaper Count -->
+            <div class="bg-white border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>換尿布次數</span>
+                    <div class="p-1.5 bg-emerald-50 text-emerald-500 rounded-lg"><i data-lucide="sparkles" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiDiaper">0 <span class="text-xs font-normal text-slate-400">次/日</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiDiaperSub">濕尿布 vs 大便</div>
+                </div>
+            </div>
+
+            <!-- Metric 4: Nursing Duration -->
+            <div class="bg-white border border-rose-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>親餵總時間</span>
+                    <div class="p-1.5 bg-rose-50 text-rose-500 rounded-lg"><i data-lucide="heart-pulse" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiNursing">0 <span class="text-xs font-normal text-slate-400">分鐘</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiNursingSub">左側 vs 右側</div>
+                </div>
+            </div>
+
+            <!-- Metric 5: Temperature -->
+            <div class="bg-white border border-amber-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>平均體溫</span>
+                    <div class="p-1.5 bg-amber-50 text-amber-500 rounded-lg"><i data-lucide="thermometer" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiTemp">0 <span class="text-xs font-normal text-slate-400">°C</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiTempSub">發燒警報檢測</div>
+                </div>
+            </div>
+
+            <!-- Metric 6: Latest Weight -->
+            <div class="bg-white border border-purple-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start text-slate-500 text-xs font-medium">
+                    <span>最新生長體重</span>
+                    <div class="p-1.5 bg-purple-50 text-purple-500 rounded-lg"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-black text-slate-800" id="kpiGrowth">-- <span class="text-xs font-normal text-slate-400">kg</span></div>
+                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpiGrowthSub">最新記錄</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Bar -->
+        <div class="border-b border-amber-200/60 flex space-x-2 overflow-x-auto pb-1 text-sm font-medium">
+            <button onclick="switchTab('tab-overview')" class="tab-btn px-4 py-2 rounded-t-xl bg-white text-rose-600 border-b-2 border-rose-500 font-bold shadow-sm" data-tab="tab-overview">
+                總覽看板
+            </button>
+            <button onclick="switchTab('tab-feeding')" class="tab-btn px-4 py-2 rounded-t-xl text-slate-500 hover:text-slate-800 hover:bg-white transition" data-tab="tab-feeding">
+                餵食與擠奶
+            </button>
+            <button onclick="switchTab('tab-sleep')" class="tab-btn px-4 py-2 rounded-t-xl text-slate-500 hover:text-slate-800 hover:bg-white transition" data-tab="tab-sleep">
+                睡眠分析
+            </button>
+            <button onclick="switchTab('tab-growth')" class="tab-btn px-4 py-2 rounded-t-xl text-slate-500 hover:text-slate-800 hover:bg-white transition" data-tab="tab-growth">
+                生長與健康體溫
+            </button>
+            <button onclick="switchTab('tab-raw')" class="tab-btn px-4 py-2 rounded-t-xl text-slate-500 hover:text-slate-800 hover:bg-white transition" data-tab="tab-raw">
+                完整護理日誌與匯出
+            </button>
+            <button onclick="switchTab('tab-prompt')" class="tab-btn px-4 py-2 rounded-t-xl text-slate-500 hover:text-slate-800 hover:bg-white transition" data-tab="tab-prompt">
+                提示詞手冊 Prompt Spec
+            </button>
+        </div>
+
+        <!-- TAB 1: Overview -->
+        <div id="tab-overview" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 flex flex-col shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-sky-500"></i>
+                        每日奶量與親餵時間趨勢
+                    </h3>
+                    <div id="chartMilkTrend" class="chart-box flex-1"></div>
+                </div>
+
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 flex flex-col shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i>
+                        尿布與排便統計分佈
+                    </h3>
+                    <div id="chartDiaperPie" class="chart-box flex-1"></div>
+                </div>
+            </div>
+
+            <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-purple-500"></i>
+                    作息動態綜合時間軸 (最近 7 天)
+                </h3>
+                <div id="chartDailyTimeline" class="chart-box" style="min-height: 280px;"></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Feeding & Expressed -->
+        <div id="tab-feeding" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="droplet" class="w-4 h-4 text-sky-500"></i>
+                        配方奶 vs 擠出母乳 (ml)
+                    </h3>
+                    <div id="chartFeedingCompare" class="chart-box"></div>
+                </div>
+
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="timer" class="w-4 h-4 text-rose-500"></i>
+                        親餵左右側時長分析 (分鐘)
+                    </h3>
+                    <div id="chartNursingSide" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Sleep Analytics -->
+        <div id="tab-sleep" class="tab-content hidden space-y-6">
+            <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="moon-star" class="w-4 h-4 text-indigo-500"></i>
+                    每日總睡眠時長趨勢
+                </h3>
+                <div id="chartSleepTrend" class="chart-box"></div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Growth & Health -->
+        <div id="tab-growth" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="line-chart" class="w-4 h-4 text-emerald-500"></i>
+                        體重與身長成長曲線
+                    </h3>
+                    <div id="chartGrowthCurve" class="chart-box"></div>
+                </div>
+
+                <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="thermometer-snowflake" class="w-4 h-4 text-amber-500"></i>
+                        體溫監測歷史與發燒警戒線 (>37.5°C)
+                    </h3>
+                    <div id="chartTempTrend" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: Raw Data & Log Table -->
+        <div id="tab-raw" class="tab-content hidden space-y-4">
+            <div class="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="table" class="w-4 h-4 text-rose-500"></i>
+                        統合時間順序護理日誌
+                    </h3>
+                    
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <select id="filterCategory" onchange="renderRawTable()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            <option value="ALL">全部類別</option>
+                            <option value="diaper">尿布 (diaper)</option>
+                            <option value="expressed">擠奶 (expressed)</option>
+                            <option value="formula">配方奶 (formula)</option>
+                            <option value="growth">生長曲線 (growth)</option>
+                            <option value="medication">用藥記錄 (medication)</option>
+                            <option value="milestone">發展里程碑 (milestone)</option>
+                            <option value="nursing">親餵 (nursing)</option>
+                            <option value="other_activity">其他活動 (other_activity)</option>
+                            <option value="sleep">睡眠 (sleep)</option>
+                            <option value="supplement">營養品 (supplement)</option>
+                            <option value="temperature">體溫 (temperature)</option>
+                            <option value="vaccine">疫苗接種 (vaccine)</option>
+                        </select>
+                        <button onclick="exportToCSV()" class="px-3.5 py-1.5 text-xs font-medium bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl border border-amber-200/80 transition flex items-center gap-1 shadow-sm">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> 匯出 Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-amber-100/70 text-slate-600 uppercase font-semibold">
+                            <tr>
+                                <th class="p-3 rounded-l-xl">時間</th>
+                                <th class="p-3">項目類別</th>
+                                <th class="p-3">主要數值 / 內容</th>
+                                <th class="p-3">細節資訊</th>
+                                <th class="p-3 rounded-r-xl">備註</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rawTableBody" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-slate-400">尚無資料，請上傳報表檔案或點擊右上角「載入測試數據」</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: Prompt Specification tab -->
+        <div id="tab-prompt" class="tab-content hidden space-y-4">
+            <div class="bg-white border border-amber-100 rounded-2xl p-6 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-5 h-5 text-rose-500"></i>
+                            育兒數據分析 Web App 開發提示詞規格書 (Prompt Specification)
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">此提示詞規格可用於引導 AI 重複建構、擴充或客製化類似多檔報表解析系統。</p>
+                    </div>
+                    <button onclick="copyPromptText()" class="px-3 py-1.5 text-xs font-medium bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="copy" class="w-4 h-4"></i> 複製提示詞
+                    </button>
+                </div>
+
+                <pre id="promptCodeBlock" class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 overflow-x-auto whitespace-pre-wrap leading-relaxed select-all">
+[Web APP 開發提示詞 (System Prompt)]
+
+角色與任務：
+你是一位高階前端全棧架構師與資深數據分析師。請建構一個獨立運行的單頁 Web Application (SPA)，專為「嬰兒照護與成長日誌報表」進行強大的資料解析、關鍵指標計算與多元互動式視覺化分析，風格採暖色系嬰幼兒友善介面，並支援自訂寶寶姓名/暱稱與匯出個人化報表。
+
+輸入報表資料結構（多檔案 CSV / Excel Support）：
+系統需能自動識別並合併解析以下 12 種標準護理日誌格式（例如 [寶寶姓名]_diaper.csv 或通用檔名）：
+1. diaper.csv: 時間, 類型(尿濕/排便/兩者), 顏色, 備註
+2. expressed.csv: 時間, 擠奶量(ml), 左側(ml), 右側(ml), 費時(分)
+3. formula.csv: 時間, 配方奶量(ml), 備註
+4. growth.csv: 日期/時間, 體重(kg), 身長(cm), 頭圍(cm)
+5. medication.csv: 時間, 藥物名稱, 劑量, 備註
+6. milestone.csv: 時間/日期, 里程碑項目, 達成狀態/進度, 備註
+7. nursing.csv: 時間, 親餵總時間(分), 左側(分), 右側(分)
+8. other_activity.csv: 時間, 活動類型(抬頭/遊戲/戶外), 時長(分)
+9. sleep.csv: 開始時間, 結束時間, 時長(分/小時), 睡眠類型(小憩/夜眠)
+10. supplement.csv: 時間, 營養品名稱(維生素D/益生菌), 劑量
+11. temperature.csv: 時間, 體溫(°C), 測量位置
+12. vaccine.csv: 時間/日期, 疫苗名稱, 劑次/診所, 不良反應/備註
+
+技術與架構約束：
+- 單一 HTML 檔案交付，完全無後端伺服器依賴，不安裝 Node.js / npm 或編譯建置。
+- 前端函式庫純 CDN 載入：
+  - Tailwind CSS ( UI 樣式，採軟調嬰幼兒暖色風格 )
+  - SheetJS ( XLSX / CSV 解析引擎 )
+  - ECharts ( 高效能互動圖表 )
+  - Lucide Icons ( 圖示系統 )
+- 100% 本機端隱私處理：所有上傳檔案僅於使用者瀏覽器內進行 Memory Parsing，嚴禁任何外傳或伺服器請求。
+
+核心功能模組要求：
+1. 多檔拖曳與自動關聯：
+   - 簡潔直覺的拖曳上傳區域。
+   - 依據檔名關鍵字與 Header 自動判定資料類別，上傳包含檔名前綴時自動更新寶寶暱稱。
+2. 關鍵指標 KPI 卡片與設定：
+   - 齒輪設定彈窗可自由修改寶寶暱稱。
+   - 預設空資料狀態，可一鍵載入測試數據。
+   - 每日平均總奶量、睡眠時長、換尿布次數、親餵時間、體溫警報、最新體重身高。
+3. 視覺化圖表模組：
+   - 奶量與親餵趨勢疊加圖
+   - 尿布與便便比例圓餅圖
+   - 睡眠時長趨勢圖
+   - 生長曲線雙 Y 軸折線圖
+   - 體溫警戒歷史線圖
+4. 統合護理日誌：
+   - 按時間軸進行全數據合併排序，提供 12 種分類篩選與導出 Excel 功能。
+                </pre>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Global Data Store
+        let globalRawData = [];
+        let parsedCategories = new Set();
+        let chartInstances = {};
+        let currentBabyName = '寶貝';
+        let currentTimeFilter = 'ALL';
+        let isSampleData = false;
+
+        // Warm Color palette for charts
+        const chartColors = {
+            sky: '#38bdf8',
+            indigo: '#6366f1',
+            rose: '#f43f5e',
+            emerald: '#10b981',
+            amber: '#f59e0b',
+            purple: '#a855f7',
+            orange: '#f97316'
+        };
+
+        function initCharts() {
+            const chartIds = [
+                'chartMilkTrend',
+                'chartDiaperPie',
+                'chartDailyTimeline',
+                'chartFeedingCompare',
+                'chartNursingSide',
+                'chartSleepTrend',
+                'chartGrowthCurve',
+                'chartTempTrend'
+            ];
+            chartIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    chartInstances[id] = echarts.init(el);
+                }
+            });
+        }
+
+        function renderEmptyCharts() {
+            const emptyOption = {
+                title: {
+                    text: '尚無護理數據',
+                    subtext: '請點擊「上傳報表」或「載入測試數據」',
+                    left: 'center',
+                    top: 'middle',
+                    textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 'normal' },
+                    subtextStyle: { color: '#cbd5e1', fontSize: 12 }
+                },
+                xAxis: { show: false },
+                yAxis: { show: false },
+                series: []
+            };
+
+            Object.keys(chartInstances).forEach(id => {
+                if (chartInstances[id]) {
+                    chartInstances[id].clear();
+                    chartInstances[id].setOption(emptyOption, true);
+                }
+            });
+        }
+
+        function getFilteredData() {
+            if (!globalRawData.length || currentTimeFilter === 'ALL') {
+                return globalRawData;
+            }
+
+            const dates = globalRawData.map(d => d.time.substring(0, 10)).sort();
+            const latestDate = new Date(dates[dates.length - 1]);
+            
+            let daysToSubtract = 7;
+            if (currentTimeFilter === '14D') daysToSubtract = 14;
+            if (currentTimeFilter === '30D') daysToSubtract = 30;
+
+            const cutoffDate = new Date(latestDate);
+            cutoffDate.setDate(cutoffDate.getDate() - (daysToSubtract - 1));
+            const cutoffStr = cutoffDate.toISOString().substring(0, 10);
+
+            return globalRawData.filter(d => d.time.substring(0, 10) >= cutoffStr);
+        }
+
+        function setTimeFilter(filter) {
+            currentTimeFilter = filter;
+            
+            // Update UI buttons styling
+            document.querySelectorAll('.time-filter-btn').forEach(btn => {
+                btn.className = 'time-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            });
+            const activeBtn = document.getElementById(`timeBtn${filter}`);
+            if (activeBtn) {
+                activeBtn.className = 'time-filter-btn px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-rose-600 transition';
+            }
+
+            // Refresh dashboards based on active filter
+            updateKPIs();
+            renderAllCharts();
+            renderRawTable();
+        }
+
+        // Initialize application on window load
+        window.onload = function() {
+            lucide.createIcons();
+            initCharts();
+            setupDragAndDrop();
+            updateBabyNameDisplay();
+            
+            // Auto load sample data by default on page load
+            loadSampleData();
+            
+            // Window resize handler for ECharts responsiveness
+            window.addEventListener('resize', () => {
+                Object.values(chartInstances).forEach(chart => chart && chart.resize());
+            });
+        };
+
+        function updateBabyNameDisplay() {
+            const nameSpan = document.getElementById('babyNameDisplay');
+            if (nameSpan) nameSpan.innerText = currentBabyName;
+            document.title = `${currentBabyName} - 嬰兒成長與護理數據分析系統`;
+        }
+
+        function openSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            const input = document.getElementById('modalBabyNameInput');
+            input.value = currentBabyName;
+            modal.classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.remove('hidden');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+        }
+
+        function setModalName(name) {
+            document.getElementById('modalBabyNameInput').value = name;
+        }
+
+        function saveSettings() {
+            const val = document.getElementById('modalBabyNameInput').value.trim();
+            currentBabyName = val || '寶貝';
+            updateBabyNameDisplay();
+            closeSettingsModal();
+            showToast(`已成功將寶寶名稱設定為：「${currentBabyName}」`, 'success');
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toast.className = `p-4 rounded-2xl text-sm border flex items-center justify-between transition-all shadow-sm ${
+                type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' :
+                type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                'bg-amber-50 border-amber-200 text-amber-900'
+            }`;
+            toastMsg.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => { closeToast(); }, 5000);
+        }
+
+        function closeToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-rose-600', 'border-b-2', 'border-rose-500', 'font-bold', 'shadow-sm');
+                btn.classList.add('text-slate-500');
+            });
+
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) activeContent.classList.remove('hidden');
+
+            const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-500');
+                activeBtn.classList.add('bg-white', 'text-rose-600', 'border-b-2', 'border-rose-500', 'font-bold', 'shadow-sm');
+            }
+
+            // Trigger ECharts resize
+            setTimeout(() => {
+                Object.values(chartInstances).forEach(chart => chart && chart.resize());
+            }, 50);
+        }
+
+        function copyPromptText() {
+            const text = document.getElementById('promptCodeBlock').innerText;
+            // Use temporary textarea element with execCommand to handle clipboard in iframe sandboxes
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('提示詞規格已成功複製到剪貼簿！', 'success');
+                } else {
+                    showToast('複製失敗，請手動選取文字進行複製', 'error');
+                }
+            } catch (err) {
+                showToast('複製失敗，請手動選取文字進行複製', 'error');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function setupDragAndDrop() {
+            const zone = document.getElementById('dropZone');
+            const modal = document.getElementById('uploadModal');
+
+            // Allow dragging files directly onto the browser window to auto-open upload modal
+            window.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (modal.classList.contains('hidden')) {
+                    openUploadModal();
+                }
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                zone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    zone.classList.add('border-rose-400', 'bg-amber-100/50');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('border-rose-400', 'bg-amber-100/50');
+                }, false);
+            });
+
+            zone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length) handleFiles(files);
+            }, false);
+        }
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length) handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            globalRawData = [];
+            parsedCategories.clear();
+            isSampleData = false; // Reset sample data flag when uploading user files
+            let filesProcessed = 0;
+
+            // Extract baby name from filenames if available
+            if (files.length > 0) {
+                const sampleName = files[0].name;
+                const match = sampleName.match(/^([^_]+)_(diaper|expressed|formula|growth|medication|milestone|nursing|other_activity|sleep|supplement|temperature|vaccine)/i);
+                if (match && match[1]) {
+                    const extractedName = match[1].trim();
+                    if (extractedName && (currentBabyName === '寶貝' || currentBabyName === '寶寶')) {
+                        currentBabyName = extractedName;
+                        updateBabyNameDisplay();
+                    }
+                }
+            }
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                        const category = detectCategory(file.name, json[0] || {});
+                        parsedCategories.add(category);
+
+                        json.forEach(row => {
+                            const normalized = normalizeRow(category, row);
+                            if (normalized && normalized.time) {
+                                globalRawData.push(normalized);
+                            }
+                        });
+
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            finalizeDataParsing();
+                        }
+                    } catch (err) {
+                        console.error('檔案解析錯誤:', err);
+                        showToast(`解析檔案 ${file.name} 失敗`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function detectCategory(filename, firstRow) {
+            const lowerName = filename.toLowerCase();
+            if (lowerName.includes('diaper')) return 'diaper';
+            if (lowerName.includes('expressed')) return 'expressed';
+            if (lowerName.includes('formula')) return 'formula';
+            if (lowerName.includes('growth')) return 'growth';
+            if (lowerName.includes('medication')) return 'medication';
+            if (lowerName.includes('milestone')) return 'milestone';
+            if (lowerName.includes('nursing')) return 'nursing';
+            if (lowerName.includes('other_activity') || lowerName.includes('activity')) return 'other_activity';
+            if (lowerName.includes('sleep')) return 'sleep';
+            if (lowerName.includes('supplement')) return 'supplement';
+            if (lowerName.includes('temp')) return 'temperature';
+            if (lowerName.includes('vaccine')) return 'vaccine';
+
+            const keys = Object.keys(firstRow).join(' ').toLowerCase();
+            if (keys.includes('尿布') || keys.includes('diaper')) return 'diaper';
+            if (keys.includes('擠奶') || keys.includes('expressed')) return 'expressed';
+            if (keys.includes('配方奶') || keys.includes('formula')) return 'formula';
+            if (keys.includes('體重') || keys.includes('growth')) return 'growth';
+            if (keys.includes('里程') || keys.includes('milestone')) return 'milestone';
+            if (keys.includes('親餵') || keys.includes('nursing')) return 'nursing';
+            if (keys.includes('睡眠') || keys.includes('sleep')) return 'sleep';
+            if (keys.includes('體溫') || keys.includes('temp')) return 'temperature';
+            if (keys.includes('疫苗') || keys.includes('vaccine')) return 'vaccine';
+
+            return 'other';
+        }
+
+        function normalizeRow(category, row) {
+            const keys = Object.keys(row);
+            const findKey = (...terms) => keys.find(k => terms.some(t => k.toLowerCase().includes(t.toLowerCase())));
+
+            const rawTime = row[findKey('時間', '時間點', '日期', 'Time', 'Date', 'Start')] || '';
+            const note = row[findKey('備註', 'Note', 'Comment')] || '';
+
+            let timeStr = rawTime;
+            if (rawTime instanceof Date) {
+                timeStr = rawTime.toISOString().replace('T', ' ').substring(0, 16);
+            }
+
+            const item = {
+                category,
+                time: String(timeStr).trim(),
+                note: String(note).trim(),
+                raw: row
+            };
+
+            switch (category) {
+                case 'diaper':
+                    item.type = String(row[findKey('類型', '狀態', 'Type')] || '尿濕').trim();
+                    item.valDisplay = item.type;
+                    break;
+                case 'expressed':
+                    item.amount = parseFloat(row[findKey('擠奶量', '總量', 'Amount', 'Total')]) || 0;
+                    item.left = parseFloat(row[findKey('左', 'Left')]) || 0;
+                    item.right = parseFloat(row[findKey('右', 'Right')]) || 0;
+                    item.valDisplay = `${item.amount} ml`;
+                    break;
+                case 'formula':
+                    item.amount = parseFloat(row[findKey('奶量', 'Amount', 'Volume')]) || 0;
+                    item.valDisplay = `${item.amount} ml`;
+                    break;
+                case 'growth':
+                    item.weight = parseFloat(row[findKey('體重', 'Weight')]) || 0;
+                    item.height = parseFloat(row[findKey('身長', '身高', 'Height')]) || 0;
+                    item.head = parseFloat(row[findKey('頭圍', 'Head')]) || 0;
+                    item.valDisplay = `體重:${item.weight}kg / 身長:${item.height}cm`;
+                    break;
+                case 'milestone':
+                    item.title = String(row[findKey('里程碑', '項目', 'Milestone', 'Title', '名稱')] || '發展里程').trim();
+                    item.status = String(row[findKey('狀態', '進度', 'Status')] || '已解鎖').trim();
+                    item.valDisplay = `${item.title} (${item.status})`;
+                    break;
+                case 'nursing':
+                    item.duration = parseFloat(row[findKey('親餵總時間', '總時間', '費時', 'Duration')]) || 0;
+                    item.left = parseFloat(row[findKey('左', 'Left')]) || 0;
+                    item.right = parseFloat(row[findKey('右', 'Right')]) || 0;
+                    item.valDisplay = `${item.duration} 分鐘`;
+                    break;
+                case 'sleep':
+                    item.duration = parseFloat(row[findKey('時長', 'Duration', '分鐘')]) || 0;
+                    item.sleepType = row[findKey('類型', 'Type')] || '小憩';
+                    item.valDisplay = `${item.duration} 分鐘 (${item.sleepType})`;
+                    break;
+                case 'temperature':
+                    item.temp = parseFloat(row[findKey('體溫', 'Temperature', 'Temp')]) || 0;
+                    item.valDisplay = `${item.temp} °C`;
+                    break;
+                case 'vaccine':
+                    item.vaccineName = String(row[findKey('疫苗', '名稱', 'Vaccine', 'Name')] || '預防針').trim();
+                    item.dose = String(row[findKey('劑次', 'Dose', '診所', 'Clinic')] || '').trim();
+                    item.valDisplay = `${item.vaccineName}${item.dose ? ' (' + item.dose + ')' : ''}`;
+                    break;
+                default:
+                    item.valDisplay = JSON.stringify(row);
+            }
+            return item;
+        }
+
+        function renderEmptyState() {
+            document.getElementById('kpiMilk').innerHTML = `0 <span class="text-xs font-normal text-slate-400">ml</span>`;
+            document.getElementById('kpiSleep').innerHTML = `0 <span class="text-xs font-normal text-slate-400">小時</span>`;
+            document.getElementById('kpiDiaper').innerHTML = `0 <span class="text-xs font-normal text-slate-400">次/日</span>`;
+            document.getElementById('kpiNursing').innerHTML = `0 <span class="text-xs font-normal text-slate-400">分鐘</span>`;
+            document.getElementById('kpiTemp').innerHTML = `-- <span class="text-xs font-normal text-slate-400">°C</span>`;
+            document.getElementById('kpiGrowth').innerHTML = `-- <span class="text-xs font-normal text-slate-400">kg</span>`;
+
+            const activeSummary = document.getElementById('activeDataSummary');
+            if (activeSummary) activeSummary.classList.add('hidden');
+
+            const clearBtn = document.getElementById('clearDataBtn');
+            if (clearBtn) clearBtn.classList.add('hidden');
+
+            const sampleBadge = document.getElementById('sampleDataBadge');
+            if (sampleBadge) sampleBadge.classList.add('hidden');
+
+            renderRawTable();
+            renderEmptyCharts();
+        }
+
+        function clearData() {
+            globalRawData = [];
+            parsedCategories.clear();
+            currentTimeFilter = 'ALL';
+            isSampleData = false;
+            renderEmptyState();
+            showToast('已成功清除所有護理數據與圖表紀錄', 'info');
+        }
+
+        function finalizeDataParsing() {
+            globalRawData.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            // Extract dates and compute range
+            const allDates = Array.from(new Set(globalRawData.map(d => d.time.substring(0, 10)))).sort();
+            if (allDates.length > 0) {
+                const minDate = allDates[0];
+                const maxDate = allDates[allDates.length - 1];
+                const totalDays = allDates.length;
+                document.getElementById('dataTimeRangeText').innerText = `紀錄區間：${minDate} ~ ${maxDate} (共 ${totalDays} 天)`;
+            } else {
+                document.getElementById('dataTimeRangeText').innerText = '紀錄區間：-- ~ --';
+            }
+
+            document.getElementById('dataCountSummary').innerText = `已匯入 ${parsedCategories.size} 類共 ${globalRawData.length} 筆護理紀錄`;
+
+            // Toggle sample data hint badge
+            const sampleBadge = document.getElementById('sampleDataBadge');
+            if (sampleBadge) {
+                if (isSampleData) {
+                    sampleBadge.classList.remove('hidden');
+                } else {
+                    sampleBadge.classList.add('hidden');
+                }
+            }
+
+            // Update badges in upload modal
+            const tagHtml = Array.from(parsedCategories).map(cat => 
+                `<span class="px-2 py-0.5 rounded-lg text-[11px] bg-rose-50 text-rose-700 border border-rose-200">${cat} (${globalRawData.filter(d=>d.category===cat).length})</span>`
+            ).join('');
+            document.getElementById('fileListTags').innerHTML = tagHtml;
+
+            document.getElementById('activeDataSummary').classList.remove('hidden');
+            const clearBtn = document.getElementById('clearDataBtn');
+            if (clearBtn) clearBtn.classList.remove('hidden');
+
+            updateKPIs();
+            renderAllCharts();
+            renderRawTable();
+            closeUploadModal();
+            showToast(isSampleData ? '已載入範例護理數據！' : `成功解析 ${globalRawData.length} 筆護理日誌紀錄！`, 'success');
+        }
+
+        function clearData() {
+            globalRawData = [];
+            parsedCategories.clear();
+            currentTimeFilter = 'ALL';
+            renderEmptyState();
+            showToast('已成功清除所有護理數據與圖表紀錄', 'info');
+        }
+
+        function finalizeDataParsing() {
+            globalRawData.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            // Extract dates and compute range
+            const allDates = Array.from(new Set(globalRawData.map(d => d.time.substring(0, 10)))).sort();
+            if (allDates.length > 0) {
+                const minDate = allDates[0];
+                const maxDate = allDates[allDates.length - 1];
+                const totalDays = allDates.length;
+                document.getElementById('dataTimeRangeText').innerText = `紀錄區間：${minDate} ~ ${maxDate} (共 ${totalDays} 天)`;
+            } else {
+                document.getElementById('dataTimeRangeText').innerText = '紀錄區間：-- ~ --';
+            }
+
+            document.getElementById('dataCountSummary').innerText = `已匯入 ${parsedCategories.size} 類共 ${globalRawData.length} 筆護理紀錄`;
+
+            // Update badges in upload modal
+            const tagHtml = Array.from(parsedCategories).map(cat => 
+                `<span class="px-2 py-0.5 rounded-lg text-[11px] bg-rose-50 text-rose-700 border border-rose-200">${cat} (${globalRawData.filter(d=>d.category===cat).length})</span>`
+            ).join('');
+            document.getElementById('fileListTags').innerHTML = tagHtml;
+
+            document.getElementById('activeDataSummary').classList.remove('hidden');
+            const clearBtn = document.getElementById('clearDataBtn');
+            if (clearBtn) clearBtn.classList.remove('hidden');
+
+            updateKPIs();
+            renderAllCharts();
+            renderRawTable();
+            closeUploadModal();
+            showToast(`成功解析 ${globalRawData.length} 筆護理日誌紀錄！`, 'success');
+        }
+
+        function updateKPIs() {
+            const data = getFilteredData();
+            if (!data.length) {
+                renderEmptyState();
+                return;
+            }
+
+            const daysCount = Math.max(1, new Set(data.map(d => d.time.substring(0, 10))).size);
+
+            const formulaTotal = data.filter(d => d.category === 'formula').reduce((acc, c) => acc + (c.amount || 0), 0);
+            const expressedTotal = data.filter(d => d.category === 'expressed').reduce((acc, c) => acc + (c.amount || 0), 0);
+            const dailyAvgMilk = Math.round((formulaTotal + expressedTotal) / daysCount);
+            document.getElementById('kpiMilk').innerHTML = `${dailyAvgMilk} <span class="text-xs font-normal text-slate-400">ml</span>`;
+
+            const totalSleepMin = data.filter(d => d.category === 'sleep').reduce((acc, c) => acc + (c.duration || 0), 0);
+            const dailyAvgSleepHr = (totalSleepMin / 60 / daysCount).toFixed(1);
+            document.getElementById('kpiSleep').innerHTML = `${dailyAvgSleepHr} <span class="text-xs font-normal text-slate-400">小時</span>`;
+
+            const diaperCount = data.filter(d => d.category === 'diaper').length;
+            const dailyDiapers = (diaperCount / daysCount).toFixed(1);
+            document.getElementById('kpiDiaper').innerHTML = `${dailyDiapers} <span class="text-xs font-normal text-slate-400">次/日</span>`;
+
+            const nursingTotalMin = data.filter(d => d.category === 'nursing').reduce((acc, c) => acc + (c.duration || 0), 0);
+            const dailyNursing = Math.round(nursingTotalMin / daysCount);
+            document.getElementById('kpiNursing').innerHTML = `${dailyNursing} <span class="text-xs font-normal text-slate-400">分鐘</span>`;
+
+            const tempRecords = data.filter(d => d.category === 'temperature' && d.temp > 0);
+            if (tempRecords.length) {
+                const avgTemp = (tempRecords.reduce((acc, c) => acc + c.temp, 0) / tempRecords.length).toFixed(1);
+                document.getElementById('kpiTemp').innerHTML = `${avgTemp} <span class="text-xs font-normal text-slate-400">°C</span>`;
+            } else {
+                document.getElementById('kpiTemp').innerHTML = `--`;
+            }
+
+            const growthRecords = data.filter(d => d.category === 'growth');
+            if (growthRecords.length) {
+                const latest = growthRecords[growthRecords.length - 1];
+                document.getElementById('kpiGrowth').innerHTML = `${latest.weight || '--'} <span class="text-xs font-normal text-slate-400">kg</span>`;
+                document.getElementById('kpiGrowthSub').innerText = `身長: ${latest.height || '--'} cm`;
+            } else {
+                document.getElementById('kpiGrowth').innerHTML = `--`;
+            }
+        }
+
+        function renderAllCharts() {
+            const data = getFilteredData();
+            if (!data.length) {
+                renderEmptyCharts();
+                return;
+            }
+
+            const dates = Array.from(new Set(data.map(d => d.time.substring(0, 10)))).sort();
+
+            const formulaByDate = dates.map(day => 
+                data.filter(d => d.category === 'formula' && d.time.startsWith(day))
+                .reduce((a, c) => a + c.amount, 0)
+            );
+            const expressedByDate = dates.map(day => 
+                data.filter(d => d.category === 'expressed' && d.time.startsWith(day))
+                .reduce((a, c) => a + c.amount, 0)
+            );
+
+            chartInstances['chartMilkTrend'].setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['配方奶 (ml)', '擠母乳 (ml)'], top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates },
+                yAxis: { type: 'value', name: '毫升' },
+                series: [
+                    { name: '配方奶 (ml)', type: 'bar', stack: 'milk', data: formulaByDate, itemStyle: { color: chartColors.sky, borderRadius: [0, 0, 4, 4] } },
+                    { name: '擠母乳 (ml)', type: 'bar', stack: 'milk', data: expressedByDate, itemStyle: { color: chartColors.indigo, borderRadius: [4, 4, 0, 0] } }
+                ]
+            }, true);
+
+            const diaperTypes = {};
+            data.filter(d => d.category === 'diaper').forEach(d => {
+                diaperTypes[d.type] = (diaperTypes[d.type] || 0) + 1;
+            });
+            const diaperPieData = Object.keys(diaperTypes).map(key => ({ name: key, value: diaperTypes[key] }));
+
+            chartInstances['chartDiaperPie'].setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    data: diaperPieData.length ? diaperPieData : [{ name: '無數據', value: 1 }],
+                    itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 }
+                }]
+            }, true);
+
+            const sleepByDate = dates.map(day => {
+                const mins = data.filter(d => d.category === 'sleep' && d.time.startsWith(day))
+                    .reduce((a, c) => a + c.duration, 0);
+                return (mins / 60).toFixed(1);
+            });
+
+            chartInstances['chartSleepTrend'].setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates },
+                yAxis: { type: 'value', name: '小時' },
+                series: [{
+                    name: '每日睡眠',
+                    type: 'line',
+                    smooth: true,
+                    data: sleepByDate,
+                    areaStyle: { color: 'rgba(99, 102, 241, 0.15)' },
+                    itemStyle: { color: chartColors.indigo }
+                }]
+            }, true);
+
+            const growthRecords = data.filter(d => d.category === 'growth');
+            chartInstances['chartGrowthCurve'].setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: growthRecords.map(d => d.time.substring(0, 10)) },
+                yAxis: [
+                    { type: 'value', name: '體重(kg)', min: 2 },
+                    { type: 'value', name: '身長(cm)', min: 45 }
+                ],
+                series: [
+                    { name: '體重 (kg)', type: 'line', data: growthRecords.map(d => d.weight), itemStyle: { color: chartColors.emerald } },
+                    { name: '身長 (cm)', type: 'line', yAxisIndex: 1, data: growthRecords.map(d => d.height), itemStyle: { color: chartColors.amber } }
+                ]
+            }, true);
+
+            const tempRecords = data.filter(d => d.category === 'temperature');
+            chartInstances['chartTempTrend'].setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: tempRecords.map(d => d.time) },
+                yAxis: { type: 'value', min: 35.5, max: 39, name: '體溫(°C)' },
+                series: [{
+                    name: '體溫',
+                    type: 'line',
+                    data: tempRecords.map(d => d.temp),
+                    markLine: {
+                        data: [{ yAxis: 37.5, name: '發燒警戒' }],
+                        lineStyle: { color: chartColors.rose, type: 'dashed' }
+                    },
+                    itemStyle: { color: chartColors.orange }
+                }]
+            }, true);
+
+            chartInstances['chartFeedingCompare'].setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates },
+                yAxis: { type: 'value' },
+                series: [
+                    { name: '配方奶', type: 'line', smooth: true, data: formulaByDate, itemStyle: { color: chartColors.sky } },
+                    { name: '擠母乳', type: 'line', smooth: true, data: expressedByDate, itemStyle: { color: chartColors.indigo } }
+                ]
+            }, true);
+
+            const leftNursing = dates.map(day => data.filter(d => d.category === 'nursing' && d.time.startsWith(day)).reduce((a, c) => a + (c.left || 0), 0));
+            const rightNursing = dates.map(day => data.filter(d => d.category === 'nursing' && d.time.startsWith(day)).reduce((a, c) => a + (c.right || 0), 0));
+            chartInstances['chartNursingSide'].setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates },
+                yAxis: { type: 'value', name: '分鐘' },
+                series: [
+                    { name: '左側親餵', type: 'bar', data: leftNursing, itemStyle: { color: chartColors.rose, borderRadius: [4, 4, 0, 0] } },
+                    { name: '右側親餵', type: 'bar', data: rightNursing, itemStyle: { color: chartColors.sky, borderRadius: [4, 4, 0, 0] } }
+                ]
+            }, true);
+
+            const timelineData = data.slice(-100).map(d => {
+                const hour = parseInt(d.time.substring(11, 13)) || 12;
+                return [d.time.substring(0, 10), hour, d.valDisplay, d.category];
+            });
+
+            chartInstances['chartDailyTimeline'].setOption({
+                tooltip: {
+                    formatter: (p) => `<b>${p.value[0]} ${p.value[1]}:00</b><br/>類別: ${p.value[3]}<br/>內容: ${p.value[2]}`
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates.slice(-7) },
+                yAxis: { type: 'value', min: 0, max: 24, name: '小時' },
+                series: [{
+                    type: 'scatter',
+                    symbolSize: 14,
+                    data: timelineData,
+                    itemStyle: { color: chartColors.rose }
+                }]
+            }, true);
+        }
+
+        function renderRawTable() {
+            const data = getFilteredData();
+            const filter = document.getElementById('filterCategory').value;
+            const tbody = document.getElementById('rawTableBody');
+
+            const filtered = filter === 'ALL' ? data : data.filter(d => d.category === filter);
+
+            if (!filtered.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">尚無符合條件的護理資料紀錄</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.slice(0, 100).map(row => `
+                <tr class="hover:bg-amber-100/50 transition">
+                    <td class="p-3 font-mono text-slate-600">${row.time}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-md text-[10px] bg-amber-100 text-amber-900 border border-amber-200 uppercase font-semibold">
+                            ${row.category}
+                        </span>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-800">${row.valDisplay || '--'}</td>
+                    <td class="p-3 text-slate-500">${row.left ? `左:${row.left}分 / 右:${row.right}分` : '--'}</td>
+                    <td class="p-3 text-slate-500 italic">${row.note || '--'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportToCSV() {
+            if (!globalRawData.length) {
+                showToast('無資料可供匯出，請先上傳或載入數據', 'error');
+                return;
+            }
+            const ws = XLSX.utils.json_to_sheet(globalRawData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "護理日誌總表");
+            XLSX.writeFile(wb, `${currentBabyName}_護理數據總表_${new Date().toISOString().substring(0, 10)}.xlsx`);
+            showToast(`已開始下載 ${currentBabyName} 的 Excel 總表檔案！`, 'success');
+        }
+
+        function loadSampleData() {
+            globalRawData = [];
+            parsedCategories.clear();
+            isSampleData = true; // Mark as sample data
+
+            const today = new Date();
+            const categories = ['diaper', 'expressed', 'formula', 'growth', 'milestone', 'nursing', 'sleep', 'temperature', 'vaccine'];
+
+            for (let i = 14; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().substring(0, 10);
+
+                globalRawData.push({ category: 'formula', time: `${dateStr} 08:30`, amount: 120, valDisplay: '120 ml', note: '晨奶' });
+                globalRawData.push({ category: 'formula', time: `${dateStr} 16:00`, amount: 150, valDisplay: '150 ml', note: '午後奶' });
+                globalRawData.push({ category: 'expressed', time: `${dateStr} 12:00`, amount: 140, left: 70, right: 70, valDisplay: '140 ml', note: '中午擠奶' });
+
+                globalRawData.push({ category: 'diaper', time: `${dateStr} 09:10`, type: '尿濕', valDisplay: '尿濕', note: '正常' });
+                globalRawData.push({ category: 'diaper', time: `${dateStr} 14:20`, type: '排便', valDisplay: '排便', note: '黃色糊狀' });
+
+                globalRawData.push({ category: 'sleep', time: `${dateStr} 13:00`, duration: 120, sleepType: '午後小憩', valDisplay: '120 分鐘' });
+                globalRawData.push({ category: 'sleep', time: `${dateStr} 21:00`, duration: 540, sleepType: '夜間長眠', valDisplay: '540 分鐘' });
+
+                globalRawData.push({ category: 'nursing', time: `${dateStr} 07:00`, duration: 25, left: 15, right: 10, valDisplay: '25 分鐘' });
+
+                globalRawData.push({ category: 'temperature', time: `${dateStr} 20:00`, temp: parseFloat((36.5 + (Math.random() * 0.6)).toFixed(1)), valDisplay: '36.8 °C' });
+            }
+
+            globalRawData.push({ category: 'growth', time: `${today.toISOString().substring(0, 10)} 10:00`, weight: 4.8, height: 56.5, head: 38.0, valDisplay: '體重:4.8kg / 身長:56.5cm' });
+            globalRawData.push({ category: 'milestone', time: `${today.toISOString().substring(0, 10)} 11:00`, title: '俯臥抬頭 45 度', status: '已解鎖', valDisplay: '俯臥抬頭 45 度 (已解鎖)', note: '維持約 10 秒' });
+            globalRawData.push({ category: 'vaccine', time: `${today.toISOString().substring(0, 10)} 09:30`, vaccineName: 'B型肝炎第二劑', dose: '第2劑', valDisplay: 'B型肝炎第二劑 (第2劑)', note: '體溫正常，無紅腫' });
+
+            categories.forEach(c => parsedCategories.add(c));
+            finalizeDataParsing();
+        }
+    </script>
+</body>
+</html>

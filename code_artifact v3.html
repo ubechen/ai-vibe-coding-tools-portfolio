@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrivaShield - 本地端個資假名化與匿名化系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'Microsoft JhengHei', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                            900: '#0f172a'
+                        },
+                        anon: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .drag-over {
+            border-color: #2563eb !important;
+            background-color: #eff6ff !important;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-blue-200">
+
+    <header class="bg-slate-950 border-b border-slate-800 text-white sticky top-0 z-50 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="returnToLanding()">
+                <div id="app-logo-bg" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center shadow-md shadow-blue-500/20 transition-all">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+                        PrivaShield <span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/80 text-blue-300 font-medium border border-blue-700/50">v4.0 Final</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">本地端個資假名化與匿名化處置系統</p>
+                </div>
+            </div>
+
+            <!-- Header Mode Indicator & Switching -->
+            <div id="header-mode-bar" class="hidden md:flex items-center gap-3">
+                <div id="header-current-badge" class="px-3 py-1.5 rounded-xl bg-blue-900/60 border border-blue-700/60 text-blue-300 text-xs font-semibold flex items-center gap-2">
+                    <span id="header-mode-dot" class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                    <span id="header-mode-text">當前模式：個資假名化</span>
+                </div>
+                <button onclick="returnToLanding()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                    切換應用首頁
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openGuideModal()" class="hidden sm:flex text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-xl transition items-center gap-1.5">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    差異對照指南
+                </button>
+                <button onclick="openSecurityModal()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span class="hidden sm:inline">安全機制</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <section id="panel-landing" class="space-y-8">
+            <div class="text-center max-w-3xl mx-auto space-y-3 pt-4">
+                <span class="px-3 py-1 rounded-full bg-blue-900/60 border border-blue-700/50 text-blue-300 text-xs font-bold uppercase tracking-widest">
+                    合規資料治理與脫敏工具
+                </span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                    請選擇您的數據處理目的與應用場景
+                </h2>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    PrivaShield 100% 於您電腦的記憶體 (RAM) 內運算。依據歐盟 GDPR 與台灣個資法，請選擇最符合您商業用途的保護機制：
+                </p>
+            </div>
+
+            <!-- Choice Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto items-stretch">
+                <!-- Card 1: Pseudonymization -->
+                <div class="bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-blue-500/60 hover:border-blue-400 rounded-3xl p-6 sm:p-8 shadow-2xl transition-all transform hover:-translate-y-1 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="space-y-6">
+                        <div class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] uppercase font-bold px-4 py-1.5 rounded-bl-2xl">
+                            內部研發與數據分析
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                                個資假名化 <span class="text-xs text-blue-400 font-normal">(Pseudonymization)</span>
+                            </h3>
+                            <p class="text-xs text-blue-200 leading-relaxed">
+                                以唯一代碼與加鹽雜湊 (SHA-256) 替換真實身分，保留關聯性 (Reversible with Key)。
+                            </p>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2.5 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                            <li class="flex items-start gap-2">
+                                <span class="text-blue-400 font-bold mt-0.5">✓</span>
+                                <span><strong>支援跨表 SQL / Pandas Join</strong>：相同的真實個資會產生相同的假名代碼。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-blue-400 font-bold mt-0.5">✓</span>
+                                <span><strong>產出解密對照字典</strong>：金鑰字典可獨立保管，未來需要時可追溯真實顧客。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-blue-400 font-bold mt-0.5">✓</span>
+                                <span><strong>適用場景</strong>：企業內部跨部門分析、AI 機器學習模型訓練、外包工程團隊開發。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <button onclick="startMode('pseudonym')" class="w-full mt-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl text-sm transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2">
+                        進入「個資假名化」流程
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+
+                <!-- Card 2: Anonymization -->
+                <div class="bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-orange-500/60 hover:border-orange-400 rounded-3xl p-6 sm:p-8 shadow-2xl transition-all transform hover:-translate-y-1 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="space-y-6">
+                        <div class="absolute top-0 right-0 bg-orange-600 text-white text-[10px] uppercase font-bold px-4 py-1.5 rounded-bl-2xl">
+                            對外公開與 Open Data
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-orange-600/20 border border-orange-500/40 text-orange-400 flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.025 10.025 0 0110.123 3.937C20.268 9.057 16.478 12 12 12c-1.127 0-2.19-.188-3.175-.532"/></svg>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                                個資匿名化 <span class="text-xs text-orange-400 font-normal">(Anonymization)</span>
+                            </h3>
+                            <p class="text-xs text-orange-200 leading-relaxed">
+                                透過高強度遮罩、地址縣市泛化與年齡級距打碎數據，徹底不可逆轉 (Irreversible)。
+                            </p>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2.5 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                            <li class="flex items-start gap-2">
+                                <span class="text-orange-400 font-bold mt-0.5">✓</span>
+                                <span><strong>撕毀所有個人身分標籤</strong>：去除直接識別碼，將敏感屬性級距化與泛化。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-orange-400 font-bold mt-0.5">✓</span>
+                                <span><strong>完全零保留字典與金鑰</strong>：處理後連系統管理者也無法逆向追蹤回個人。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-orange-400 font-bold mt-0.5">✓</span>
+                                <span><strong>適用場景</strong>：政府 Open Data 開放資料、學術期刊發表、公眾統計報告與對外數據集。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <button onclick="startMode('anonym')" class="w-full mt-6 py-3.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-2xl text-sm transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
+                        進入「個資匿名化」流程
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <div id="panel-wizard-container" class="hidden space-y-6">
+
+            <!-- Active Mode Banner Explanation -->
+            <div id="mode-banner" class="bg-gradient-to-r from-blue-900/90 to-slate-900 border border-blue-700/60 rounded-2xl p-4 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="mode-banner-badge" class="px-3 py-1 rounded-lg bg-blue-600 text-white font-bold text-xs uppercase tracking-wider shrink-0">
+                        目前模式：個資假名化
+                    </div>
+                    <div class="space-y-0.5">
+                        <h2 id="mode-banner-title" class="text-sm font-bold">保留資料關聯與結構，產生唯一對照代碼 (Reversible with Key)</h2>
+                        <p id="mode-banner-desc" class="text-xs text-blue-200">相同的真實身分會產生相同的替代代碼，可進行 cross-table SQL/Pandas Join，並可匯出加密對照表字典。</p>
+                    </div>
+                </div>
+                <button onclick="returnToLanding()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-blue-100 whitespace-nowrap transition border border-white/20">
+                    ← 切換應用首頁
+                </button>
+            </div>
+
+            <!-- Step Progress Bar -->
+            <nav aria-label="Progress" class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-xl backdrop-blur">
+                <ol role="list" class="flex items-center justify-between w-full text-sm font-medium">
+                    <li id="step-nav-1" class="flex-1 flex items-center text-blue-400 font-semibold">
+                        <span id="step-circle-1" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center mr-3 shadow-md shadow-blue-500/30 ring-4 ring-blue-900/50">1</span>
+                        <span class="hidden sm:inline">1. 上傳檔案</span>
+                        <svg class="w-5 h-5 mx-auto text-slate-600 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </li>
+                    <li id="step-nav-2" class="flex-1 flex items-center text-slate-500">
+                        <span id="step-circle-2" class="w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center mr-3">2</span>
+                        <span class="hidden sm:inline">2. 智慧偵測與設定</span>
+                        <svg class="w-5 h-5 mx-auto text-slate-600 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </li>
+                    <li id="step-nav-3" class="flex-1 flex items-center text-slate-500">
+                        <span id="step-circle-3" class="w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center mr-3">3</span>
+                        <span class="hidden sm:inline">3. 預覽與對照</span>
+                        <svg class="w-5 h-5 mx-auto text-slate-600 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </li>
+                    <li id="step-nav-4" class="flex-1 flex items-center text-slate-500">
+                        <span id="step-circle-4" class="w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center mr-3">4</span>
+                        <span class="hidden sm:inline">4. 安全匯出</span>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- STEP 1: Upload File Panel -->
+            <section id="panel-step-1" class="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl transition-all">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="text-center space-y-2">
+                        <h2 class="text-2xl font-bold text-slate-900">步驟 1：選擇並上傳原始資料表</h2>
+                        <p class="text-slate-600 text-sm">支援 Excel (.xlsx, .xls) 及 CSV 檔案格式。所有檔案讀取與轉化皆於您的電腦記憶體內完成。</p>
+                    </div>
+
+                    <!-- Dropzone -->
+                    <div id="dropzone" onclick="document.getElementById('file-input').click()" 
+                         class="border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 rounded-2xl p-10 text-center cursor-pointer transition-all space-y-4 group">
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleFileSelect(event)">
+                        <div id="upload-icon-bg" class="w-16 h-16 rounded-full bg-blue-100 text-blue-600 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-base font-semibold text-slate-700">點擊上傳或將檔案拖曳至此處</p>
+                            <p class="text-xs text-slate-400 mt-1">支援 .xlsx, .xls, .csv (最大檔案建議 50MB)</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 1 Sample Data Trial Card -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between bg-slate-50 border border-slate-200 p-4 rounded-xl gap-3 shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                            <span class="text-xs font-semibold text-slate-700">沒有準備好的數據？可以直接載入預設的 10 筆測試個資體驗完整流程：</span>
+                        </div>
+                        <button onclick="loadSampleDataInStep1()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs whitespace-nowrap transition shadow-md flex items-center gap-1.5 shrink-0">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            載入測試範例資料
+                        </button>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 flex gap-3">
+                        <svg class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <div class="space-y-1">
+                            <p class="font-bold">安全提醒：全程瀏覽器端（RAM）處理</p>
+                            <p>本工具利用 HTML5 File API 與 Web Cryptography API。資料僅存於記憶體，離線或斷網依然完全正常運作。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 2: Configuration Panel -->
+            <section id="panel-step-2" class="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">步驟 2：敏感欄位自動辨識與處置規則設定</h2>
+                        <p class="text-slate-600 text-sm mt-1">系統已透過智慧啟發式規則為目前模式自動設定最佳化處置規則。</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1 text-xs">
+                            已載入檔名：<span id="file-name-display" class="font-bold text-blue-600">--</span>
+                            (<span id="file-rows-display">0</span> 筆紀錄)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mode-Specific Settings Box -->
+                <div id="pseudo-salt-box" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="space-y-1 max-w-xl">
+                        <p class="font-bold flex items-center gap-1.5 text-amber-950">
+                            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"/></svg>
+                            金鑰鹽值 (Key Salt) - 關聯維護核心
+                        </p>
+                        <p class="text-amber-800">使用相同的鹽值處理跨檔案數據時，相同的真實身分會產生相同的假名代碼，確保 SQL/Pandas 關聯分析 (Join)。</p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="global-salt" value="PrivaShield-Salt-2026" class="bg-white border border-amber-300 rounded-lg px-3 py-1.5 text-xs font-mono w-full sm:w-48 focus:ring-2 focus:ring-amber-500 outline-none">
+                        <button onclick="randomizeSalt()" class="px-3 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-900 font-semibold rounded-lg text-xs whitespace-nowrap">隨機產生</button>
+                    </div>
+                </div>
+
+                <div id="anon-guarantee-box" class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-xs text-orange-950 hidden space-y-1">
+                    <p class="font-bold flex items-center gap-1.5 text-orange-900">
+                        <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        匿名化防護宣告 (Irreversible Anonymization)
+                    </p>
+                    <p class="text-orange-800">數據將進行「泛化 (Generalization)」、「高強度遮罩 (Masking)」或「刪除 (Suppression)」。處理後**無任何對照字典與解密金鑰**，完全不可逆轉，合規於開放資料 (Open Data)。</p>
+                </div>
+
+                <!-- Column Detection Table -->
+                <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                                <th class="p-3.5">原始欄位名稱</th>
+                                <th class="p-3.5">自動辨識個資類型</th>
+                                <th class="p-3.5">樣本範例資料</th>
+                                <th class="p-3.5">處置與轉化規則</th>
+                                <th class="p-3.5">處理效果說明</th>
+                            </tr>
+                        </thead>
+                        <tbody id="column-config-tbody" class="divide-y divide-slate-200 bg-white">
+                            <!-- Dynamic Rows Injecting Here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-between items-center pt-4">
+                    <button onclick="goToStep(1)" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-sm transition">
+                        ← 上一步 (重新選擇檔案)
+                    </button>
+                    <button id="process-action-btn" onclick="processDataTransformation()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-blue-500/30 flex items-center gap-2">
+                        執行轉化處理並查看預覽
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- STEP 3: Preview Panel -->
+            <section id="panel-step-3" class="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">步驟 3：資料轉化結果與對照比對預覽</h2>
+                        <p class="text-slate-600 text-sm mt-1">即時檢視處理前後差異，確認個人識別資訊 (PII) 已被安全替代或泛化。</p>
+                    </div>
+                    <!-- Privacy Mode Toggle -->
+                    <div id="preview-mask-toggle-wrapper" class="flex items-center gap-3 bg-slate-100 p-1.5 rounded-xl border border-slate-300">
+                        <span class="text-xs font-semibold text-slate-600 pl-2">個資明文顯示：</span>
+                        <button id="toggle-mask-btn" onclick="toggleOriginalDataMask()" class="px-3 py-1.5 bg-white shadow-sm text-xs font-bold text-slate-800 rounded-lg border border-slate-200 flex items-center gap-1.5 hover:bg-slate-50 transition">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <span id="toggle-mask-text">遮蔽模式 (開啟)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <div class="text-xs text-blue-700 font-medium">個資脫敏欄位數</div>
+                            <div id="stat-sensitives-count" class="text-xl font-bold text-blue-950">0 欄位</div>
+                        </div>
+                    </div>
+                    <div id="stat-card-2" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-4">
+                        <div id="stat-card-2-icon" class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <div>
+                            <div id="stat-card-2-title" class="text-xs text-emerald-700 font-medium">關聯一致性 (Join Consistency)</div>
+                            <div id="stat-card-2-value" class="text-xl font-bold text-emerald-950">100% 完整保留</div>
+                        </div>
+                    </div>
+                    <div id="stat-card-3" class="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                        </div>
+                        <div>
+                            <div id="stat-card-3-title" class="text-xs text-purple-700 font-medium">對照字典項目 (Mapping Keys)</div>
+                            <div id="stat-dictionary-keys" class="text-xl font-bold text-purple-950">0 筆紀錄</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Switcher -->
+                <div id="preview-tabs" class="border-b border-slate-200 flex space-x-6">
+                    <button id="tab-btn-transformed" onclick="switchPreviewTab('transformed')" class="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600">
+                        轉化後數據預覽 (前 10 筆)
+                    </button>
+                    <button id="tab-btn-mapping" onclick="switchPreviewTab('mapping')" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">
+                        對照關聯字典 (Decryption Dictionary)
+                    </button>
+                </div>
+
+                <!-- Transformed Preview Table -->
+                <div id="tab-content-transformed" class="overflow-x-auto border border-slate-200 rounded-xl max-h-96 shadow-inner">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 bg-slate-800 text-white shadow-sm">
+                            <tr id="preview-transformed-thead">
+                                <!-- Headers dynamically injected -->
+                            </tr>
+                        </thead>
+                        <tbody id="preview-transformed-tbody" class="divide-y divide-slate-200 bg-white font-mono">
+                            <!-- Data dynamically injected -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mapping Dictionary Table -->
+                <div id="tab-content-mapping" class="overflow-x-auto border border-slate-200 rounded-xl max-h-96 shadow-inner hidden">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 bg-slate-800 text-white shadow-sm">
+                            <tr>
+                                <th class="p-3">個資類別</th>
+                                <th class="p-3">原始敏感資料 (Original)</th>
+                                <th class="p-3">假名化替代代碼 (Pseudonym)</th>
+                                <th class="p-3">使用的演算法/規則</th>
+                            </tr>
+                        </thead>
+                        <tbody id="preview-mapping-tbody" class="divide-y divide-slate-200 bg-white font-mono">
+                            <!-- Mapping dynamically injected -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Explanation Footer -->
+                <div id="preview-explanation-footer" class="bg-slate-100 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 space-y-2">
+                    <!-- Injected via JS -->
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex justify-between items-center pt-4">
+                    <button onclick="goToStep(2)" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-sm transition">
+                        ← 上一步 (調整處置規則)
+                    </button>
+                    <button id="step-3-next-btn" onclick="goToStep(4)" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-emerald-500/30 flex items-center gap-2">
+                        確認無誤，前往匯出檔案
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- STEP 4: Export Panel -->
+            <section id="panel-step-4" class="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl hidden space-y-8">
+                <div class="text-center max-w-xl mx-auto space-y-2">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center shadow-md">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h2 id="export-heading" class="text-2xl font-bold text-slate-900">轉換與處置已順利完成！</h2>
+                    <p id="export-subheading" class="text-slate-600 text-sm">您可以下載當前模式產出的數據。請注意資料庫存取權限控管與資訊安全。</p>
+                </div>
+
+                <!-- Export Cards Grid -->
+                <div id="export-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <!-- Dynamically populated based on mode -->
+                </div>
+
+                <div id="dual-export-banner" class="max-w-4xl mx-auto bg-gradient-to-r from-slate-900 to-slate-800 border-2 border-dashed border-amber-500/50 rounded-2xl p-6 text-white space-y-4 shadow-xl">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-700/80 pb-4">
+                        <div class="space-y-1">
+                            <span class="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-500/30">
+                                特色亮點：一鍵跨引擎轉化
+                            </span>
+                            <h3 id="dual-export-title" class="text-base font-bold text-amber-100">需要同時準備另一種模式的檔案嗎？</h3>
+                            <p id="dual-export-desc" class="text-xs text-slate-300">不必重新上傳！系統可直接以此份資料為基礎，即時生成另一種合規標準的檔案。</p>
+                        </div>
+                        <button id="dual-export-btn" onclick="triggerDualExport()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs whitespace-nowrap transition shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            一鍵生成並匯出
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="text-center pt-4 border-t border-slate-200">
+                    <button onclick="resetApp()" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-semibold text-xs transition inline-flex items-center gap-2 shadow-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        清除記憶體並返回應用首頁 (Clear Session)
+                    </button>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Mode Comparison Guide Modal -->
+    <div id="guide-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xl flex items-center gap-2">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        「假名化」與「匿名化」對照指南
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">依據歐盟 GDPR 第4條與台灣個人資料保護法規範定義</p>
+                </div>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg">✕</button>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                            <th class="p-3">比較面向</th>
+                            <th class="p-3 bg-blue-50/80 text-blue-900 border-r border-slate-200">個資假名化 (Pseudonymization)</th>
+                            <th class="p-3 bg-orange-50/80 text-orange-900">個資匿名化 (Anonymization)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 leading-relaxed text-slate-700">
+                        <tr>
+                            <td class="p-3 font-semibold bg-slate-50">核心精神</td>
+                            <td class="p-3 bg-blue-50/20 border-r border-slate-200">以代碼/雜湊值替換真實身分，**保留欄位關聯性**。</td>
+                            <td class="p-3 bg-orange-50/20">透過泛化、區間化與遮罩，**徹底無法對應回個人**。</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold bg-slate-50">可逆性 (Reversibility)</td>
+                            <td class="p-3 bg-blue-50/20 border-r border-slate-200 font-bold text-emerald-700">可還原 (持有對照字典與金鑰鹽值時)</td>
+                            <td class="p-3 bg-orange-50/20 font-bold text-red-600">永久不可逆 (無任何還原金鑰)</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold bg-slate-50">跨表關聯 (Join Ability)</td>
+                            <td class="p-3 bg-blue-50/20 border-r border-slate-200">✅ **100% 支援** (相同真身產生相同代碼)</td>
+                            <td class="p-3 bg-orange-50/20 text-slate-500">❌ 不支援 (個資已被打碎或泛化)</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold bg-slate-50">主要處理手法</td>
+                            <td class="p-3 bg-blue-50/20 border-r border-slate-200">代碼化 (Tokens)、加鹽雜湊 (Salted SHA-256)</td>
+                            <td class="p-3 bg-orange-50/20">年齡區間化 (30-39歲)、地址縣市泛化、數值級距</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeGuideModal()" class="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold">關閉窗口</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Info Modal -->
+    <div id="security-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    PrivaShield 本地安全架構說明
+                </h3>
+                <button onclick="closeSecurityModal()" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+            </div>
+            <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
+                <p><strong>1. 純瀏覽器端記憶體運算 (Client-Side Memory Only)：</strong><br>所有 Excel / CSV 數據解析、雜湊值計算與替代/泛化，完全於您的本機電腦 RAM 中執行。無任何 Backend API 傳輸。</p>
+                <p><strong>2. 離線（斷網）完全相容：</strong><br>您可以隨時關閉 Wi-Fi 或網路連線，本頁面依然能順暢運作。</p>
+            </div>
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeSecurityModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl">我瞭解了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <div>
+                    <h3 id="confirm-modal-title" class="font-bold text-slate-900 text-lg">確認動作</h3>
+                    <p class="text-xs text-slate-500">請確認是否執行此項操作</p>
+                </div>
+            </div>
+            <p id="confirm-modal-msg" class="text-sm text-slate-600 leading-relaxed">確定要清除目前記憶體中的所有數據並重新開始嗎？</p>
+            <div class="pt-3 flex justify-end gap-3">
+                <button onclick="closeConfirmModal(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                    取消
+                </button>
+                <button id="confirm-modal-action-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-md shadow-red-500/20">
+                    確定清除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Application State
+        const state = {
+            mode: 'pseudonym', // 'pseudonym' | 'anonym'
+            currentStep: 1, // 1, 2, 3, 4
+            isLanding: true,
+            fileName: '',
+            rawHeaders: [],
+            rawData: [],
+            detectedColumns: [],
+            transformedData: [],
+            mappingDictionary: [],
+            maskOriginalInPreview: true,
+            activeTab: 'transformed',
+            pendingConfirmCallback: null
+        };
+
+        const SENSITIVE_PATTERNS = [
+            { type: 'NAME', keywords: ['姓名', 'name', '顧客', '聯絡人', '買家', '客戶'], regex: /^[\u4e00-\u9fa5]{2,4}$/ },
+            { type: 'TW_ID', keywords: ['身分證', 'id', 'twid', '統編', '護照', '證號'], regex: /^[A-Z][1289]\d{8}$/i },
+            { type: 'PHONE', keywords: ['電話', '手機', 'mobile', 'phone', 'tel', '聯絡電話'], regex: /^09\d{8}$|^0\d{1,2}-?\d{6,8}$/ },
+            { type: 'EMAIL', keywords: ['信箱', 'email', 'mail', '電郵'], regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+            { type: 'ADDRESS', keywords: ['地址', 'address', '住址', '通訊處'], regex: /(市|縣)(.+?)(區|鄉|鎮|路|街|號)/ },
+            { type: 'CARD', keywords: ['卡號', 'credit', 'card', '帳號', 'account', '銀行'], regex: /^\d{12,19}$/ },
+            { type: 'BIRTHDAY', keywords: ['生日', 'birthday', 'dob', '出生', '年齡', 'age'], regex: /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/ },
+            { type: 'NUMERIC', keywords: ['金額', '薪資', '收入', '價格', 'amount', 'price', 'salary'], regex: /^\d+(\.\d+)?$/ }
+        ];
+
+        function startMode(targetMode) {
+            state.mode = targetMode;
+            state.isLanding = false;
+
+            document.getElementById('panel-landing').classList.add('hidden');
+            document.getElementById('panel-wizard-container').classList.remove('hidden');
+            document.getElementById('header-mode-bar').classList.remove('hidden');
+
+            updateModeThemeUI();
+
+            if (state.rawData.length > 0) {
+                analyzeAndProceedToStep2();
+            } else {
+                goToStep(1);
+            }
+        }
+
+        function returnToLanding() {
+            state.isLanding = true;
+            document.getElementById('panel-landing').classList.remove('hidden');
+            document.getElementById('panel-wizard-container').classList.add('hidden');
+            document.getElementById('header-mode-bar').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateModeThemeUI() {
+            const isPseudo = state.mode === 'pseudonym';
+
+            const modeText = document.getElementById('header-mode-text');
+            const modeDot = document.getElementById('header-mode-dot');
+            const currentBadge = document.getElementById('header-current-badge');
+            
+            if (isPseudo) {
+                modeText.innerText = '當前模式：個資假名化';
+                modeDot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-pulse';
+                currentBadge.className = 'px-3 py-1.5 rounded-xl bg-blue-900/60 border border-blue-700/60 text-blue-300 text-xs font-semibold flex items-center gap-2';
+            } else {
+                modeText.innerText = '當前模式：個資匿名化';
+                modeDot.className = 'w-2 h-2 rounded-full bg-orange-400 animate-pulse';
+                currentBadge.className = 'px-3 py-1.5 rounded-xl bg-orange-900/60 border border-orange-700/60 text-orange-300 text-xs font-semibold flex items-center gap-2';
+            }
+
+            const banner = document.getElementById('mode-banner');
+            const badge = document.getElementById('mode-banner-badge');
+            const title = document.getElementById('mode-banner-title');
+            const desc = document.getElementById('mode-banner-desc');
+            const logoBg = document.getElementById('app-logo-bg');
+            const saltBox = document.getElementById('pseudo-salt-box');
+            const anonBox = document.getElementById('anon-guarantee-box');
+
+            if (isPseudo) {
+                banner.className = "bg-gradient-to-r from-blue-900/90 to-slate-900 border border-blue-700/60 rounded-2xl p-4 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4";
+                badge.className = "px-3 py-1 rounded-lg bg-blue-600 text-white font-bold text-xs uppercase tracking-wider shrink-0";
+                badge.innerText = "目前模式：個資假名化";
+                title.innerText = "保留資料關聯與結構，產生唯一對照代碼 (Reversible with Key)";
+                desc.innerText = "相同的真實身分會產生相同的替代代碼，可進行 cross-table SQL/Pandas Join，並可匯出加密對照表字典。";
+                logoBg.className = "w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center shadow-md shadow-blue-500/20 transition-all";
+
+                if (saltBox) saltBox.classList.remove('hidden');
+                if (anonBox) anonBox.classList.add('hidden');
+            } else {
+                banner.className = "bg-gradient-to-r from-orange-950/90 to-slate-900 border border-orange-700/60 rounded-2xl p-4 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4";
+                badge.className = "px-3 py-1 rounded-lg bg-orange-600 text-white font-bold text-xs uppercase tracking-wider shrink-0";
+                badge.innerText = "目前模式：個資匿名化";
+                title.innerText = "不可逆轉之高強度泛化與遮罩 (Irreversible Anonymization)";
+                desc.innerText = "透過地址縣市化、年齡級距化與數據打碎，徹底消除個人識別標籤，專為公開發表與開放資料 (Open Data) 設計。";
+                logoBg.className = "w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-md shadow-orange-500/20 transition-all";
+
+                if (saltBox) saltBox.classList.add('hidden');
+                if (anonBox) anonBox.classList.remove('hidden');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-red-900/90 text-red-100 border-red-700' : 'bg-slate-800 text-white border-slate-700';
+            
+            toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-xl border ${bgClass} text-xs font-medium shadow-2xl transition-all transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <svg class="w-4 h-4 shrink-0 ${type === 'error' ? 'text-red-400' : 'text-blue-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function showConfirmModal(title, msg, onConfirm) {
+            document.getElementById('confirm-modal-title').innerText = title;
+            document.getElementById('confirm-modal-msg').innerText = msg;
+            state.pendingConfirmCallback = onConfirm;
+            
+            const actionBtn = document.getElementById('confirm-modal-action-btn');
+            actionBtn.onclick = () => {
+                closeConfirmModal(true);
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal(confirmed = false) {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            if (confirmed && typeof state.pendingConfirmCallback === 'function') {
+                state.pendingConfirmCallback();
+            }
+            state.pendingConfirmCallback = null;
+        }
+
+        function loadSampleData(targetMode) {
+            state.fileName = "範例_客戶服務與訂單紀錄表_2026.xlsx";
+            state.rawHeaders = ["客戶編號", "姓名", "身分證字號", "行動電話", "電子郵件", "居住地址", "出生日期", "購買金額"];
+            state.rawData = [
+                { "客戶編號": "CUST-001", "姓名": "張小明", "身分證字號": "A123456789", "行動電話": "0912345678", "電子郵件": "ming.chang@gmail.com", "居住地址": "台北市大安區信義路四段100號", "出生日期": "1990/05/12", "購買金額": 15800 },
+                { "客戶編號": "CUST-002", "姓名": "李美麗", "身分證字號": "B220987654", "行動電話": "0987654321", "電子郵件": "meili.lee@yahoo.com.tw", "居住地址": "台中市西區公益路二段50號", "出生日期": "1985/11/24", "購買金額": 3200 },
+                { "客戶編號": "CUST-003", "姓名": "陳大華", "身分證字號": "C101112223", "行動電話": "0933111222", "電子郵件": "dahua.chen@hotmail.com", "居住地址": "高雄市左營區博愛二路300號", "出生日期": "1978/03/08", "購買金額": 8900 },
+                { "客戶編號": "CUST-004", "姓名": "張小明", "身分證字號": "A123456789", "行動電話": "0912345678", "電子郵件": "ming.chang@gmail.com", "居住地址": "台北市大安區信義路四段100號", "出生日期": "1990/05/12", "購買金額": 4200 },
+                { "客戶編號": "CUST-005", "姓名": "林志強", "身分證字號": "D188776655", "行動電話": "0955666777", "電子郵件": "john.lin@company.com", "居住地址": "新北市板橋區縣民大道一段1號", "出生日期": "1995/08/30", "購買金額": 24500 },
+                { "客戶編號": "CUST-006", "姓名": "黃雅婷", "身分證字號": "E299887766", "行動電話": "0922333444", "電子郵件": "yating.huang@gmail.com", "居住地址": "桃園市中壢區中華路二段20號", "出生日期": "2001/01/15", "購買金額": 1200 },
+                { "客戶編號": "CUST-007", "姓名": "王建國", "身分證字號": "F122334455", "行動電話": "0911222333", "電子郵件": "jianguo.wang@foxmail.com", "居住地址": "台南市東區中華東路三段88號", "出生日期": "1965/07/04", "購買金額": 6700 },
+                { "客戶編號": "CUST-008", "姓名": "趙淑芬", "身分證字號": "G233445566", "行動電話": "0966777888", "電子郵件": "shufen.chao@gmail.com", "居住地址": "新竹市東區光復路二段101號", "出生日期": "1982/09/18", "購買金額": 18900 },
+                { "客戶編號": "CUST-009", "姓名": "孫立人", "身分證字號": "H144556677", "行動電話": "0977888999", "電子郵件": "liren.sun@outlook.com", "居住地址": "彰化縣彰化市中山路一段150號", "出生日期": "1998/12/05", "購買金額": 5300 },
+                { "客戶編號": "CUST-010", "姓名": "周杰倫", "身分證字號": "J155667788", "行動電話": "0988999000", "電子郵件": "jay.chou@music.com", "居住地址": "台北市士林區忠誠路二段70號", "出生日期": "1979/01/18", "購買金額": 99000 }
+            ];
+
+            startMode(targetMode);
+            showToast(`已載入 10 筆測試資料 (${targetMode === 'pseudonym' ? '個資假名化' : '個資匿名化'})！`);
+        }
+
+        function loadSampleDataInStep1() {
+            loadSampleData(state.mode || 'pseudonym');
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            parseFile(file);
+        }
+
+        function parseFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (!json || json.length === 0) {
+                        showToast("檔案中沒有可讀取的資料列！", "error");
+                        return;
+                    }
+
+                    state.fileName = file.name;
+                    state.rawHeaders = Object.keys(json[0]);
+                    state.rawData = json;
+
+                    showToast(`成功解析「${file.name}」，包含 ${json.length} 筆資料！`);
+                    analyzeAndProceedToStep2();
+                } catch (err) {
+                    showToast("檔案讀取失敗，請確認是否為標準 Excel 或 CSV 檔案", "error");
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Setup Drag and Drop
+        document.addEventListener("DOMContentLoaded", () => {
+            const dropzone = document.getElementById("dropzone");
+            if (!dropzone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => dropzone.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => dropzone.classList.remove('drag-over'), false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    parseFile(files[0]);
+                }
+            });
+        });
+
+        function analyzeAndProceedToStep2() {
+            state.detectedColumns = state.rawHeaders.map((header) => {
+                const sampleValues = state.rawData.slice(0, 10).map(r => String(r[header] || ''));
+                const detectedType = detectColumnType(header, sampleValues);
+                
+                let defaultRule = 'KEEP';
+                if (detectedType !== 'NONE') {
+                    if (state.mode === 'pseudonym') {
+                        defaultRule = (detectedType === 'NAME' || detectedType === 'TW_ID' || detectedType === 'PHONE' || detectedType === 'EMAIL') ? 'TOKEN' : 'MASK';
+                    } else {
+                        defaultRule = 'ANON_GENERAL';
+                    }
+                }
+
+                return {
+                    header: header,
+                    type: detectedType,
+                    samples: sampleValues.slice(0, 3),
+                    selectedRule: defaultRule
+                };
+            });
+
+            goToStep(2);
+        }
+
+        function detectColumnType(header, samples) {
+            const headerLower = header.toLowerCase();
+
+            for (const pattern of SENSITIVE_PATTERNS) {
+                if (pattern.keywords.some(kw => headerLower.includes(kw))) {
+                    return pattern.type;
+                }
+            }
+
+            for (const pattern of SENSITIVE_PATTERNS) {
+                const matchCount = samples.filter(s => pattern.regex.test(s.trim())).length;
+                if (matchCount >= 2) {
+                    return pattern.type;
+                }
+            }
+
+            return 'NONE';
+        }
+
+        function goToStep(stepNum) {
+            state.currentStep = stepNum;
+
+            [1, 2, 3, 4].forEach(s => {
+                const nav = document.getElementById(`step-nav-${s}`);
+                const circle = document.getElementById(`step-circle-${s}`);
+                const panel = document.getElementById(`panel-step-${s}`);
+
+                if (s === stepNum) {
+                    panel.classList.remove('hidden');
+                    if (nav) nav.className = "flex-1 flex items-center text-blue-400 font-semibold";
+                    if (circle) circle.className = "w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center mr-3 shadow-md shadow-blue-500/30 ring-4 ring-blue-900/50";
+                } else if (s < stepNum) {
+                    panel.classList.add('hidden');
+                    if (nav) nav.className = "flex-1 flex items-center text-emerald-400 font-semibold";
+                    if (circle) circle.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center mr-3 shadow-md";
+                } else {
+                    panel.classList.add('hidden');
+                    if (nav) nav.className = "flex-1 flex items-center text-slate-500";
+                    if (circle) circle.className = "w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center mr-3";
+                }
+            });
+
+            if (stepNum === 2) renderStep2UI();
+            if (stepNum === 3) renderStep3UI();
+            if (stepNum === 4) renderStep4UI();
+
+            window.scrollTo({ top: 100, behavior: 'smooth' });
+        }
+
+        function renderStep2UI() {
+            document.getElementById('file-name-display').innerText = state.fileName;
+            document.getElementById('file-rows-display').innerText = state.rawData.length;
+
+            const tbody = document.getElementById('column-config-tbody');
+            tbody.innerHTML = '';
+
+            const isPseudo = state.mode === 'pseudonym';
+
+            state.detectedColumns.forEach((col, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = col.type !== 'NONE' ? "bg-blue-50/30 hover:bg-blue-50/60" : "hover:bg-slate-50";
+
+                const badgeColor = col.type !== 'NONE' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-600 border-slate-200';
+                
+                let ruleOptionsHTML = '';
+                if (isPseudo) {
+                    ruleOptionsHTML = `
+                        <select onchange="onRuleChange(${idx}, this.value)" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none w-full">
+                            <option value="TOKEN" ${col.selectedRule === 'TOKEN' ? 'selected' : ''}>假名化代碼 (Unique Token)</option>
+                            <option value="HASH" ${col.selectedRule === 'HASH' ? 'selected' : ''}>加鹽 SHA-256 雜湊值</option>
+                            <option value="MASK" ${col.selectedRule === 'MASK' ? 'selected' : ''}>部分字元遮罩 (*)</option>
+                            <option value="KEEP" ${col.selectedRule === 'KEEP' ? 'selected' : ''}>不處理 (保留原值)</option>
+                        </select>
+                    `;
+                } else {
+                    ruleOptionsHTML = `
+                        <select onchange="onRuleChange(${idx}, this.value)" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-orange-500 outline-none w-full">
+                            <option value="ANON_GENERAL" ${col.selectedRule === 'ANON_GENERAL' ? 'selected' : ''}>智慧泛化 (地址縣市/年齡級距)</option>
+                            <option value="ANON_MASK" ${col.selectedRule === 'ANON_MASK' ? 'selected' : ''}>高強度遮罩 (徹底抹除或代換)</option>
+                            <option value="ANON_SUPPRESS" ${col.selectedRule === 'ANON_SUPPRESS' ? 'selected' : ''}>欄位刪除 (Suppression)</option>
+                            <option value="KEEP" ${col.selectedRule === 'KEEP' ? 'selected' : ''}>不處理 (保留原值)</option>
+                        </select>
+                    `;
+                }
+
+                let descHTML = getRuleDescriptionText(col.selectedRule, col.type, isPseudo);
+
+                tr.innerHTML = `
+                    <td class="p-3.5 font-bold text-slate-800 flex items-center gap-2">
+                        ${col.header}
+                        ${col.type !== 'NONE' ? '<span class="text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">PII</span>' : ''}
+                    </td>
+                    <td class="p-3.5">
+                        <span class="inline-block px-2.5 py-1 rounded-md text-xs font-semibold border ${badgeColor}">
+                            ${col.type}
+                        </span>
+                    </td>
+                    <td class="p-3.5 text-xs text-slate-500 font-mono">
+                        ${col.samples.join(', ')}
+                    </td>
+                    <td class="p-3.5">
+                        ${ruleOptionsHTML}
+                    </td>
+                    <td id="rule-desc-${idx}" class="p-3.5 text-xs text-slate-600">
+                        ${descHTML}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function onRuleChange(idx, val) {
+            state.detectedColumns[idx].selectedRule = val;
+            const descEl = document.getElementById(`rule-desc-${idx}`);
+            if (descEl) {
+                descEl.innerHTML = getRuleDescriptionText(val, state.detectedColumns[idx].type, state.mode === 'pseudonym');
+            }
+        }
+
+        function getRuleDescriptionText(rule, type, isPseudo) {
+            if (rule === 'KEEP') return '<span class="text-slate-400">保留原始資料不變</span>';
+            if (isPseudo) {
+                if (rule === 'TOKEN') return '<span class="text-blue-600 font-semibold">生成如 USER_0001 之唯一可對照關聯代碼</span>';
+                if (rule === 'HASH') return '<span class="text-purple-600 font-semibold">使用 Salted SHA-256 生成 64 字元高強度單向雜湊</span>';
+                if (rule === 'MASK') return '<span class="text-amber-600 font-semibold">將中間敏感字元以 * 號遮蔽</span>';
+            } else {
+                if (rule === 'ANON_GENERAL') return '<span class="text-orange-600 font-semibold">將地址縮減至縣市區、生日轉換為年齡層</span>';
+                if (rule === 'ANON_MASK') return '<span class="text-red-600 font-semibold">將姓名或證號進行不可逆之星號遮蔽</span>';
+                if (rule === 'ANON_SUPPRESS') return '<span class="text-slate-700 font-semibold bg-slate-200 px-1.5 py-0.5 rounded">[REDACTED] 徹底刪除</span>';
+            }
+            return '';
+        }
+
+        function randomizeSalt() {
+            const randStr = 'PrivaShield-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            document.getElementById('global-salt').value = randStr;
+            showToast('已更新鹽值：' + randStr);
+        }
+
+        function processDataTransformation() {
+            const salt = document.getElementById('global-salt').value || 'PrivaShield-Salt-2026';
+            const isPseudo = state.mode === 'pseudonym';
+
+            state.transformedData = [];
+            state.mappingDictionary = [];
+            const dictMap = new Map();
+
+            let tokenCounter = {};
+
+            state.rawData.forEach((row, rowIndex) => {
+                let newRow = {};
+
+                state.detectedColumns.forEach((col) => {
+                    const originalVal = String(row[col.header] || '');
+                    let transformedVal = originalVal;
+
+                    if (originalVal.trim() !== '') {
+                        if (col.selectedRule === 'TOKEN') {
+                            if (!tokenCounter[col.type]) tokenCounter[col.type] = 1;
+                            const key = `${col.type}_${originalVal}`;
+
+                            if (dictMap.has(key)) {
+                                transformedVal = dictMap.get(key);
+                            } else {
+                                const prefix = col.type !== 'NONE' ? col.type : 'ID';
+                                transformedVal = `${prefix}_${String(tokenCounter[col.type]).padStart(4, '0')}`;
+                                tokenCounter[col.type]++;
+                                dictMap.set(key, transformedVal);
+
+                                state.mappingDictionary.push({
+                                    category: col.type,
+                                    original: originalVal,
+                                    pseudonym: transformedVal,
+                                    algorithm: 'Deterministic Unique Token'
+                                });
+                            }
+                        } else if (col.selectedRule === 'HASH') {
+                            const hash = CryptoJS.SHA256(originalVal + salt).toString().substring(0, 16).toUpperCase();
+                            transformedVal = `HASH_${hash}`;
+                            
+                            const key = `HASH_${originalVal}`;
+                            if (!dictMap.has(key)) {
+                                dictMap.set(key, transformedVal);
+                                state.mappingDictionary.push({
+                                    category: col.type,
+                                    original: originalVal,
+                                    pseudonym: transformedVal,
+                                    algorithm: `Salted SHA-256 (Salt: ${salt.substring(0, 6)}...)`
+                                });
+                            }
+                        } else {
+                            transformedVal = applyRule(originalVal, col.selectedRule, col.type);
+                        }
+                    }
+
+                    newRow[col.header] = transformedVal;
+                });
+
+                state.transformedData.push(newRow);
+            });
+
+            goToStep(3);
+            showToast(`資料轉化完成！共處理 ${state.transformedData.length} 筆紀錄`);
+        }
+
+        function applyRule(val, rule, type) {
+            if (rule === 'KEEP') return val;
+
+            if (rule === 'MASK') {
+                if (val.length <= 2) return val[0] + '*';
+                return val[0] + '*'.repeat(val.length - 2) + val[val.length - 1];
+            }
+
+            if (rule === 'ANON_MASK') {
+                return '***';
+            }
+
+            if (rule === 'ANON_SUPPRESS') {
+                return '[REDACTED]';
+            }
+
+            if (rule === 'ANON_GENERAL') {
+                if (type === 'NAME') {
+                    return val[0] + '*'.repeat(Math.max(1, val.length - 1));
+                }
+                if (type === 'ADDRESS') {
+                    const match = val.match(/(.+?[市縣].+?[區鄉鎮路街])/);
+                    return match ? match[1] + '***' : val.substring(0, 6) + '***';
+                }
+                if (type === 'BIRTHDAY') {
+                    const yearMatch = val.match(/(\d{4})/);
+                    if (yearMatch) {
+                        const age = 2026 - parseInt(yearMatch[1]);
+                        const ageBracket = Math.floor(age / 10) * 10;
+                        return `${ageBracket} - ${ageBracket + 9} 歲`;
+                    }
+                    return '年齡區間化';
+                }
+                if (type === 'PHONE') {
+                    return val.substring(0, 4) + '****' + val.substring(val.length - 2);
+                }
+                if (type === 'EMAIL') {
+                    const parts = val.split('@');
+                    if (parts.length === 2) return '***@' + parts[1];
+                }
+                if (type === 'TW_ID') {
+                    return val.substring(0, 3) + '*****' + val.substring(val.length - 2);
+                }
+                if (type === 'NUMERIC') {
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                        if (num < 5000) return '0 - 5,000';
+                        if (num < 20000) return '5,001 - 20,000';
+                        if (num < 50000) return '20,001 - 50,000';
+                        return '50,000 以上';
+                    }
+                }
+                return val.substring(0, 2) + '***';
+            }
+
+            return val;
+        }
+
+        function renderStep3UI() {
+            const isPseudo = state.mode === 'pseudonym';
+
+            const sensitiveColsCount = state.detectedColumns.filter(c => c.type !== 'NONE').length;
+            document.getElementById('stat-sensitives-count').innerText = `${sensitiveColsCount} 欄位`;
+
+            const stat2Title = document.getElementById('stat-card-2-title');
+            const stat2Val = document.getElementById('stat-card-2-value');
+            const stat2Icon = document.getElementById('stat-card-2-icon');
+
+            if (isPseudo) {
+                stat2Title.innerText = "關聯一致性 (Join Consistency)";
+                stat2Val.innerText = "100% 完整保留";
+                stat2Icon.className = "w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shrink-0";
+            } else {
+                stat2Title.innerText = "匿名可逆性 (Reversibility)";
+                stat2Val.innerText = "0% (完全不可逆)";
+                stat2Icon.className = "w-12 h-12 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-lg shrink-0";
+            }
+
+            document.getElementById('stat-dictionary-keys').innerText = `${state.mappingDictionary.length} 筆項目`;
+
+            // Setup preview table
+            const thead = document.getElementById('preview-transformed-thead');
+            thead.innerHTML = '';
+            state.rawHeaders.forEach(h => {
+                const th = document.createElement('th');
+                th.className = "p-3 whitespace-nowrap";
+                th.innerText = h;
+                thead.appendChild(th);
+            });
+
+            const tbody = document.getElementById('preview-transformed-tbody');
+            tbody.innerHTML = '';
+            const previewRows = state.transformedData.slice(0, 10);
+
+            previewRows.forEach((row, rowIdx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-100";
+
+                state.rawHeaders.forEach(h => {
+                    const td = document.createElement('td');
+                    td.className = "p-3 border-t border-slate-200 whitespace-nowrap";
+                    
+                    const val = row[h];
+                    const orig = state.rawData[rowIdx][h];
+
+                    if (!state.maskOriginalInPreview && val !== orig && isPseudo) {
+                        td.innerHTML = `<span class="text-blue-600 font-bold">${val}</span> <span class="text-slate-400 text-[10px]">(原: ${orig})</span>`;
+                    } else {
+                        td.innerText = val;
+                    }
+
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            // Mapping table
+            const mapTbody = document.getElementById('preview-mapping-tbody');
+            mapTbody.innerHTML = '';
+
+            state.mappingDictionary.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-100";
+                
+                const origDisplay = state.maskOriginalInPreview ? applyRule(m.original, 'MASK', m.category) : m.original;
+
+                tr.innerHTML = `
+                    <td class="p-3 border-t font-semibold text-blue-700">${m.category}</td>
+                    <td class="p-3 border-t">${origDisplay}</td>
+                    <td class="p-3 border-t font-bold text-emerald-600">${m.pseudonym}</td>
+                    <td class="p-3 border-t text-slate-500">${m.algorithm}</td>
+                `;
+                mapTbody.appendChild(tr);
+            });
+
+            // Tab visibility
+            const tabBtnMap = document.getElementById('tab-btn-mapping');
+            if (!isPseudo) {
+                tabBtnMap.classList.add('hidden');
+                switchPreviewTab('transformed');
+            } else {
+                tabBtnMap.classList.remove('hidden');
+            }
+
+            // Explanation Footer
+            const footer = document.getElementById('preview-explanation-footer');
+            if (isPseudo) {
+                footer.innerHTML = `
+                    <p class="font-bold text-blue-900">個資假名化關聯說明：</p>
+                    <p>1. 相同明文個資（如相同身分證或姓名）會換算為相同代碼，確保跨資料庫 JOIN 關聯性。</p>
+                    <p>2. 對照關聯字典可單獨下載並妥善加密備份，作為日後還原資料唯一憑證。</p>
+                `;
+            } else {
+                footer.innerHTML = `
+                    <p class="font-bold text-orange-900">個資匿名化合規說明：</p>
+                    <p>1. 本數據集經高強度泛化與打碎處理，已撕毀個人識別標籤，符合 Open Data 發布標準。</p>
+                    <p>2. 此過程完全不可逆，無任何金鑰或還原表產出。</p>
+                `;
+            }
+        }
+
+        function toggleOriginalDataMask() {
+            state.maskOriginalInPreview = !state.maskOriginalInPreview;
+            const btnText = document.getElementById('toggle-mask-text');
+            if (state.maskOriginalInPreview) {
+                btnText.innerText = '遮蔽模式 (開啟)';
+                showToast('已開啟敏感明文遮蔽');
+            } else {
+                btnText.innerText = '顯示明文 (開啟)';
+                showToast('已切換為顯示原始個資明文');
+            }
+            renderStep3UI();
+        }
+
+        function switchPreviewTab(tab) {
+            state.activeTab = tab;
+            const tTrans = document.getElementById('tab-content-transformed');
+            const tMap = document.getElementById('tab-content-mapping');
+            const bTrans = document.getElementById('tab-btn-transformed');
+            const bMap = document.getElementById('tab-btn-mapping');
+
+            if (tab === 'transformed') {
+                tTrans.classList.remove('hidden');
+                tMap.classList.add('hidden');
+                bTrans.className = "pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600";
+                bMap.className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800";
+            } else {
+                tTrans.classList.add('hidden');
+                tMap.classList.remove('hidden');
+                bMap.className = "pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600";
+                bTrans.className = "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800";
+            }
+        }
+
+        function renderStep4UI() {
+            const isPseudo = state.mode === 'pseudonym';
+            const container = document.getElementById('export-cards-container');
+            container.innerHTML = '';
+
+            if (isPseudo) {
+                container.innerHTML = `
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md space-y-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-lg">下載假名化數據集</h3>
+                            <p class="text-xs text-slate-500 mt-1">已替換個人識別碼，可安心提供給內部分析與 AI 團隊。</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="downloadTransformedFile('xlsx')" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md">
+                                下載 Excel (.xlsx)
+                            </button>
+                            <button onclick="downloadTransformedFile('csv')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-purple-200 rounded-2xl p-6 shadow-md space-y-4">
+                        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-lg">下載解密對照字典</h3>
+                            <p class="text-xs text-slate-500 mt-1">請將此憑證檔案存放在極高權限之安全儲存區，作為日後還原依據。</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="downloadMappingFile('xlsx')" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-md">
+                                下載字典 (.xlsx)
+                            </button>
+                            <button onclick="downloadMappingFile('csv')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                CSV
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('dual-export-title').innerText = "需要同時準備對外公開的「匿名化」檔案嗎？";
+                document.getElementById('dual-export-desc').innerText = "不必重新上傳！點擊下方按鈕將直接把當前數據做高強度泛化與遮罩，生成 Open Data 格式。";
+            } else {
+                container.innerHTML = `
+                    <div class="bg-white border border-orange-200 rounded-2xl p-6 shadow-md space-y-4 col-span-1 md:col-span-2 max-w-xl mx-auto w-full">
+                        <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-lg">下載匿名化數據集 (Open Data Standard)</h3>
+                            <p class="text-xs text-slate-500 mt-1">徹底消除識別資訊，適用於公開發表、學術報告與開放資料下載。</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="downloadTransformedFile('xlsx')" class="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-md">
+                                下載匿名化 Excel (.xlsx)
+                            </button>
+                            <button onclick="downloadTransformedFile('csv')" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                CSV 格式
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('dual-export-title').innerText = "需要同時準備內部關聯分析的「假名化」檔案嗎？";
+                document.getElementById('dual-export-desc').innerText = "不必重新上傳！點擊下方按鈕將為原始數據賦予對照代碼，並同步產出解密字典。";
+            }
+        }
+
+        function downloadTransformedFile(format) {
+            const filename = `PrivaShield_${state.mode}_${Date.now()}.${format}`;
+            const worksheet = XLSX.utils.json_to_sheet(state.transformedData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "TransformedData");
+
+            if (format === 'csv') {
+                XLSX.writeFile(workbook, filename, { bookType: 'csv' });
+            } else {
+                XLSX.writeFile(workbook, filename);
+            }
+            showToast(`已成功下載：${filename}`);
+        }
+
+        function downloadMappingFile(format) {
+            if (state.mappingDictionary.length === 0) {
+                showToast("目前沒有對照字典可供匯出", "error");
+                return;
+            }
+
+            const filename = `PrivaShield_MappingDictionary_${Date.now()}.${format}`;
+            const worksheet = XLSX.utils.json_to_sheet(state.mappingDictionary);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Dictionary");
+
+            if (format === 'csv') {
+                XLSX.writeFile(workbook, filename, { bookType: 'csv' });
+            } else {
+                XLSX.writeFile(workbook, filename);
+            }
+            showToast(`已成功下載對照字典：${filename}`);
+        }
+
+        function triggerDualExport() {
+            const targetMode = state.mode === 'pseudonym' ? 'anonym' : 'pseudonym';
+            state.mode = targetMode;
+            updateModeThemeUI();
+            
+            // Re-detect and transform for opposite mode
+            state.detectedColumns.forEach(col => {
+                if (col.type !== 'NONE') {
+                    col.selectedRule = targetMode === 'anonym' ? 'ANON_GENERAL' : 'TOKEN';
+                } else {
+                    col.selectedRule = 'KEEP';
+                }
+            });
+
+            processDataTransformation();
+            goToStep(4);
+            showToast(`已切換並完成「${targetMode === 'anonym' ? '個資匿名化' : '個資假名化'}」轉換！`);
+        }
+
+        function resetApp() {
+            showConfirmModal(
+                "確認清除記憶體與 session",
+                "將會清除目前上傳與轉換的所有資料。確定要返回首頁嗎？",
+                () => {
+                    state.fileName = '';
+                    state.rawHeaders = [];
+                    state.rawData = [];
+                    state.detectedColumns = [];
+                    state.transformedData = [];
+                    state.mappingDictionary = [];
+                    
+                    const fileInput = document.getElementById('file-input');
+                    if (fileInput) fileInput.value = '';
+
+                    returnToLanding();
+                    showToast('已重置所有記憶體數據與 session！');
+                }
+            );
+        }
+
+        function openGuideModal() {
+            document.getElementById('guide-modal').classList.remove('hidden');
+        }
+
+        function closeGuideModal() {
+            document.getElementById('guide-modal').classList.add('hidden');
+        }
+
+        function openSecurityModal() {
+            document.getElementById('security-modal').classList.remove('hidden');
+        }
+
+        function closeSecurityModal() {
+            document.getElementById('security-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

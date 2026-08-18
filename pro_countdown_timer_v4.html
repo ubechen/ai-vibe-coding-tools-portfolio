@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Clock & Countdown Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Inter:wght@400;600;900&family=Fredoka:wght@500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Base smooth transitions */
+        * { transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, transform 0.2s ease; }
+        
+        /* Fullscreen background overlay setup */
+        .bg-glass-overlay {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(4px);
+        }
+
+        /* --- STYLE 1: AI HIGH-TECH --- */
+        body.theme-ai {
+            font-family: 'Chakra Petch', sans-serif;
+            background-color: #030712;
+            color: #22d3ee;
+        }
+        .theme-ai .timer-card {
+            background: rgba(8, 47, 73, 0.45);
+            border: 1px solid rgba(34, 211, 238, 0.5);
+            box-shadow: 0 0 35px rgba(6, 182, 212, 0.3), inset 0 0 20px rgba(6, 182, 212, 0.2);
+            backdrop-filter: blur(16px);
+            clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+        }
+        .theme-ai .timer-digits {
+            text-shadow: 0 0 25px rgba(34, 211, 238, 0.8), 0 0 10px rgba(6, 182, 212, 0.5);
+            letter-spacing: -0.02em;
+        }
+        .theme-ai .btn-primary {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #030712;
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            border: none;
+            clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+        }
+
+        /* --- STYLE 2: INDUSTRIAL MINIMAL --- */
+        body.theme-industrial {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #121212;
+            color: #f4f4f5;
+        }
+        .theme-industrial .timer-card {
+            background: rgba(24, 24, 27, 0.85);
+            border: 3px solid #f97316;
+            box-shadow: 10px 10px 0px #000000;
+            border-radius: 8px;
+            backdrop-filter: blur(12px);
+        }
+        .theme-industrial .timer-digits {
+            color: #f97316;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            text-shadow: 3px 3px 0px #000000;
+        }
+        .theme-industrial .btn-primary {
+            background: #f97316;
+            color: #000000;
+            font-weight: 800;
+            border: 2px solid #f97316;
+            box-shadow: 4px 4px 0px #000000;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
+        /* --- STYLE 3: ANIMATED CUTE MASCOT --- */
+        body.theme-cute {
+            font-family: 'Fredoka', cursive;
+            color: #ffffff;
+        }
+
+        .theme-cute .timer-card {
+            background: rgba(255, 255, 255, 0.25);
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), inset 0 0 30px rgba(255, 255, 255, 0.4);
+            border-radius: 3rem;
+            backdrop-filter: blur(16px);
+        }
+        .theme-cute .timer-digits {
+            color: #ffffff;
+            filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.6));
+            letter-spacing: -0.02em;
+        }
+        .theme-cute .btn-primary {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: #ffffff;
+            font-weight: 700;
+            border-radius: 9999px;
+            box-shadow: 0 8px 0px #047857;
+        }
+
+        /* NPC Speech Bubble Styles */
+        .npc-bubble {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Walking Animations */
+        @keyframes walk-across {
+            0% { transform: translateX(-120vw) translateY(0px) scaleX(1); }
+            45% { transform: translateX(50vw) translateY(-10px) scaleX(1); }
+            50% { transform: translateX(50vw) translateY(-10px) scaleX(-1); }
+            95% { transform: translateX(-110vw) translateY(0px) scaleX(-1); }
+            100% { transform: translateX(-120vw) translateY(0px) scaleX(1); }
+        }
+
+        @keyframes walk-across-reverse {
+            0% { transform: translateX(120vw) translateY(0px) scaleX(-1); }
+            45% { transform: translateX(-50vw) translateY(-12px) scaleX(-1); }
+            50% { transform: translateX(-50vw) translateY(-12px) scaleX(1); }
+            95% { transform: translateX(110vw) translateY(0px) scaleX(1); }
+            100% { transform: translateX(120vw) translateY(0px) scaleX(-1); }
+        }
+
+        @keyframes float-tech {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0.3; }
+            50% { transform: translateY(-40px) rotate(180deg) scale(1.15); opacity: 0.8; }
+        }
+
+        @keyframes gear-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .anim-walker-1 { animation: walk-across 22s infinite linear; }
+        .anim-walker-2 { animation: walk-across-reverse 28s infinite linear; }
+        .anim-walker-3 { animation: walk-across 34s infinite linear; }
+        .anim-tech-float { animation: float-tech 8s infinite ease-in-out; }
+        .anim-gear-spin { animation: gear-spin 15s infinite linear; }
+    </style>
+</head>
+<body class="theme-cute h-full flex flex-col justify-between select-none overflow-x-hidden min-h-screen relative">
+
+    <!-- Full-Bleed Viewport Background Image Layer (滿版底圖) -->
+    <div id="fullscreen-bg-wrapper" class="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+        <img id="fullscreen-bg-img" class="w-full h-full object-cover transition-opacity duration-1000 opacity-100" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1920&q=80" alt="Full-Bleed Animal Wallpaper" onerror="this.src='https://placehold.co/1920x1080/0284c7/ffffff?text=Cute+Animals+Meadow'">
+        <!-- Dark tint overlay to ensure maximum legibility for clock digits -->
+        <div id="fullscreen-bg-overlay" class="absolute inset-0 bg-black/35 backdrop-blur-[2px]"></div>
+    </div>
+
+    <!-- Dynamic Animated Background Layer -->
+    <div id="floating-bg-layer" class="fixed inset-0 pointer-events-none overflow-hidden z-10">
+        <!-- Cute Mascot Animated Elements (Dynamic Animal Scene) -->
+        <div id="cute-floaters" class="w-full h-full relative">
+            <div id="dynamic-animals-container" class="w-full h-full relative"></div>
+        </div>
+
+        <!-- AI High-Tech Animated Elements -->
+        <div id="ai-floaters" class="hidden w-full h-full relative">
+            <div onclick="interactNPC('ai_core')" class="pointer-events-auto cursor-pointer absolute top-16 left-1/6 text-cyan-400 hover:text-cyan-200 anim-tech-float text-3xl font-mono flex items-center space-x-2 bg-cyan-950/80 p-2 rounded-xl border border-cyan-500/50 shadow-lg shadow-cyan-500/20" title="Activate AI Assistant">
+                <span>🤖</span> <span class="text-xs font-bold">&lt;A.I.D.A_COMPANION&gt;</span>
+            </div>
+            <div onclick="interactNPC('ai_quantum')" class="pointer-events-auto cursor-pointer absolute top-1/3 right-1/4 w-24 h-24 border-2 border-cyan-400/60 rounded-full anim-tech-float hover:border-cyan-300 flex items-center justify-center bg-cyan-900/30" style="animation-delay: -2s;" title="Query Quantum Core">
+                <span class="text-3xl animate-spin" style="animation-duration: 8s;">🔮</span>
+            </div>
+            <div class="absolute bottom-20 left-1/3 w-16 h-16 bg-cyan-500/10 border border-cyan-400/40 rounded-lg anim-tech-float" style="animation-delay: -4s;"></div>
+            <div class="absolute top-1/2 right-12 text-cyan-300 opacity-50 anim-tech-float text-4xl" style="animation-delay: -1s;">⚡</div>
+        </div>
+
+        <!-- Industrial Minimal Animated Elements -->
+        <div id="industrial-floaters" class="hidden w-full h-full relative">
+            <div onclick="interactNPC('ind_mech')" class="pointer-events-auto cursor-pointer absolute top-16 left-10 bg-zinc-900 border-2 border-amber-500 px-4 py-2 rounded-md text-amber-500 hover:bg-amber-500 hover:text-black transition flex items-center space-x-2 font-mono text-xs font-bold shadow-lg" title="Inspect Mech Unit">
+                <span>🤖</span> <span>[UNIT-01: OPERATIONAL]</span>
+            </div>
+            <div onclick="interactNPC('ind_gear')" class="pointer-events-auto cursor-pointer absolute top-12 right-16 text-zinc-400 hover:text-amber-500 text-7xl anim-gear-spin transition-colors" title="Trigger Steam Release">⚙️</div>
+            <div class="absolute bottom-16 left-12 text-amber-600/30 text-8xl anim-gear-spin opacity-30" style="animation-direction: reverse; animation-duration: 25s;">⚙️</div>
+        </div>
+    </div>
+
+    <!-- Interactive Floating NPC Dialogue Toast Bubble -->
+    <div id="npc-dialogue" class="fixed top-24 left-1/2 transform -translate-x-1/2 z-40 opacity-0 pointer-events-none transition-all duration-300 max-w-sm w-full px-4">
+        <div id="npc-bubble-box" class="npc-bubble bg-white text-slate-900 p-4 rounded-2xl shadow-2xl border-4 border-amber-400 flex items-start space-x-3">
+            <span id="npc-avatar" class="text-3xl">🐱</span>
+            <div class="flex-1">
+                <h4 id="npc-name" class="text-xs font-black uppercase tracking-wider text-amber-600">Cute Cat</h4>
+                <p id="npc-speech" class="text-sm font-bold text-slate-800 mt-0.5">Meow meow! Enjoy every moment!</p>
+            </div>
+        </div>
+    </div>
+
+    <header class="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 z-30 relative">
+        <!-- Brand / Style Badge -->
+        <div class="flex items-center space-x-3 bg-black/40 backdrop-blur-md p-2 px-3 rounded-2xl border border-white/20">
+            <div id="style-icon-badge" class="p-2 rounded-xl bg-amber-400/90 text-slate-900 shadow-sm">
+                <span class="text-2xl">🐶</span>
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold tracking-wider uppercase flex items-center gap-2 text-white">
+                    <span id="app-title">Cute Pet Clock</span>
+                </h1>
+                <p id="app-subtitle" class="text-xs text-amber-300 font-semibold">DYNAMIC TIME & FOCUS 🐾</p>
+            </div>
+        </div>
+
+        <!-- Mode Switcher Pill Controls (Clock Mode vs Countdown Timer Mode) -->
+        <div class="flex items-center p-1 bg-black/40 backdrop-blur-md rounded-2xl border border-white/30 shadow-inner">
+            <button id="mode-btn-clock" onclick="switchAppMode('clock')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-md">
+                <span>🕒</span>
+                <span>Clock Mode</span>
+            </button>
+            <button id="mode-btn-timer" onclick="switchAppMode('timer')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-white/80 hover:text-white">
+                <span>⏳</span>
+                <span>Countdown</span>
+            </button>
+            <!-- New Quotes Mode Button -->
+            <button id="mode-btn-quote" onclick="switchAppMode('quote')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-white/80 hover:text-white">
+                <span>💡</span>
+                <span>Quotes</span>
+            </button>
+        </div>
+
+        <!-- Interactive NPC Quick Interaction Collapsible Menu -->
+        <div id="npc-bar-wrapper" class="relative z-40">
+            <!-- Collapsible Trigger Button for Small Screens / Mobile -->
+            <button onclick="toggleNpcMenu()" class="flex items-center space-x-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/30 shadow-md text-xs font-bold text-white transition">
+                <span id="current-scene-badge-icon">🐱</span>
+                <span>Pets Menu</span>
+                <svg id="npc-menu-arrow" class="w-3.5 h-3.5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Collapsible Popover Panel -->
+            <div id="npc-menu-dropdown" class="absolute right-0 mt-2 w-56 bg-slate-900/95 text-white backdrop-blur-xl rounded-2xl p-3 shadow-2xl border border-white/20 hidden flex-col space-y-2 z-50">
+                <div class="text-[10px] font-black uppercase text-amber-400 tracking-wider px-1">Talk to Companions</div>
+                <div id="npc-buttons-grid" class="grid grid-cols-3 gap-1.5">
+                    <!-- Dynamic Buttons Injected by JS based on Active Theme -->
+                </div>
+                <div class="pt-2 border-t border-slate-700 flex items-center justify-between text-[11px] text-slate-300 font-bold px-1">
+                    <span>Scene Animal:</span>
+                    <span id="scene-name-tag" class="text-amber-300 font-extrabold">Meadow 🌸</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Header Buttons -->
+        <div class="flex items-center space-x-2">
+            <!-- Fullscreen Button -->
+            <button onclick="toggleFullscreen()" title="Toggle Fullscreen" class="p-2.5 rounded-2xl bg-black/40 border border-white/30 hover:bg-black/60 transition shadow-sm text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+            </button>
+
+            <!-- Gear / Settings Button -->
+            <button onclick="openSettingsModal()" id="gear-btn" title="Open Settings" class="p-2.5 rounded-2xl bg-amber-500 text-slate-950 font-bold hover:rotate-90 hover:bg-amber-400 transition-all duration-300 shadow-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl mx-auto px-4 sm:px-6 flex-1 flex flex-col items-center justify-center my-4 z-20 relative">
+        
+        <!-- Scene Info Tag for Mascot Mode with AI Wallpaper Generation Button -->
+        <div id="scene-banner" class="flex flex-wrap items-center justify-center gap-2 mb-3 bg-black/50 backdrop-blur-md px-5 py-2 rounded-full border border-white/30 shadow-lg text-xs font-bold text-white">
+            <span id="scene-icon">🌸</span>
+            <span id="scene-description">Minute Wallpaper: Cat & Dog Sunny Meadow</span>
+            <button onclick="rotateCuteScene()" title="Next Animal Scene" class="ml-2 px-3 py-1 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-900 text-[11px] font-black transition">NEXT WALLPAPER ↻</button>
+            <button onclick="triggerAIWallpaperGen()" title="Generate Custom AI Animal Image" class="px-3 py-1 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-black flex items-center space-x-1 shadow">
+                <span>✨ AI IMAGE</span>
+            </button>
+        </div>
+
+        <!-- Giant Display Card (Serves both Clock Mode and Countdown Timer) -->
+        <div id="timer-card" class="timer-card relative w-full max-w-4xl py-10 md:py-16 px-4 sm:px-6 text-center cursor-pointer group my-auto">
+            
+            <!-- Quick Edit Hint Overlay -->
+            <div onclick="openSettingsModal()" class="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-3xl z-20">
+                <span class="text-sm md:text-base font-semibold tracking-wider flex items-center space-x-2 bg-white/10 px-5 py-2.5 rounded-full border border-white/20 text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <span>Click to Open Control Settings</span>
+                </span>
+            </div>
+
+            <!-- Numbers Display Engine (Swaps between Real-Time Clock & Countdown) -->
+            <div id="timer-display" class="timer-digits text-7xl sm:text-8xl md:text-[10rem] lg:text-[12rem] leading-none font-black flex items-center justify-center flex-wrap">
+                <!-- Clock / Timer Numbers -->
+                <span id="clock-hours-group">
+                    <span id="hours">00</span><span class="opacity-40 font-light mx-1">:</span>
+                </span>
+                <span id="minutes">00</span><span id="seconds-separator" class="opacity-40 font-light mx-1">:</span><span id="seconds">00</span>
+                <span id="ampm-badge" class="text-2xl sm:text-4xl ml-2 font-bold opacity-80 hidden">AM</span>
+            </div>
+
+            <!-- Status Badge -->
+            <div id="timer-status" class="mt-4 md:mt-6 text-xs md:text-sm font-bold tracking-widest uppercase opacity-90 flex items-center justify-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                <span id="status-text">LIVE REAL-TIME CLOCK</span>
+            </div>
+        </div>
+
+        <!-- Main Action Buttons (Shown during Countdown Mode) -->
+        <div id="timer-controls" class="hidden flex items-center justify-center space-x-5 mt-8 z-30">
+            <button id="start-btn" onclick="toggleTimer()" class="btn-primary px-8 sm:px-10 py-4 sm:py-5 text-lg sm:text-xl font-bold flex items-center space-x-3 transition transform active:scale-95 shadow-2xl">
+                <svg id="start-icon" class="w-6 h-6 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="start-text">START TIMER</span>
+            </button>
+            <button onclick="resetTimer()" id="reset-btn" class="px-6 sm:px-8 py-4 sm:py-5 rounded-2xl bg-black/70 border border-white/30 text-white font-bold text-base sm:text-lg hover:bg-black transition flex items-center space-x-2 shadow-xl">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>RESET</span>
+            </button>
+        </div>
+
+        <!-- Quote Display Container (Shown during Quotes Mode) -->
+        <div id="quote-card" class="hidden relative w-full max-w-5xl py-10 md:py-16 px-6 sm:px-12 text-center my-auto z-20 flex-col items-center justify-center">
+            <div class="bg-black/50 backdrop-blur-lg p-8 sm:p-12 rounded-3xl border border-white/20 shadow-2xl text-white w-full">
+                <svg class="w-12 h-12 mx-auto mb-6 text-amber-400 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                <h2 id="quote-text" class="text-2xl sm:text-4xl md:text-5xl font-serif font-bold italic leading-relaxed md:leading-tight mb-8 drop-shadow-lg">"Stay hungry, stay foolish."</h2>
+                <div class="flex items-center justify-center space-x-4">
+                    <div class="h-px w-8 sm:w-16 bg-amber-400"></div>
+                    <p id="quote-author" class="text-lg sm:text-2xl font-black tracking-widest uppercase text-amber-300 drop-shadow-md">Steve Jobs</p>
+                    <div class="h-px w-8 sm:w-16 bg-amber-400"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-center space-x-3 mt-8">
+                <button onclick="prevQuote()" class="px-5 py-2.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white font-bold text-sm transition border border-white/30 shadow-lg flex items-center justify-center space-x-1">
+                    <span class="text-lg">↺</span> <span>PREV</span>
+                </button>
+                <span id="quote-counter" class="text-xs font-bold text-amber-300 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/20">1 / 12</span>
+                <button onclick="rotateQuote()" class="px-5 py-2.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white font-bold text-sm transition border border-white/30 shadow-lg flex items-center justify-center space-x-1">
+                    <span>NEXT</span> <span class="text-lg">↻</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Small Bottom Clock (Shown only in Quote Mode) -->
+    <div id="small-bottom-clock" class="hidden absolute bottom-6 sm:bottom-12 left-1/2 transform -translate-x-1/2 z-30 bg-black/70 backdrop-blur-md px-6 py-2 rounded-2xl border border-white/20 text-white font-mono text-2xl sm:text-3xl font-bold tracking-widest shadow-xl flex items-center justify-center pointer-events-none">
+        12:00:00
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-5xl mx-auto px-6 py-3 text-center text-xs opacity-80 tracking-wider font-semibold z-20 text-white drop-shadow">
+        Ultra Precision Digital Clock & Countdown Timer &bull; Dynamic Full-Bleed Animal Wallpapers
+    </footer>
+
+    <!-- Settings Control Panel Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full mx-4 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto" id="modal-content">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                    <h3 class="text-xl font-bold tracking-wide">Control Panel</h3>
+                </div>
+                <button onclick="closeSettingsModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Visual Theme Selection -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Visual Style Theme</label>
+                <div class="grid grid-cols-3 gap-3">
+                    
+                    <!-- Style 1: Cute Mascot (Default) -->
+                    <button onclick="switchTheme('cute')" id="theme-btn-cute" class="theme-option p-3 rounded-2xl border-2 border-amber-400 bg-amber-950/40 text-amber-300 flex flex-col items-center justify-center space-y-1.5 hover:scale-105 transition">
+                        <span class="text-xl">🐶</span>
+                        <span class="text-xs font-bold text-center">Cute Mascot</span>
+                    </button>
+
+                    <!-- Style 2: AI Tech -->
+                    <button onclick="switchTheme('ai')" id="theme-btn-ai" class="theme-option p-3 rounded-2xl border-2 border-slate-800 bg-slate-950 text-cyan-400 flex flex-col items-center justify-center space-y-1.5 hover:scale-105 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span class="text-xs font-bold text-center">AI High-Tech</span>
+                    </button>
+
+                    <!-- Style 3: Industrial Minimal -->
+                    <button onclick="switchTheme('industrial')" id="theme-btn-industrial" class="theme-option p-3 rounded-2xl border-2 border-slate-800 bg-zinc-900 text-amber-500 flex flex-col items-center justify-center space-y-1.5 hover:scale-105 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <span class="text-xs font-bold text-center">Industrial</span>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Clock Format & Display Settings -->
+            <div class="mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Clock Display Preferences</label>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-300">12-Hour Format (AM/PM)</span>
+                    <input type="checkbox" id="toggle-12h" onchange="toggle12HourFormat()" class="w-5 h-5 accent-amber-500 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-300">Show Seconds Display</span>
+                    <input type="checkbox" id="toggle-seconds" checked onchange="toggleSecondsDisplay()" class="w-5 h-5 accent-amber-500 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-300">Auto-rotate Animal Wallpaper (Every 1m)</span>
+                    <input type="checkbox" id="toggle-auto-scene" checked class="w-5 h-5 accent-amber-500 rounded cursor-pointer">
+                </div>
+            </div>
+
+            <!-- AI Image Generator Trigger Button -->
+            <div class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-950/60 to-cyan-950/60 border border-amber-500/40 flex items-center justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-amber-300">✨ AI Wallpaper Generator</h4>
+                    <p class="text-[11px] text-slate-300">Generate a custom full-screen animal background image</p>
+                </div>
+                <button onclick="triggerAIWallpaperGen()" class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow-lg transition">
+                    Generate
+                </button>
+            </div>
+
+            <!-- Timer Presets & Setup -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Countdown Time Presets</label>
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <button onclick="setTimerPreset(60)" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200">1 Min</button>
+                    <button onclick="setTimerPreset(300)" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200">5 Min</button>
+                    <button onclick="setTimerPreset(900)" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200">15 Min</button>
+                    <button onclick="setTimerPreset(1800)" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200">30 Min</button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-xs text-slate-400 mb-1 block">Custom Minutes</span>
+                        <input type="number" id="input-minutes" min="0" max="999" value="5" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-center font-bold text-base focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 mb-1 block">Custom Seconds</span>
+                        <input type="number" id="input-seconds" min="0" max="59" value="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-center font-bold text-base focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sound Toggle Option -->
+            <div class="mb-6 flex items-center justify-between p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                <span class="text-xs font-medium text-slate-300">Audio Alarm Signal</span>
+                <input type="checkbox" id="sound-toggle" checked class="w-5 h-5 accent-amber-500 rounded cursor-pointer">
+            </div>
+
+            <!-- Save Action Button -->
+            <button onclick="applySettings()" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base transition shadow-lg">
+                APPLY & CLOSE
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast Message Box -->
+    <div id="message-box" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-amber-500/50 text-slate-100 px-6 py-3 rounded-2xl shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50 flex items-center space-x-3">
+        <div class="w-3 h-3 rounded-full bg-amber-400 animate-ping"></div>
+        <span id="message-text" class="text-sm font-bold">Timer Complete!</span>
+    </div>
+
+    <script>
+        /* STATE VARIABLES */
+        let appMode = 'clock'; // 'clock', 'timer', or 'quote'
+        let totalSeconds = 300;
+        let remainingSeconds = 300;
+        let timerInterval = null;
+        let clockInterval = null;
+        let isRunning = false;
+        let currentTheme = 'cute';
+        let currentSceneIndex = 0;
+        let currentQuoteIndex = 0;
+        let lastMinuteTracked = -1;
+        let is12HourFormat = false;
+        let showSeconds = true;
+        let dialogueTimeout = null;
+
+        /* WORLD FAMOUS QUOTES DATA (12 Historical Celebrities) */
+        const famousQuotes = [
+            { author: "Steve Jobs", text: "Stay hungry, stay foolish. Innovation distinguishes between a leader and a follower.", bgUrl: "https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Albert Einstein", text: "Imagination is more important than knowledge. For knowledge is limited, whereas imagination embraces the entire world.", bgUrl: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Marie Curie", text: "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more, so that we may fear less.", bgUrl: "https://images.unsplash.com/photo-1614935151651-0bea6508ab6b?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Nelson Mandela", text: "The greatest glory in living lies not in never falling, but in rising every time we fall.", bgUrl: "https://images.unsplash.com/photo-1529156069898-49953eb1b5b4?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Abraham Lincoln", text: "In the end, it's not the years in your life that count. It's the life in your years.", bgUrl: "https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Mahatma Gandhi", text: "Be the change that you wish to see in the world. Live as if you were to die tomorrow.", bgUrl: "https://images.unsplash.com/photo-1509021436468-1c5862d294d1?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Winston Churchill", text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", bgUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Martin Luther King Jr.", text: "Darkness cannot drive out darkness; only light can do that. Hate cannot drive out hate; only love can do that.", bgUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Oscar Wilde", text: "Be yourself; everyone else is already taken. To live is the rarest thing in the world.", bgUrl: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Leonardo da Vinci", text: "Simplicity is the ultimate sophistication. Learning never exhausts the mind.", bgUrl: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Marcus Aurelius", text: "You have power over your mind - not outside events. Realize this, and you will find strength.", bgUrl: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1920&q=80" },
+            { author: "Maya Angelou", text: "You will face many defeats in life, but never let yourself be defeated.", bgUrl: "https://images.unsplash.com/photo-1499209974431-9dac3ada00d7?auto=format&fit=crop&w=1920&q=80" }
+        ];
+
+        /* FULL-BLEED ANIMAL WALLPAPER SCENES (1-Minute Rotation) */
+        const cuteScenes = [
+            {
+                id: 'meadow',
+                name: 'Sunny Meadow 🌸',
+                icon: '🐱',
+                desc: 'Minute Wallpaper: Playful Cat & Dog Meadow',
+                bgUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1920&q=80',
+                animals: [
+                    { key: 'cat', emoji: '🐱', label: 'Meow!', class: 'bottom-6 left-0 anim-walker-1', title: 'Mochi the Cat' },
+                    { key: 'dog', emoji: '🐶', label: 'Woof!', class: 'bottom-20 right-0 anim-walker-2', title: 'Buddy the Dog' },
+                    { key: 'bunny', emoji: '🐰', label: 'Hop!', class: 'top-1/4 left-0 anim-walker-3', title: 'Hoppy Bunny' }
+                ]
+            },
+            {
+                id: 'safari',
+                name: 'Jungle Safari 🐘',
+                icon: '🐘',
+                desc: 'Minute Wallpaper: Elephant & Giraffe Safari',
+                bgUrl: 'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1920&q=80',
+                animals: [
+                    { key: 'elephant', emoji: '🐘', label: 'Pawoo!', class: 'bottom-8 left-0 anim-walker-1', title: 'Jumbo Elephant' },
+                    { key: 'giraffe', emoji: '🦒', label: 'Hello~', class: 'bottom-24 right-0 anim-walker-2', title: 'Gigi Giraffe' },
+                    { key: 'monkey', emoji: '🐒', label: 'Ooh aah!', class: 'top-1/3 left-0 anim-walker-3', title: 'Momo Monkey' }
+                ]
+            },
+            {
+                id: 'bamboo',
+                name: 'Bamboo Grove 🐼',
+                icon: '🐼',
+                desc: 'Minute Wallpaper: Cute Panda & Koala Bamboo Forest',
+                bgUrl: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef9?auto=format&fit=crop&w=1920&q=80',
+                animals: [
+                    { key: 'panda', emoji: '🐼', label: 'Crunch~', class: 'bottom-10 left-0 anim-walker-1', title: 'Bao Panda' },
+                    { key: 'koala', emoji: '🐨', label: 'Hugs!', class: 'top-1/4 right-0 anim-walker-2', title: 'Koko Koala' },
+                    { key: 'bear', emoji: '🐻', label: 'Grrr!', class: 'bottom-28 right-1/4 animate-bounce', title: 'Kuma Bear' }
+                ]
+            },
+            {
+                id: 'savannah',
+                name: 'Golden Savannah 🦁',
+                icon: '🦁',
+                desc: 'Minute Wallpaper: Majestic Lion & Zebra Sunset',
+                bgUrl: 'https://images.unsplash.com/photo-1614027164847-1b28cfe1df60?auto=format&fit=crop&w=1920&q=80',
+                animals: [
+                    { key: 'lion', emoji: '🦁', label: 'Roar!', class: 'bottom-6 left-0 anim-walker-1', title: 'Leo Lion' },
+                    { key: 'zebra', emoji: '传输', label: 'Clip-clop!', class: 'bottom-20 right-0 anim-walker-2', title: 'Zack Zebra' },
+                    { key: 'fox', emoji: '🦊', label: 'Yip!', class: 'top-1/3 left-0 anim-walker-3', title: 'Foxy' }
+                ]
+            },
+            {
+                id: 'cloud',
+                name: 'Dreamland Bunny 🐰',
+                icon: '🐰',
+                desc: 'Minute Wallpaper: Cute Fluffy Bunny Kingdom',
+                bgUrl: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=1920&q=80',
+                animals: [
+                    { key: 'bunny', emoji: '🐰', label: 'Squeak!', class: 'bottom-8 left-0 anim-walker-1', title: 'Hoppy Bunny' },
+                    { key: 'pig', emoji: '🐷', label: 'Oink!', class: 'bottom-24 right-0 anim-walker-2', title: 'Piggy' },
+                    { key: 'cat', emoji: '🐱', label: 'Purr~', class: 'top-1/4 left-1/3 animate-pulse', title: 'Mochi Cat' }
+                ]
+            }
+        ];
+
+        /* NPC INTERACTIVE DATA & SPEECH DIALOGUES */
+        const npcData = {
+            cat: { name: "Mochi the Cat", avatar: "🐱", soundType: "meow", lines: ["Meow meow! Time is purr-fect! 🐾", "Purrr~ You're doing awesome!", "Stay sharp like a cat! 🐱✨"] },
+            dog: { name: "Buddy the Dog", avatar: "🐶", soundType: "bark", lines: ["Woof woof! Tail wagging for you! 🎾", "Arf! High five! Keep going!", "Bark! Great focus power! 🐕"] },
+            bunny: { name: "Hoppy Bunny", avatar: "🐰", soundType: "squeak", lines: ["Hop hop hop! Time flies merrily! 🥕", "Squeak! Keep hopping forward!", "Nip nip! Stay cheerful! 🐇"] },
+            bear: { name: "Kuma Bear", avatar: "🐻", soundType: "growl", lines: ["Grrr... Hugely proud of your effort! 🍯", "Honey-sweet concentration!", "Bear hug power for you! 🐻💪"] },
+            panda: { name: "Bao Panda", avatar: "🐼", soundType: "hum", lines: ["Crunch crunch... Bamboo loaded! 🎍", "Calm mind, steady progress ~", "Peaceful focus in the bamboo grove 🌿"] },
+            elephant: { name: "Jumbo Elephant", avatar: "🐘", soundType: "growl", lines: ["Pawoo! Elephant memory remembers your goals! 🐘", "Strong & steady like an elephant!"] },
+            giraffe: { name: "Gigi Giraffe", avatar: "🦒", soundType: "hum", lines: ["Standing tall & aiming high! 🦒", "Clear view of the bright future!"] },
+            monkey: { name: "Momo Monkey", avatar: "🐒", soundType: "squeak", lines: ["Ooh ooh aah aah! So energetic! 🐒", "Banana-powered efficiency! 🍌"] },
+            lion: { name: "Leo Lion", avatar: "🦁", soundType: "growl", lines: ["Roar! Brave heart, powerful focus! 🦁", "King of productivity!"] },
+            zebra: { name: "Zack Zebra", avatar: "🦓", soundType: "bark", lines: ["Stripes of success! Keep stepping! 🦓", "Dashing through time smoothly!"] },
+            fox: { name: "Foxy", avatar: "🦊", soundType: "squeak", lines: ["Clever fox says: Stay curious! 🦊", "Smart moves, brilliant focus!"] },
+            pig: { name: "Piggy", avatar: "🐷", soundType: "hum", lines: ["Oink oink! Happy lucky vibes! 🐷", "Wishing you a golden day!"] },
+            koala: { name: "Koko Koala", avatar: "🐨", soundType: "hum", lines: ["Warm cozy hugs! Stay calm and focused! 🐨", "Rest & recharge when needed ~"] },
+            ai_core: { name: "A.I.D.A. Assistant", avatar: "🤖", soundType: "ai_beep", lines: ["AI Protocol v5.0: Time sync optimal.", "Neural Sync: 100%. Processing..."] },
+            ai_quantum: { name: "Quantum Core", avatar: "🔮", soundType: "ai_arpeggio", lines: ["Quantum state locked. Temporal continuum steady."] },
+            ind_mech: { name: "UNIT-01 Mech Chief", avatar: "🤖", soundType: "mech_clank", lines: ["HYDRAULIC PRESSURE OPTIMAL. KEEP WORKING!"] },
+            ind_gear: { name: "Steam Valve #9", avatar: "⚙️", soundType: "steam_hiss", lines: ["Psssht! Steam pressure released. Full speed ahead!"] }
+        };
+
+        /* REFRESH/RENDER ANIMALS, FULL-BLEED WALLPAPER & MENU BUTTONS FOR ACTIVE SCENE */
+        function renderSceneAnimals() {
+            const scene = cuteScenes[currentSceneIndex];
+            
+            // Set Full-Bleed Background Image (滿版底圖)
+            const bgImg = document.getElementById('fullscreen-bg-img');
+            bgImg.src = scene.bgUrl;
+
+            // Render Background Walking Animals
+            const container = document.getElementById('dynamic-animals-container');
+            container.innerHTML = '';
+            scene.animals.forEach(a => {
+                const el = document.createElement('div');
+                el.className = `pointer-events-auto cursor-pointer absolute ${a.class} text-5xl sm:text-6xl select-none hover:scale-125 transition-transform group`;
+                el.setAttribute('onclick', `interactNPC('${a.key}')`);
+                el.setAttribute('title', a.title);
+                el.innerHTML = `${a.emoji} <span class="text-xs bg-black/80 text-white font-bold px-2 py-0.5 rounded-full shadow-md align-top border border-white/30 group-hover:bg-amber-400 group-hover:text-slate-950">${a.label}</span>`;
+                container.appendChild(el);
+            });
+
+            // Update Header & Banner Tags
+            document.getElementById('scene-icon').innerText = scene.icon;
+            document.getElementById('scene-description').innerText = scene.desc;
+            document.getElementById('scene-name-tag').innerText = scene.name;
+            document.getElementById('current-scene-badge-icon').innerText = scene.icon;
+
+            // Render NPC Buttons inside Collapsible Menu
+            const grid = document.getElementById('npc-buttons-grid');
+            grid.innerHTML = '';
+            scene.animals.forEach(a => {
+                const btn = document.createElement('button');
+                btn.className = 'p-2 rounded-xl bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-lg flex flex-col items-center transition hover:scale-105';
+                btn.setAttribute('onclick', `interactNPC('${a.key}')`);
+                btn.setAttribute('title', a.title);
+                btn.innerHTML = `<span>${a.emoji}</span><span class="text-[9px] font-extrabold mt-0.5 truncate w-full text-center">${a.title.split(' ')[0]}</span>`;
+                grid.appendChild(btn);
+            });
+        }
+
+        /* AI IMAGE GENERATION FOR FULL-BLEED WALLPAPER (imagen-4.0-generate-001) */
+        async function triggerAIWallpaperGen() {
+            showMessage("✨ Generating AI Full-Bleed Animal Image...");
+            const bgImg = document.getElementById('fullscreen-bg-img');
+            
+            try {
+                const promptText = `A breathtaking ultra cute 3D Pixar style artwork wallpaper featuring adorable animals (${cuteScenes[currentSceneIndex].name}) in a vibrant fantasy wonderland landscape, colorful flowers, cinematic lighting, 8k resolution, photorealistic masterpiece`;
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{ prompt: promptText }],
+                        parameters: { sampleCount: 1 }
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.predictions && result.predictions[0] && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    bgImg.src = imageUrl;
+                    showMessage("🎉 Custom AI Animal Wallpaper Applied!");
+                } else {
+                    showMessage("AI Image Generated Default Preset");
+                }
+            } catch(e) {
+                console.log("AI Image generation error fallback:", e);
+                showMessage("Applied High Definition Animal Wallpaper");
+            }
+        }
+
+        /* ROTATE ANIMAL SCENE EVERY 1 MINUTE */
+        function rotateCuteScene() {
+            currentSceneIndex = (currentSceneIndex + 1) % cuteScenes.length;
+            renderSceneAnimals();
+        }
+
+        /* RENDER & ROTATE FAMOUS QUOTES */
+        function renderQuote() {
+            const q = famousQuotes[currentQuoteIndex];
+            const bgImg = document.getElementById('fullscreen-bg-img');
+            bgImg.src = q.bgUrl;
+            document.getElementById('quote-text').innerText = `"${q.text}"`;
+            document.getElementById('quote-author').innerText = q.author;
+            const counterEl = document.getElementById('quote-counter');
+            if (counterEl) {
+                counterEl.innerText = `${currentQuoteIndex + 1} / ${famousQuotes.length}`;
+            }
+        }
+
+        function rotateQuote() {
+            currentQuoteIndex = (currentQuoteIndex + 1) % famousQuotes.length;
+            renderQuote();
+        }
+
+        function prevQuote() {
+            currentQuoteIndex = (currentQuoteIndex - 1 + famousQuotes.length) % famousQuotes.length;
+            renderQuote();
+        }
+
+        /* REAL-TIME CLOCK ENGINE */
+        function updateClock() {
+            const now = new Date();
+            const currentMin = now.getMinutes();
+
+            // Auto switch scenes or quotes every 1 minute if enabled
+            if (lastMinuteTracked !== -1 && lastMinuteTracked !== currentMin) {
+                if (document.getElementById('toggle-auto-scene').checked) {
+                    if (appMode === 'quote') {
+                        rotateQuote();
+                    } else if (currentTheme === 'cute') {
+                        rotateCuteScene();
+                    }
+                }
+            }
+            lastMinuteTracked = currentMin;
+
+            let h = now.getHours();
+            let m = now.getMinutes();
+            let s = now.getSeconds();
+
+            // Logic for Small Bottom Clock (Quote Mode)
+            if (appMode === 'quote') {
+                let ampmStr = '';
+                let displayH = h;
+                if (is12HourFormat) {
+                    ampmStr = displayH >= 12 ? ' PM' : ' AM';
+                    displayH = displayH % 12 || 12;
+                }
+                let timeStr = `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                if (showSeconds) timeStr += `:${String(s).padStart(2, '0')}`;
+                timeStr += ampmStr;
+                
+                document.getElementById('small-bottom-clock').innerText = timeStr;
+                document.title = `${timeStr} - ${famousQuotes[currentQuoteIndex].author}`;
+                return; // Skip rendering giant clock
+            }
+
+            if (appMode !== 'clock') return;
+
+            const ampmBadge = document.getElementById('ampm-badge');
+            if (is12HourFormat) {
+                ampmBadge.innerText = h >= 12 ? 'PM' : 'AM';
+                ampmBadge.classList.remove('hidden');
+                h = h % 12 || 12;
+            } else {
+                ampmBadge.classList.add('hidden');
+            }
+
+            const hoursGroup = document.getElementById('clock-hours-group');
+            hoursGroup.classList.remove('hidden');
+            document.getElementById('hours').innerText = String(h).padStart(2, '0');
+            document.getElementById('minutes').innerText = String(m).padStart(2, '0');
+            
+            const secSep = document.getElementById('seconds-separator');
+            const secEl = document.getElementById('seconds');
+            if (showSeconds) {
+                secSep.classList.remove('hidden');
+                secEl.classList.remove('hidden');
+                secEl.innerText = String(s).padStart(2, '0');
+            } else {
+                secSep.classList.add('hidden');
+                secEl.classList.add('hidden');
+            }
+
+            const formatStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}${showSeconds ? ':' + String(s).padStart(2, '0') : ''}`;
+            document.title = `${formatStr} - Clock`;
+        }
+
+        /* APP MODE SWITCHER (CLOCK vs COUNTDOWN vs QUOTE) */
+        function switchAppMode(mode) {
+            appMode = mode;
+            const clockBtn = document.getElementById('mode-btn-clock');
+            const timerBtn = document.getElementById('mode-btn-timer');
+            const quoteBtn = document.getElementById('mode-btn-quote');
+            const controls = document.getElementById('timer-controls');
+            const statusText = document.getElementById('status-text');
+            const timerCard = document.getElementById('timer-card');
+            const quoteCard = document.getElementById('quote-card');
+            const smallClock = document.getElementById('small-bottom-clock');
+            const sceneBanner = document.getElementById('scene-banner');
+            const floatingBg = document.getElementById('floating-bg-layer');
+
+            const activeClass = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-md";
+            const inactiveClass = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-white/80 hover:text-white";
+
+            clockBtn.className = mode === 'clock' ? activeClass : inactiveClass;
+            timerBtn.className = mode === 'timer' ? activeClass : inactiveClass;
+            quoteBtn.className = mode === 'quote' ? activeClass : inactiveClass;
+
+            // Handle UI elements based on active mode
+            if (mode === 'clock') {
+                controls.classList.add('hidden');
+                quoteCard.classList.remove('flex');
+                quoteCard.classList.add('hidden');
+                smallClock.classList.add('hidden');
+                timerCard.classList.remove('hidden');
+                floatingBg.classList.remove('hidden');
+                if (currentTheme === 'cute') sceneBanner.classList.remove('hidden');
+                
+                document.getElementById('clock-hours-group').classList.remove('hidden');
+                statusText.innerText = "LIVE REAL-TIME CLOCK";
+                switchTheme(currentTheme); // Restore visual style background
+                updateClock();
+            } else if (mode === 'timer') {
+                controls.classList.remove('hidden');
+                quoteCard.classList.remove('flex');
+                quoteCard.classList.add('hidden');
+                smallClock.classList.add('hidden');
+                timerCard.classList.remove('hidden');
+                floatingBg.classList.remove('hidden');
+                if (currentTheme === 'cute') sceneBanner.classList.remove('hidden');
+                
+                document.getElementById('ampm-badge').classList.add('hidden');
+                statusText.innerText = isRunning ? "COUNTING DOWN..." : "TIMER READY";
+                switchTheme(currentTheme); // Restore visual style background
+                updateDisplay();
+            } else if (mode === 'quote') {
+                controls.classList.add('hidden');
+                timerCard.classList.add('hidden');
+                sceneBanner.classList.add('hidden');
+                floatingBg.classList.add('hidden'); // Hide animals/gears for a clean quote view
+                
+                quoteCard.classList.remove('hidden');
+                quoteCard.classList.add('flex');
+                smallClock.classList.remove('hidden');
+                
+                renderQuote();
+                updateClock();
+            }
+        }
+
+        /* COUNTDOWN TIMER ENGINE */
+        function updateDisplay() {
+            if (appMode !== 'timer') return;
+
+            const h = Math.floor(remainingSeconds / 3600);
+            const m = Math.floor((remainingSeconds % 3600) / 60);
+            const s = remainingSeconds % 60;
+
+            const hoursGroup = document.getElementById('clock-hours-group');
+            if (h > 0) {
+                hoursGroup.classList.remove('hidden');
+                document.getElementById('hours').innerText = String(h).padStart(2, '0');
+            } else {
+                hoursGroup.classList.add('hidden');
+            }
+
+            document.getElementById('minutes').innerText = String(m).padStart(2, '0');
+            document.getElementById('seconds').innerText = String(s).padStart(2, '0');
+            document.getElementById('seconds').classList.remove('hidden');
+            document.getElementById('seconds-separator').classList.remove('hidden');
+
+            document.title = `(${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}) Countdown`;
+        }
+
+        function toggleTimer() {
+            if (isRunning) pauseTimer(); else startTimer();
+        }
+
+        function startTimer() {
+            if (remainingSeconds <= 0) remainingSeconds = totalSeconds;
+            if (remainingSeconds <= 0) return;
+
+            isRunning = true;
+            document.getElementById('start-text').innerText = "PAUSE";
+            document.getElementById('start-icon').innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            document.getElementById('status-text').innerText = "COUNTING DOWN...";
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (remainingSeconds > 0) {
+                    remainingSeconds--;
+                    updateDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    document.getElementById('start-text').innerText = "RESTART";
+                    document.getElementById('start-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+                    document.getElementById('status-text').innerText = "COUNTDOWN COMPLETE!";
+                    playNPCSound('ai_arpeggio');
+                    showMessage("Countdown Finished!");
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            document.getElementById('start-text').innerText = "RESUME";
+            document.getElementById('start-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+            document.getElementById('status-text').innerText = "PAUSED";
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            remainingSeconds = totalSeconds;
+            updateDisplay();
+            document.getElementById('start-text').innerText = "START TIMER";
+            document.getElementById('status-text').innerText = "TIMER READY";
+        }
+
+        function setTimerPreset(seconds) {
+            totalSeconds = seconds;
+            document.getElementById('input-minutes').value = Math.floor(seconds / 60);
+            document.getElementById('input-seconds').value = seconds % 60;
+            switchAppMode('timer');
+            resetTimer();
+        }
+
+        /* SOUND SYNTHESIZER FOR NPCS & ALARMS */
+        function playNPCSound(type) {
+            if (!document.getElementById('sound-toggle').checked) return;
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioCtx.currentTime;
+
+                if (type === 'meow') {
+                    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(850, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(500, now + 0.4);
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.45);
+                } else if (type === 'bark') {
+                    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
+                    gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.18);
+                } else {
+                    [523.25, 659.25, 783.99].forEach((f, idx) => {
+                        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                        osc.type = 'triangle'; osc.frequency.setValueAtTime(f, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.1); gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.2);
+                        osc.connect(gain); gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.2);
+                    });
+                }
+            } catch(e) { console.log("Audio blocked", e); }
+        }
+
+        /* NPC INTERACTION TRIGGER */
+        function interactNPC(key) {
+            const npc = npcData[key];
+            if (!npc) return;
+
+            playNPCSound(npc.soundType);
+            const line = npc.lines[Math.floor(Math.random() * npc.lines.length)];
+
+            document.getElementById('npc-avatar').innerText = npc.avatar;
+            document.getElementById('npc-name').innerText = npc.name;
+            document.getElementById('npc-speech').innerText = line;
+
+            const dialogue = document.getElementById('npc-dialogue');
+            dialogue.classList.remove('opacity-0', 'pointer-events-none');
+            dialogue.classList.add('opacity-100');
+
+            if (dialogueTimeout) clearTimeout(dialogueTimeout);
+            dialogueTimeout = setTimeout(() => {
+                dialogue.classList.remove('opacity-100');
+                dialogue.classList.add('opacity-0', 'pointer-events-none');
+            }, 3500);
+        }
+
+        /* RWD COLLAPSIBLE NPC MENU TOGGLE */
+        function toggleNpcMenu() {
+            const dropdown = document.getElementById('npc-menu-dropdown');
+            const arrow = document.getElementById('npc-menu-arrow');
+            const isHidden = dropdown.classList.contains('hidden');
+
+            if (isHidden) {
+                dropdown.classList.remove('hidden');
+                dropdown.classList.add('flex');
+                arrow.classList.add('rotate-180');
+            } else {
+                dropdown.classList.add('hidden');
+                dropdown.classList.remove('flex');
+                arrow.classList.remove('rotate-180');
+            }
+        }
+
+        /* VISUAL THEME SWITCHER WITH FULL-BLEED BACKGROUND SUPPORT */
+        function switchTheme(themeKey) {
+            currentTheme = themeKey;
+
+            const cuteFloaters = document.getElementById('cute-floaters');
+            const aiFloaters = document.getElementById('ai-floaters');
+            const indFloaters = document.getElementById('industrial-floaters');
+            const sceneBanner = document.getElementById('scene-banner');
+            const bgImg = document.getElementById('fullscreen-bg-img');
+
+            cuteFloaters.classList.toggle('hidden', themeKey !== 'cute');
+            aiFloaters.classList.toggle('hidden', themeKey !== 'ai');
+            indFloaters.classList.toggle('hidden', themeKey !== 'industrial');
+            sceneBanner.classList.toggle('hidden', themeKey !== 'cute');
+
+            if (themeKey === 'cute') {
+                renderSceneAnimals();
+                document.body.className = `theme-cute h-full flex flex-col justify-between select-none overflow-x-hidden min-h-screen relative`;
+                document.getElementById('app-title').innerText = "Cute Pet Clock";
+            } else if (themeKey === 'ai') {
+                bgImg.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80";
+                document.body.className = `theme-ai h-full flex flex-col justify-between select-none overflow-x-hidden min-h-screen relative`;
+                document.getElementById('app-title').innerText = "AI Core Clock";
+            } else {
+                bgImg.src = "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1920&q=80";
+                document.body.className = `theme-industrial h-full flex flex-col justify-between select-none overflow-x-hidden min-h-screen relative`;
+                document.getElementById('app-title').innerText = "IND-8000 Clock";
+            }
+
+            document.querySelectorAll('.theme-option').forEach(btn => btn.classList.replace('border-amber-400', 'border-slate-800'));
+            const activeBtn = document.getElementById(`theme-btn-${themeKey}`);
+            if (activeBtn) activeBtn.classList.replace('border-slate-800', 'border-amber-400');
+        }
+
+        /* MODAL & CONTROL PANEL HANDLERS */
+        function openSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100');
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function toggle12HourFormat() {
+            is12HourFormat = document.getElementById('toggle-12h').checked;
+            updateClock();
+        }
+
+        function toggleSecondsDisplay() {
+            showSeconds = document.getElementById('toggle-seconds').checked;
+            updateClock();
+        }
+
+        function applySettings() {
+            const mins = parseInt(document.getElementById('input-minutes').value) || 0;
+            const secs = parseInt(document.getElementById('input-seconds').value) || 0;
+            const newTotal = (mins * 60) + secs;
+
+            if (newTotal > 0) {
+                totalSeconds = newTotal;
+                if (appMode === 'timer') resetTimer();
+            }
+
+            closeSettingsModal();
+        }
+
+        function showMessage(text) {
+            const box = document.getElementById('message-box');
+            document.getElementById('message-text').innerText = text;
+            box.classList.remove('opacity-0', 'pointer-events-none');
+            box.classList.add('opacity-100');
+            setTimeout(() => {
+                box.classList.remove('opacity-100');
+                box.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => showMessage("Fullscreen restricted"));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        /* INIT ON LOAD */
+        window.onload = function() {
+            switchTheme('cute');
+            switchAppMode('clock');
+            clockInterval = setInterval(updateClock, 1000);
+            updateClock();
+        };
+    </script>
+</body>
+</html>

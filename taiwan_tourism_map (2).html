@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full font-sans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taiwan Tourism Odyssey - Interactive Map & Itinerary Planner</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Custom Leaflet popup styling */
+        .leaflet-popup-content-wrapper {
+            padding: 0;
+            overflow: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .leaflet-popup-content {
+            margin: 0;
+            line-height: 1.4;
+        }
+        .leaflet-popup-tip {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Marker Badge Pulsing Effect */
+        @keyframes customPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.85; }
+        }
+        .pulse-badge {
+            animation: customPulse 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-100 flex flex-col antialiased text-slate-800 selection:bg-indigo-500 selection:text-white">
+
+    <!-- TOP NAVIGATION BAR (FULL WIDTH adaptivity) -->
+    <header class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white shadow-md z-30 shrink-0">
+        <div class="w-full px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-tr from-amber-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 text-white text-xl font-black">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-amber-200" data-i18n="appTitle">
+                        Taiwan Tourism Odyssey
+                    </h1>
+                    <p class="text-[11px] text-indigo-200/80 font-medium hidden sm:block" data-i18n="appSubtitle">
+                        Interactive Travel Map & Route Planner
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-2">
+                <!-- Settings Button -->
+                <button onclick="openSettingsModal()" class="w-9 h-9 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white rounded-xl transition flex items-center justify-center shadow-sm" title="Settings">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                </button>
+
+                <!-- AI Assistant Trigger Button -->
+                <button onclick="toggleAiDrawer()" class="px-3 py-1.5 bg-indigo-700/60 hover:bg-indigo-600/80 backdrop-blur-md border border-indigo-400/30 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm text-amber-300">
+                    <i class="fa-solid fa-robot text-amber-300"></i>
+                    <span data-i18n="aiAssistantBtn">AI Guide</span>
+                </button>
+
+                <!-- Language Toggle Button -->
+                <button onclick="toggleLanguage()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-globe text-indigo-300"></i>
+                    <span id="lang-btn-label">繁體中文</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE CONTAINER -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+        <!-- SIDEBAR DRAWER (EXPLORE / SAVED / ITINERARY) -->
+        <aside class="w-full md:w-96 bg-white/95 backdrop-blur-md border-r border-slate-200/80 flex flex-col z-20 shadow-xl shrink-0 h-[45vh] md:h-full">
+            
+            <!-- Sidebar Navigation Tabs -->
+            <div class="flex border-b border-slate-200/80 bg-slate-50/80 p-1.5 gap-1 shrink-0">
+                <button id="tab-explore-btn" onclick="switchTab('explore')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-600 shadow-sm">
+                    <i class="fa-solid fa-compass"></i>
+                    <span data-i18n="tabExplore">Explore Spots</span>
+                </button>
+                <button id="tab-saved-btn" onclick="switchTab('saved')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800">
+                    <i class="fa-solid fa-heart text-rose-500"></i>
+                    <span data-i18n="tabSaved">Saved</span>
+                    <span id="saved-count-badge" class="ml-1 bg-rose-100 text-rose-600 px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span>
+                </button>
+                <button id="tab-itinerary-btn" onclick="switchTab('itinerary')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800">
+                    <i class="fa-solid fa-route text-indigo-500"></i>
+                    <span data-i18n="tabItinerary">Itinerary</span>
+                    <span id="itinerary-count-badge" class="ml-1 bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: EXPLORE SPOTS -->
+            <div id="view-explore" class="flex-1 flex flex-col p-4 overflow-hidden">
+                <!-- Search & Filters -->
+                <div class="space-y-2.5 mb-3">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-indigo-400 text-xs"></i>
+                        <input type="text" id="search-input" oninput="handleFilterChange()" placeholder="Search places, cities..." data-i18n-ph="searchPlaceholder" class="w-full pl-9 pr-4 py-2 bg-slate-100/80 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <select id="filter-region" onchange="handleFilterChange()" class="p-2 bg-slate-100/80 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 text-xs">
+                            <option value="all" data-i18n="allRegions">All Regions</option>
+                            <option value="north" data-i18n="regionNorth">North Taiwan</option>
+                            <option value="central" data-i18n="regionCentral">Central Taiwan</option>
+                            <option value="south" data-i18n="regionSouth">South Taiwan</option>
+                            <option value="east" data-i18n="regionEast">East Taiwan</option>
+                        </select>
+
+                        <select id="filter-category" onchange="handleFilterChange()" class="p-2 bg-slate-100/80 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 text-xs">
+                            <option value="all" data-i18n="allCategories">All Categories</option>
+                            <option value="nature" data-i18n="catNature">🌲 Nature & Scenic</option>
+                            <option value="culture" data-i18n="catCulture">🏛️ History & Culture</option>
+                            <option value="food" data-i18n="catFood">🍜 Night Markets & Food</option>
+                            <option value="landmark" data-i18n="catLandmark">🏙️ Landmarks & City</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- View Switcher & Counter Bar -->
+                <div class="flex items-center justify-between mb-2.5 px-0.5 text-xs text-slate-500">
+                    <span id="spots-count-text" class="font-semibold text-[11px] text-slate-500"></span>
+                    <div class="flex items-center bg-slate-100/90 p-0.5 rounded-xl border border-slate-200/80 shadow-inner">
+                        <button id="btn-view-list" onclick="setViewMode('list')" class="px-2.5 py-1 rounded-lg text-xs transition font-semibold bg-white text-indigo-600 shadow-sm flex items-center gap-1">
+                            <i class="fa-solid fa-list text-[11px]"></i><span class="text-[10px]" data-i18n="viewList">List</span>
+                        </button>
+                        <button id="btn-view-grid" onclick="setViewMode('grid')" class="px-2.5 py-1 rounded-lg text-xs transition font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                            <i class="fa-solid fa-grip text-[11px]"></i><span class="text-[10px]" data-i18n="viewGrid">Grid</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Attractions List -->
+                <div id="spots-list" class="flex-1 overflow-y-auto pr-1">
+                    <!-- Dynamic Spot Cards Loaded Here -->
+                </div>
+            </div>
+
+            <!-- TAB 2: SAVED SPOTS -->
+            <div id="view-saved" class="flex-1 flex flex-col p-4 overflow-hidden hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-slate-800 text-xs" data-i18n="savedTitle">Bookmarked Attractions</h3>
+                    <button onclick="clearSaved()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold transition" data-i18n="clearAll">Clear All</button>
+                </div>
+                <div id="saved-list" class="flex-1 overflow-y-auto pr-1">
+                    <!-- Saved items rendered dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 3: ITINERARY ROUTE PLANNER -->
+            <div id="view-itinerary" class="flex-1 flex flex-col p-4 overflow-hidden hidden">
+                <!-- Route Stats Overview -->
+                <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-3.5 rounded-2xl shadow-md mb-3 shrink-0">
+                    <div class="grid grid-cols-3 gap-2 text-center divide-x divide-indigo-800/80">
+                        <div>
+                            <div class="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider" data-i18n="stopCount">Total Stops</div>
+                            <div id="route-stops-count" class="text-base font-extrabold text-amber-300 mt-0.5">0</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider" data-i18n="totalDistance">Driving Distance</div>
+                            <div id="route-distance-text" class="text-base font-extrabold text-white mt-0.5">0 km</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider" data-i18n="driveTime">Drive Time</div>
+                            <div id="route-duration-text" class="text-base font-extrabold text-emerald-300 mt-0.5">0m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Route Actions Toolbar -->
+                <div class="flex items-center justify-between gap-2 mb-3 shrink-0">
+                    <button onclick="openShareModal()" class="flex-1 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-share-nodes text-xs"></i>
+                        <span data-i18n="btnShareRoute">Share Trip</span>
+                    </button>
+                    <button onclick="openExportModal()" class="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-file-export text-xs"></i>
+                        <span data-i18n="btnExport">Export Data</span>
+                    </button>
+                    <button onclick="clearItinerary()" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition border border-rose-200">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+
+                <!-- Itinerary Stops Sequence List -->
+                <div id="itinerary-stops-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamic itinerary stops -->
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- MAP CANVAS CONTAINER -->
+        <main class="flex-1 relative h-[55vh] md:h-full w-full bg-slate-200">
+            <div id="map" class="w-full h-full z-10"></div>
+
+            <!-- Map Floating Category Legend -->
+            <div class="absolute bottom-5 right-5 z-20 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-slate-200/80 text-xs max-w-xs hidden sm:block">
+                <h5 class="font-extrabold text-slate-800 mb-2 flex items-center justify-between" data-i18n="legendTitle">
+                    <span>Map Legend</span>
+                    <i class="fa-solid fa-layer-group text-indigo-500"></i>
+                </h5>
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 bg-emerald-500 text-white rounded-lg flex items-center justify-center text-[10px] shadow-sm">🌲</span>
+                        <span class="text-slate-600 font-medium" data-i18n="catNature">Nature</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 bg-amber-500 text-white rounded-lg flex items-center justify-center text-[10px] shadow-sm">🏛️</span>
+                        <span class="text-slate-600 font-medium" data-i18n="catCulture">Culture</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 bg-rose-500 text-white rounded-lg flex items-center justify-center text-[10px] shadow-sm">🍜</span>
+                        <span class="text-slate-600 font-medium" data-i18n="catFood">Food</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 bg-indigo-500 text-white rounded-lg flex items-center justify-center text-[10px] shadow-sm">🏙️</span>
+                        <span class="text-slate-600 font-medium" data-i18n="catLandmark">Landmark</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- AI CHATBOT DRAWER / MODAL -->
+    <div id="ai-drawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200">
+        <!-- AI Chat Header -->
+        <div class="p-4 bg-gradient-to-r from-indigo-900 to-purple-900 text-white flex items-center justify-between shadow-md">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 bg-amber-400 text-slate-900 rounded-xl flex items-center justify-center font-black text-lg shadow-sm">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm" data-i18n="botTitle">Formosa Travel AI</h3>
+                    <p class="text-[10px] text-indigo-200" data-i18n="botStatus">Online • Powered by Gemini 3</p>
+                </div>
+            </div>
+            <button onclick="toggleAiDrawer()" class="text-indigo-200 hover:text-white transition w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Chat Messages Window -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+            <!-- Welcome message from AI -->
+            <div class="flex gap-2.5">
+                <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-slate-700 leading-relaxed max-w-[85%]" data-i18n="botWelcome">
+                    👋 Hi there! I'm your Taiwan Travel Assistant. Ask me anything about attractions, transport, itinerary tips, or local street snacks!
+                </div>
+            </div>
+        </div>
+
+        <!-- Pre-set Quick Questions -->
+        <div class="p-2 border-t border-slate-200 bg-white flex gap-1.5 overflow-x-auto text-[11px] scrollbar-none">
+            <button onclick="sendQuickChat('What are the top must-eat street foods in Taiwan night markets?')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-full font-semibold shrink-0 transition">🍜 Night Market Foods</button>
+            <button onclick="sendQuickChat('Suggest a 3-day itinerary covering Taipei and Sun Moon Lake.')" class="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-full font-semibold shrink-0 transition">🗓️ 3-Day Trip Idea</button>
+            <button onclick="sendQuickChat('How to travel from Taipei 101 to Jiufen Old Street by public transport?')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-full font-semibold shrink-0 transition">🚆 Transport Info</button>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="p-3 border-t border-slate-200 bg-white">
+            <form onsubmit="handleChatSubmit(event)" class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Ask about Taiwan travel..." data-i18n-ph="chatInputPlaceholder" class="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SHARE ROUTE MODAL -->
+    <div id="modal-share" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-100">
+            <button onclick="closeModal('modal-share')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-4">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-xl mx-auto mb-2">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-base" data-i18n="modalShareTitle">Share Your Taiwan Itinerary</h3>
+                <p class="text-xs text-slate-500 mt-1" data-i18n="modalShareDesc">Copy the link below. Anyone with this link can view your custom itinerary!</p>
+            </div>
+            <div class="flex gap-2 my-4">
+                <input type="text" id="share-url-input" readonly class="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 focus:outline-none">
+                <button onclick="copyShareUrl()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-copy"></i>
+                    <span data-i18n="btnCopy">Copy</span>
+                </button>
+            </div>
+            <div id="copy-toast" class="text-center text-xs text-emerald-600 font-bold hidden" data-i18n="copiedMsg">Link copied to clipboard!</div>
+        </div>
+    </div>
+
+    <!-- EXPORT MODAL -->
+    <div id="modal-export" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-100">
+            <button onclick="closeModal('modal-export')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-xl mx-auto mb-2">
+                    <i class="fa-solid fa-file-export"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-base" data-i18n="modalExportTitle">Export Travel Itinerary</h3>
+                <p class="text-xs text-slate-500 mt-1" data-i18n="modalExportDesc">Choose your preferred export format for offline use or mapping tools.</p>
+            </div>
+            <div class="space-y-2.5">
+                <button onclick="exportData('json')" class="w-full p-3 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition flex items-center gap-3 text-left group">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-sm">JSON</div>
+                    <div>
+                        <div class="font-bold text-xs text-slate-800">JSON Format</div>
+                        <div class="text-[10px] text-slate-500">Backup itinerary data file</div>
+                    </div>
+                </button>
+                <button onclick="exportData('geojson')" class="w-full p-3 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition flex items-center gap-3 text-left group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">GIS</div>
+                    <div>
+                        <div class="font-bold text-xs text-slate-800">GeoJSON Format</div>
+                        <div class="text-[10px] text-slate-500">Compatible with Google Earth & QGIS</div>
+                    </div>
+                </button>
+                <button onclick="exportData('print')" class="w-full p-3 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition flex items-center gap-3 text-left group">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm"><i class="fa-solid fa-print"></i></div>
+                    <div>
+                        <div class="font-bold text-xs text-slate-800" data-i18n="printSummary">Printable Travel Summary</div>
+                        <div class="text-[10px] text-slate-500">Open clean document to print or save PDF</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="modal-settings" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-100 max-h-[90vh] flex flex-col">
+            <button onclick="closeModal('modal-settings')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 shrink-0">
+                <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base" data-i18n="settingsTitle">Settings & Preferences</h3>
+                    <p class="text-xs text-slate-500" data-i18n="settingsSubtitle">Configure API key, AI tone, and map styles</p>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+                <!-- API Key Section -->
+                <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800 flex items-center gap-1.5" data-i18n="apiKeySection">
+                            <i class="fa-solid fa-key text-amber-500"></i> Gemini API Key
+                        </label>
+                        <span id="api-key-status-badge" class="px-2 py-0.5 text-[10px] rounded-full font-bold bg-slate-200 text-slate-600">Default Key</span>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="setting-api-key" placeholder="Enter Gemini API Key..." data-i18n-ph="apiKeyPlaceholder" class="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs">
+                        <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
+                            <i id="api-key-eye" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-500 leading-snug" data-i18n="apiKeyHint">Provide your own Gemini API key for custom usage. Stored locally in your browser.</p>
+                </div>
+
+                <!-- AI Persona Tone -->
+                <div class="space-y-1">
+                    <label class="font-bold text-slate-800 flex items-center gap-1.5" data-i18n="aiToneLabel">
+                        <i class="fa-solid fa-robot text-indigo-500"></i> AI Guide Tone
+                    </label>
+                    <select id="setting-ai-tone" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="friendly" data-i18n="toneFriendly">Friendly Guide (Default)</option>
+                        <option value="concise" data-i18n="toneConcise">Concise & Direct</option>
+                        <option value="foodie" data-i18n="toneFoodie">Foodie & Culture Enthusiast</option>
+                    </select>
+                </div>
+
+                <!-- Map Tile Style -->
+                <div class="space-y-1">
+                    <label class="font-bold text-slate-800 flex items-center gap-1.5" data-i18n="mapStyleLabel">
+                        <i class="fa-solid fa-map text-emerald-500"></i> Map Tile Style
+                    </label>
+                    <select id="setting-map-style" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="osm" data-i18n="mapStyleOsm">Standard OpenStreetMap</option>
+                        <option value="positron" data-i18n="mapStylePositron">Light Minimalist (Carto)</option>
+                        <option value="dark" data-i18n="mapStyleDark">Dark Mode (Carto)</option>
+                        <option value="satellite" data-i18n="mapStyleSatellite">Satellite (Esri)</option>
+                    </select>
+                </div>
+
+                <!-- Distance Units -->
+                <div class="space-y-1">
+                    <label class="font-bold text-slate-800 flex items-center gap-1.5" data-i18n="unitsLabel">
+                        <i class="fa-solid fa-ruler-horizontal text-rose-500"></i> Distance Units
+                    </label>
+                    <select id="setting-units" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="km" data-i18n="unitKm">Kilometers (km)</option>
+                        <option value="mi" data-i18n="unitMi">Miles (mi)</option>
+                    </select>
+                </div>
+
+                <!-- App Data Reset -->
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-rose-600" data-i18n="resetAppData">Reset All App Data</div>
+                        <div class="text-[10px] text-slate-400" data-i18n="resetAppDataDesc">Clear bookmarks and itinerary stops</div>
+                    </div>
+                    <button onclick="resetAllAppData()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl font-bold transition">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Save -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+                <span id="settings-save-toast" class="text-xs text-emerald-600 font-bold opacity-0 transition-opacity" data-i18n="settingsSavedToast">Settings saved!</span>
+                <button onclick="saveAppSettings()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span data-i18n="saveSettingsBtn">Save Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const attractionsData = [
+            {
+                id: 'taipei101',
+                name: { en: "Taipei 101", zh: "台北 101" },
+                city: { en: "Taipei City", zh: "台北市" },
+                region: 'north',
+                category: 'landmark',
+                lat: 25.033976,
+                lng: 121.564538,
+                recommendedTime: '2 - 3 hrs',
+                rating: 4.8,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Taipei_101_2009.jpg/800px-Taipei_101_2009.jpg',
+                desc: {
+                    en: "Iconic skyscraper with panoramic city views from the high-altitude observatory decks.",
+                    zh: "台灣知名地標摩天大樓，設有高速電梯與高空觀景台，俯瞰台北盆地壯麗全景。"
+                }
+            },
+            {
+                id: 'jiufen',
+                name: { en: "Jiufen Old Street", zh: "九份老街" },
+                city: { en: "New Taipei City", zh: "新北市" },
+                region: 'north',
+                category: 'culture',
+                lat: 25.1098,
+                lng: 121.8452,
+                recommendedTime: '3 - 4 hrs',
+                rating: 4.7,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Jiufen_Taiwan_Amei-Teahouse-01.jpg/800px-Jiufen_Taiwan_Amei-Teahouse-01.jpg',
+                desc: {
+                    en: "Atmospheric hillside town famous for narrow lantern-lit alleys, teahouses, and sea views.",
+                    zh: "山城老街，以紅燈籠蜿蜒巷弄、經典茶樓以及迷人的山海景致聞名國際。"
+                }
+            },
+            {
+                id: 'yehliu',
+                name: { en: "Yehliu Geopark", zh: "野柳地質公園" },
+                city: { en: "New Taipei City", zh: "新北市" },
+                region: 'north',
+                category: 'nature',
+                lat: 25.2064,
+                lng: 121.6908,
+                recommendedTime: '2 hrs',
+                rating: 4.6,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Yehliu_Geopark_Queen%27s_Head_20190518.jpg/800px-Yehliu_Geopark_Queen%27s_Head_20190518.jpg',
+                desc: {
+                    en: "Cape known for unique coastal hoodoo rock formations including the famous Queen's Head.",
+                    zh: "北海岸地質奇觀，擁有著名「女王頭」、仙女鞋等特異蕈狀岩海岸景貌。"
+                }
+            },
+            {
+                id: 'sunmoonlake',
+                name: { en: "Sun Moon Lake", zh: "日月潭" },
+                city: { en: "Nantou County", zh: "南投縣" },
+                region: 'central',
+                category: 'nature',
+                lat: 23.8517,
+                lng: 120.9150,
+                recommendedTime: '1 day',
+                rating: 4.9,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Sun_Moon_Lake_Lalu.jpg/800px-Sun_Moon_Lake_Lalu.jpg',
+                desc: {
+                    en: "Taiwan's largest alpine lake, ideal for cycling around global top-ranked bike trails.",
+                    zh: "台灣著名高山湖泊，擁有全球頂級環湖自行車道、纜車與遊艇巡航景緻。"
+                }
+            },
+            {
+                id: 'taroko',
+                name: { en: "Taroko Gorge", zh: "太魯閣國家公園" },
+                city: { en: "Hualien County", zh: "花蓮縣" },
+                region: 'east',
+                category: 'nature',
+                lat: 24.1583,
+                lng: 121.6212,
+                recommendedTime: '1 day',
+                rating: 4.9,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Taroko_Gorge_Taiwan.jpg/800px-Taroko_Gorge_Taiwan.jpg',
+                desc: {
+                    en: "Breathtaking marble canyon featuring dramatic cliffs, rushing rivers, and hiking trails.",
+                    zh: "雄偉的大理岩峽谷地形，立霧溪切穿形成險峻峭壁與名揚海內外的古道。"
+                }
+            },
+            {
+                id: 'alishan',
+                name: { en: "Alishan National Scenic Area", zh: "阿里山國家風景區" },
+                city: { en: "Chiayi County", zh: "嘉義縣" },
+                region: 'central',
+                category: 'nature',
+                lat: 23.5100,
+                lng: 120.8050,
+                recommendedTime: '1 day',
+                rating: 4.8,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Alishan_Forest_Railway_train_in_cherry_blossom.jpg/800px-Alishan_Forest_Railway_train_in_cherry_blossom.jpg',
+                desc: {
+                    en: "Famous mountain area renowned for sunrise, sea of clouds, forest railway, and giant cypress.",
+                    zh: "以日出、雲海、晚霞、森林鐵道與千年神木「阿里山五奇」聞名於世。"
+                }
+            },
+            {
+                id: 'shilin',
+                name: { en: "Shilin Night Market", zh: "士林夜市" },
+                city: { en: "Taipei City", zh: "台北市" },
+                region: 'north',
+                category: 'food',
+                lat: 25.0888,
+                lng: 121.5241,
+                recommendedTime: '2 - 3 hrs',
+                rating: 4.5,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Shilin_Night_Market_Entrance_20170820.jpg/800px-Shilin_Night_Market_Entrance_20170820.jpg',
+                desc: {
+                    en: "One of Taipei's largest and most famous night markets filled with delicious Taiwanese street food.",
+                    zh: "台北指標性超大型夜市，匯集巨無霸大雞排、生煎包、阿宗麵線等無數美食。"
+                }
+            },
+            {
+                id: 'liuhe',
+                name: { en: "Liuhe Night Market", zh: "六合夜市" },
+                city: { en: "Kaohsiung City", zh: "高雄市" },
+                region: 'south',
+                category: 'food',
+                lat: 22.6314,
+                lng: 120.3013,
+                recommendedTime: '2 hrs',
+                rating: 4.4,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Liuhe_Night_Market_Kaohsiung.jpg/800px-Liuhe_Night_Market_Kaohsiung.jpg',
+                desc: {
+                    en: "Bustling night market in Kaohsiung renowned for fresh seafood and local papaya milk.",
+                    zh: "高雄歷史悠久的行人徒步夜市，以新鮮海鮮燒烤、木瓜牛奶與烏魚子享譽。"
+                }
+            },
+            {
+                id: 'chimei',
+                name: { en: "Chimei Museum", zh: "奇美博物館" },
+                city: { en: "Tainan City", zh: "臺南市" },
+                region: 'south',
+                category: 'culture',
+                lat: 22.9347,
+                lng: 120.2260,
+                recommendedTime: '3 - 4 hrs',
+                rating: 4.8,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Chimei_Museum_front_view_20150912.jpg/800px-Chimei_Museum_front_view_20150912.jpg',
+                desc: {
+                    en: "Western European style museum surrounded by lush gardens showcasing fine art and arms.",
+                    zh: "西洋古典宮殿式建築博物館，收藏豐富西洋藝術品、樂器、兵器與動物標本。"
+                }
+            },
+            {
+                id: 'kenting',
+                name: { en: "Kenting National Park", zh: "墾丁國家公園" },
+                city: { en: "Pingtung County", zh: "屏東縣" },
+                region: 'south',
+                category: 'nature',
+                lat: 21.9483,
+                lng: 120.7797,
+                recommendedTime: '1 - 2 days',
+                rating: 4.7,
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Eluanbi_Lighthouse_2012.jpg/800px-Eluanbi_Lighthouse_2012.jpg',
+                desc: {
+                    en: "Tropical paradise located at the southern tip of Taiwan with sandy beaches and coral reefs.",
+                    zh: "台灣最南端熱帶國家公園，具備白沙灣海岸、珊瑚礁生態與歡樂墾丁大街。"
+                }
+            }
+        ];
+
+        const i18n = {
+            en: {
+                appTitle: "Taiwan Tourism Odyssey",
+                appSubtitle: "Interactive Travel Map & Route Planner",
+                tabExplore: "Explore Spots",
+                tabSaved: "Saved",
+                tabItinerary: "Itinerary",
+                searchPlaceholder: "Search places, cities...",
+                allRegions: "All Regions",
+                regionNorth: "North Taiwan",
+                regionCentral: "Central Taiwan",
+                regionSouth: "South Taiwan",
+                regionEast: "East Taiwan",
+                allCategories: "All Categories",
+                catNature: "🌲 Nature & Scenic",
+                catCulture: "🏛️ History & Culture",
+                catFood: "🍜 Night Markets & Food",
+                catLandmark: "🏙️ Landmarks & City",
+                savedTitle: "Bookmarked Attractions",
+                clearAll: "Clear All",
+                totalDistance: "Driving Distance",
+                driveTime: "Drive Time",
+                stopCount: "Total Stops",
+                btnShareRoute: "Share Trip",
+                btnExport: "Export Data",
+                legendTitle: "Map Legend",
+                modalShareTitle: "Share Your Taiwan Itinerary",
+                modalShareDesc: "Copy the link below. Anyone with this link can view your custom itinerary!",
+                btnCopy: "Copy",
+                copiedMsg: "Link copied to clipboard!",
+                modalExportTitle: "Export Travel Itinerary",
+                modalExportDesc: "Choose your preferred export format for offline use or mapping tools.",
+                printSummary: "Printable Travel Summary",
+                addRoute: "Add to Route",
+                inRoute: "In Itinerary",
+                saveSpot: "Save",
+                removeSpot: "Saved",
+                noSpotsFound: "No attractions found matching your search criteria.",
+                noSavedSpots: "No saved spots yet. Click the heart icon on any spot to save it!",
+                noItineraryStops: "Your itinerary is empty! Click '+ Add to Route' on any attraction card to start.",
+                suggestTime: "Recommended: ",
+                rating: "Rating: ",
+                spotsFound: "attractions found",
+                viewList: "List",
+                viewGrid: "Grid",
+                aiAssistantBtn: "AI Guide",
+                botTitle: "Formosa Travel AI",
+                botStatus: "Online • Gemini 3 Powered",
+                botWelcome: "👋 Hi there! I'm your Taiwan Travel Assistant. Ask me anything about attractions, transport, itinerary tips, or local street snacks!",
+                chatInputPlaceholder: "Ask about Taiwan travel...",
+                settingsTitle: "Settings & Preferences",
+                settingsSubtitle: "Configure API key, AI tone, and map styles",
+                apiKeySection: "Gemini API Key",
+                apiKeyPlaceholder: "Enter Gemini API Key (Optional)...",
+                apiKeyHint: "Provide your own Gemini API key for custom usage. Stored locally in your browser.",
+                aiToneLabel: "AI Guide Tone",
+                toneFriendly: "Friendly Guide (Default)",
+                toneConcise: "Concise & Direct",
+                toneFoodie: "Foodie & Culture Enthusiast",
+                mapStyleLabel: "Map Tile Style",
+                mapStyleOsm: "Standard OpenStreetMap",
+                mapStylePositron: "Light Minimalist (Carto)",
+                mapStyleDark: "Dark Mode (Carto)",
+                mapStyleSatellite: "Satellite (Esri)",
+                unitsLabel: "Distance Units",
+                unitKm: "Kilometers (km)",
+                unitMi: "Miles (mi)",
+                resetAppData: "Reset All App Data",
+                resetAppDataDesc: "Clear bookmarks and itinerary stops",
+                saveSettingsBtn: "Save Settings",
+                settingsSavedToast: "Settings saved successfully!"
+            },
+            zh: {
+                appTitle: "台灣旅遊探索地圖",
+                appSubtitle: "互動式景點地圖與公路行程規劃器",
+                tabExplore: "探索景點",
+                tabSaved: "收藏景點",
+                tabItinerary: "行程規劃",
+                searchPlaceholder: "搜尋景點、城市關鍵字...",
+                allRegions: "全台灣區域",
+                regionNorth: "北部地區",
+                regionCentral: "中部地區",
+                regionSouth: "南部地區",
+                regionEast: "東部地區",
+                allCategories: "所有景點類別",
+                catNature: "🌲 自然美景",
+                catCulture: "🏛️ 歷史文化",
+                catFood: "🍜 夜市美食",
+                catLandmark: "🏙️ 地標建築",
+                savedTitle: "我的收藏景點",
+                clearAll: "清除全部",
+                totalDistance: "預估公路距離",
+                driveTime: "預估行車時間",
+                stopCount: "總停靠點",
+                btnShareRoute: "分享行程",
+                btnExport: "匯出資料",
+                legendTitle: "圖例說明",
+                modalShareTitle: "分享您的台灣旅程",
+                modalShareDesc: "複製下方專屬連結，任何人開啟後皆可自動載入您設計的這條路線！",
+                btnCopy: "複製連結",
+                copiedMsg: "連結已成功複製到剪貼簿！",
+                modalExportTitle: "匯出旅遊行程資料",
+                modalExportDesc: "選擇適合您的格式進行備份、列印或匯入地圖軟體。",
+                printSummary: "可列印旅遊行程表",
+                addRoute: "加入行程",
+                inRoute: "已在行程中",
+                saveSpot: "收藏",
+                removeSpot: "已收藏",
+                noSpotsFound: "找不到符合您搜尋條件的景點。",
+                noSavedSpots: "目前沒有收藏的景點。點擊景點卡片上的愛心即可收藏！",
+                noItineraryStops: "行程目前是空的！點擊景點卡片上的「+ 加入行程」開始規劃。",
+                suggestTime: "建議停留：",
+                rating: "評分：",
+                spotsFound: "個搜尋景點",
+                viewList: "列表",
+                viewGrid: "網格",
+                aiAssistantBtn: "AI 導遊",
+                botTitle: "福爾摩沙 AI 導遊",
+                botStatus: "線上服務 • Gemini 3 驅動",
+                botWelcome: "👋 你好！我是你的台灣旅遊 AI 客服導遊。不論是行程規劃、交通指引、在地小吃或私房景點，都可以隨時問我喔！",
+                chatInputPlaceholder: "輸入台灣旅遊相關問題...",
+                settingsTitle: "偏好與系統設定",
+                settingsSubtitle: "設定 API Key、AI 導遊口吻與地圖風格",
+                apiKeySection: "Gemini API Key 設定",
+                apiKeyPlaceholder: "輸入您的 Gemini API Key (可選)...",
+                apiKeyHint: "使用您自己的 Gemini API Key 以取得更穩定的使用用量。儲存於本機瀏覽器。",
+                aiToneLabel: "AI 導遊口吻偏好",
+                toneFriendly: "熱情友善導遊（預設）",
+                toneConcise: "簡潔明確重點",
+                toneFoodie: "老饕美食文化專家",
+                mapStyleLabel: "地圖樣式風格",
+                mapStyleOsm: "標準 OpenStreetMap",
+                mapStylePositron: "極簡極白風格 (Carto)",
+                mapStyleDark: "深色夜間模式 (Carto)",
+                mapStyleSatellite: "衛星實景圖層 (Esri)",
+                unitsLabel: "距離單位",
+                unitKm: "公里 (km)",
+                unitMi: "英哩 (mi)",
+                resetAppData: "重置所有應用程式資料",
+                resetAppDataDesc: "清除所有已收藏景點與規劃行程",
+                saveSettingsBtn: "儲存設定",
+                settingsSavedToast: "設定已成功儲存！"
+            }
+        };
+
+        let currentLang = 'en';
+        let activeTab = 'explore';
+        let currentViewMode = 'list';
+        let savedSpotIds = JSON.parse(localStorage.getItem('taiwan_saved_spots')) || [];
+        let itinerarySpotIds = JSON.parse(localStorage.getItem('taiwan_itinerary_spots')) || [];
+        
+        let appSettings = JSON.parse(localStorage.getItem('taiwan_app_settings')) || {
+            apiKey: '',
+            aiTone: 'friendly',
+            mapStyle: 'osm',
+            units: 'km'
+        };
+
+        let map;
+        let currentTileLayer = null;
+        let markersMap = {};
+        let routePolyline = null;
+
+        const mapTileConfigs = {
+            osm: {
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attr: '&copy; OpenStreetMap contributors'
+            },
+            positron: {
+                url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                attr: '&copy; OpenStreetMap &copy; CARTO'
+            },
+            dark: {
+                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attr: '&copy; OpenStreetMap &copy; CARTO'
+            },
+            satellite: {
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                attr: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS User Community'
+            }
+        };
+
+        window.onload = function() {
+            initMap();
+            initFromUrl();
+            renderSpots();
+            updateBadges();
+            updateRouteDisplay();
+            loadSettingsIntoForm();
+        };
+
+        function initMap() {
+            if (typeof L === 'undefined') {
+                console.error("Leaflet library (L) is not loaded properly.");
+                return;
+            }
+
+            map = L.map('map', {
+                zoomControl: false
+            }).setView([23.7, 121.0], 7);
+
+            applyMapTileStyle(appSettings.mapStyle || 'osm');
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            attractionsData.forEach(spot => {
+                const marker = createCustomMarker(spot);
+                marker.addTo(map);
+                markersMap[spot.id] = marker;
+            });
+        }
+
+        function applyMapTileStyle(styleKey) {
+            const config = mapTileConfigs[styleKey] || mapTileConfigs.osm;
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+            currentTileLayer = L.tileLayer(config.url, {
+                maxZoom: 18,
+                attribution: config.attr
+            }).addTo(map);
+        }
+
+        function createCustomMarker(spot) {
+            const categoryIcons = {
+                nature: '🌲',
+                culture: '🏛️',
+                food: '🍜',
+                landmark: '🏙️'
+            };
+
+            const categoryColors = {
+                nature: 'bg-emerald-500',
+                culture: 'bg-amber-500',
+                food: 'bg-rose-500',
+                landmark: 'bg-indigo-500'
+            };
+
+            const seqIndex = itinerarySpotIds.indexOf(spot.id);
+            const isInItinerary = seqIndex !== -1;
+
+            const iconHtml = `
+                <div class="relative group cursor-pointer">
+                    <div class="w-8 h-8 ${categoryColors[spot.category]} text-white rounded-xl shadow-lg flex items-center justify-center text-sm transform transition duration-300 group-hover:scale-125 group-hover:z-30 border-2 border-white">
+                        ${categoryIcons[spot.category]}
+                    </div>
+                    ${isInItinerary ? `
+                        <div class="absolute -top-2 -right-2 bg-gradient-to-r from-amber-400 to-rose-500 text-white font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-md pulse-badge">
+                            ${seqIndex + 1}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            const customIcon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-leaflet-pin',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const marker = L.marker([spot.lat, spot.lng], { icon: customIcon });
+            marker.bindPopup(getPopupHTML(spot));
+            return marker;
+        }
+
+        function handleImgError(imgElement, spotId) {
+            imgElement.onerror = null;
+            const spot = attractionsData.find(s => s.id === spotId);
+            const titleText = spot ? spot.name[currentLang] : 'Taiwan Attraction';
+            const text = encodeURIComponent(titleText);
+            imgElement.src = `https://placehold.co/600x400/4f46e5/ffffff?text=${text}`;
+        }
+
+        function refreshAllMarkers() {
+            attractionsData.forEach(spot => {
+                if (markersMap[spot.id]) {
+                    map.removeLayer(markersMap[spot.id]);
+                }
+                const newMarker = createCustomMarker(spot);
+                newMarker.addTo(map);
+                markersMap[spot.id] = newMarker;
+            });
+        }
+
+        function getPopupHTML(spot) {
+            const isSaved = savedSpotIds.includes(spot.id);
+            const inItinerary = itinerarySpotIds.includes(spot.id);
+
+            return `
+                <div class="p-3 text-slate-800">
+                    <img src="${spot.img}" onerror="handleImgError(this, '${spot.id}')" class="w-full h-28 object-cover rounded-xl mb-2 shadow-sm" alt="${spot.name[currentLang]}">
+                    <h4 class="font-bold text-sm text-slate-900 leading-tight">${spot.name[currentLang]}</h4>
+                    <p class="text-[11px] text-indigo-600 font-semibold mb-1"><i class="fa-solid fa-location-dot me-1"></i>${spot.city[currentLang]}</p>
+                    <p class="text-[11px] text-slate-500 line-clamp-2 mb-3">${spot.desc[currentLang]}</p>
+                    <div class="flex items-center gap-1.5 border-t pt-2 border-slate-100">
+                        <button onclick="toggleItinerary('${spot.id}')" class="flex-1 py-1.5 text-[11px] font-bold rounded-lg ${inItinerary ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'} transition shadow-sm">
+                            ${inItinerary ? i18n[currentLang].inRoute : i18n[currentLang].addRoute}
+                        </button>
+                        <button onclick="toggleSaveSpot('${spot.id}')" class="p-1.5 text-xs rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 ${isSaved ? 'text-rose-500 bg-rose-50' : ''}">
+                            <i class="fa-${isSaved ? 'solid' : 'regular'} fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            const btnList = document.getElementById('btn-view-list');
+            const btnGrid = document.getElementById('btn-view-grid');
+
+            if (mode === 'list') {
+                btnList.className = "px-2.5 py-1 rounded-lg text-xs transition font-semibold bg-white text-indigo-600 shadow-sm flex items-center gap-1";
+                btnGrid.className = "px-2.5 py-1 rounded-lg text-xs transition font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1";
+            } else {
+                btnGrid.className = "px-2.5 py-1 rounded-lg text-xs transition font-semibold bg-white text-indigo-600 shadow-sm flex items-center gap-1";
+                btnList.className = "px-2.5 py-1 rounded-lg text-xs transition font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1";
+            }
+
+            renderSpots();
+        }
+
+        function renderSpots() {
+            if (activeTab === 'explore') renderExploreTab();
+            else if (activeTab === 'saved') renderSavedTab();
+            else if (activeTab === 'itinerary') renderItineraryTab();
+        }
+
+        function handleFilterChange() {
+            if (activeTab === 'explore') {
+                renderExploreTab();
+            }
+        }
+
+        function getFilteredSpots() {
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            const region = document.getElementById('filter-region').value;
+            const category = document.getElementById('filter-category').value;
+
+            return attractionsData.filter(spot => {
+                const matchesSearch = spot.name.en.toLowerCase().includes(searchQuery) ||
+                                      spot.name.zh.toLowerCase().includes(searchQuery) ||
+                                      spot.city.en.toLowerCase().includes(searchQuery) ||
+                                      spot.city.zh.toLowerCase().includes(searchQuery);
+                const matchesRegion = region === 'all' || spot.region === region;
+                const matchesCategory = category === 'all' || spot.category === category;
+
+                return matchesSearch && matchesRegion && matchesCategory;
+            });
+        }
+
+        function renderExploreTab() {
+            const container = document.getElementById('spots-list');
+            const spots = getFilteredSpots();
+
+            const countText = document.getElementById('spots-count-text');
+            if (countText) {
+                countText.innerText = `${spots.length} ${i18n[currentLang].spotsFound}`;
+            }
+
+            if (spots.length === 0) {
+                container.className = "flex-1 overflow-y-auto pr-1";
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">${i18n[currentLang].noSpotsFound}</div>`;
+                return;
+            }
+
+            if (currentViewMode === 'grid') {
+                container.className = "flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1 align-content-start";
+            } else {
+                container.className = "flex-1 overflow-y-auto space-y-3 pr-1";
+            }
+
+            container.innerHTML = spots.map(spot => createSpotCardHTML(spot)).join('');
+        }
+
+        function renderSavedTab() {
+            const container = document.getElementById('saved-list');
+            const savedSpots = attractionsData.filter(s => savedSpotIds.includes(s.id));
+
+            if (savedSpots.length === 0) {
+                container.className = "flex-1 overflow-y-auto pr-1";
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">${i18n[currentLang].noSavedSpots}</div>`;
+                return;
+            }
+
+            if (currentViewMode === 'grid') {
+                container.className = "flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1 align-content-start";
+            } else {
+                container.className = "flex-1 overflow-y-auto space-y-3 pr-1";
+            }
+
+            container.innerHTML = savedSpots.map(spot => createSpotCardHTML(spot)).join('');
+        }
+
+        function createSpotCardHTML(spot) {
+            const isSaved = savedSpotIds.includes(spot.id);
+            const inItinerary = itinerarySpotIds.includes(spot.id);
+
+            if (currentViewMode === 'grid') {
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition p-2.5 flex flex-col justify-between group relative cursor-pointer h-full" onclick="focusOnSpot('${spot.id}')">
+                        <div>
+                            <div class="relative mb-2">
+                                <img src="${spot.img}" onerror="handleImgError(this, '${spot.id}')" class="w-full h-24 rounded-xl object-cover shadow-sm" alt="${spot.name[currentLang]}">
+                                <button onclick="event.stopPropagation(); toggleSaveSpot('${spot.id}')" class="absolute top-1.5 right-1.5 w-7 h-7 bg-white/85 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 ${isSaved ? 'text-rose-500' : ''} transition shadow-sm">
+                                    <i class="fa-${isSaved ? 'solid' : 'regular'} fa-heart text-xs"></i>
+                                </button>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-800 truncate leading-tight">${spot.name[currentLang]}</h4>
+                            <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                                <span class="text-indigo-600 font-semibold truncate"><i class="fa-solid fa-location-dot me-0.5"></i>${spot.city[currentLang]}</span>
+                                <span class="shrink-0"><i class="fa-solid fa-star text-amber-400 me-0.5"></i>${spot.rating}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-snug">${spot.desc[currentLang]}</p>
+                        </div>
+
+                        <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                            <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md font-medium truncate max-w-[65px]">${spot.recommendedTime}</span>
+                            <button onclick="event.stopPropagation(); toggleItinerary('${spot.id}')" class="text-[10px] px-2 py-1 rounded-lg font-bold ${inItinerary ? 'bg-indigo-100 text-indigo-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90'} transition shadow-sm flex items-center gap-1 shrink-0">
+                                <i class="fa-solid ${inItinerary ? 'fa-check' : 'fa-plus'} text-[9px]"></i>
+                                <span>${inItinerary ? i18n[currentLang].inRoute : i18n[currentLang].addRoute}</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition p-3 flex gap-3 group relative cursor-pointer" onclick="focusOnSpot('${spot.id}')">
+                    <img src="${spot.img}" onerror="handleImgError(this, '${spot.id}')" class="w-20 h-20 rounded-xl object-cover shrink-0 shadow-sm" alt="${spot.name[currentLang]}">
+                    
+                    <div class="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-start justify-between gap-1">
+                                <h4 class="font-bold text-xs sm:text-sm text-slate-800 truncate leading-tight">${spot.name[currentLang]}</h4>
+                                <button onclick="event.stopPropagation(); toggleSaveSpot('${spot.id}')" class="text-slate-300 hover:text-rose-500 ${isSaved ? 'text-rose-500' : ''} transition">
+                                    <i class="fa-${isSaved ? 'solid' : 'regular'} fa-heart text-xs"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                <span class="text-indigo-600 font-semibold"><i class="fa-solid fa-location-dot me-0.5"></i>${spot.city[currentLang]}</span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-star text-amber-400 me-0.5"></i>${spot.rating}</span>
+                            </div>
+
+                            <p class="text-[11px] text-slate-500 line-clamp-1 mt-1">${spot.desc[currentLang]}</p>
+                        </div>
+
+                        <div class="mt-2 flex items-center justify-between">
+                            <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">${i18n[currentLang].suggestTime}${spot.recommendedTime}</span>
+                            <button onclick="event.stopPropagation(); toggleItinerary('${spot.id}')" class="text-[11px] px-2.5 py-1 rounded-xl font-bold ${inItinerary ? 'bg-indigo-100 text-indigo-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90'} transition shadow-sm flex items-center gap-1">
+                                <i class="fa-solid ${inItinerary ? 'fa-check' : 'fa-plus'} text-[10px]"></i>
+                                <span>${inItinerary ? i18n[currentLang].inRoute : i18n[currentLang].addRoute}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderItineraryTab() {
+            const container = document.getElementById('itinerary-stops-list');
+            const stops = itinerarySpotIds.map(id => attractionsData.find(s => s.id === id)).filter(Boolean);
+
+            if (stops.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">${i18n[currentLang].noItineraryStops}</div>`;
+                return;
+            }
+
+            container.innerHTML = stops.map((spot, index) => `
+                <div class="bg-white rounded-2xl border border-slate-200 p-2.5 flex items-center gap-2.5 shadow-sm">
+                    <div class="w-6 h-6 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                        ${index + 1}
+                    </div>
+                    <img src="${spot.img}" onerror="handleImgError(this, '${spot.id}')" class="w-11 h-11 rounded-xl object-cover shrink-0" alt="${spot.name[currentLang]}">
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="focusOnSpot('${spot.id}')">
+                        <h5 class="font-bold text-xs text-slate-800 truncate">${spot.name[currentLang]}</h5>
+                        <p class="text-[10px] text-slate-500">${spot.city[currentLang]}</p>
+                    </div>
+                    <div class="flex items-center gap-1 text-slate-400">
+                        ${index > 0 ? `<button onclick="moveItineraryStop(${index}, ${index - 1})" class="p-1 hover:text-indigo-600"><i class="fa-solid fa-chevron-up text-xs"></i></button>` : ''}
+                        ${index < stops.length - 1 ? `<button onclick="moveItineraryStop(${index}, ${index + 1})" class="p-1 hover:text-indigo-600"><i class="fa-solid fa-chevron-down text-xs"></i></button>` : ''}
+                        <button onclick="toggleItinerary('${spot.id}')" class="p-1 hover:text-rose-500 ml-1"><i class="fa-solid fa-xmark text-xs"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function updateRouteDisplay() {
+            refreshAllMarkers();
+
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+                routePolyline = null;
+            }
+
+            const stops = itinerarySpotIds.map(id => attractionsData.find(s => s.id === id)).filter(Boolean);
+            document.getElementById('route-stops-count').innerText = stops.length;
+
+            if (stops.length < 2) {
+                document.getElementById('route-distance-text').innerText = "0 km";
+                document.getElementById('route-duration-text').innerText = "0m";
+                return;
+            }
+
+            const coordinates = stops.map(s => `${s.lng},${s.lat}`).join(';');
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+            try {
+                const response = await fetch(osrmUrl);
+                const data = await response.json();
+
+                if (data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                    routePolyline = L.polyline(routeCoords, {
+                        color: '#6366f1',
+                        weight: 5,
+                        opacity: 0.85,
+                        dashArray: '1, 8'
+                    }).addTo(map);
+
+                    map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+
+                    const distanceKm = (route.distance / 1000);
+                    const durationMin = Math.round(route.duration / 60);
+                    const hours = Math.floor(durationMin / 60);
+                    const mins = durationMin % 60;
+
+                    if (appSettings.units === 'mi') {
+                        const distanceMi = (distanceKm * 0.621371).toFixed(1);
+                        document.getElementById('route-distance-text').innerText = `${distanceMi} mi`;
+                    } else {
+                        document.getElementById('route-distance-text').innerText = `${distanceKm.toFixed(1)} km`;
+                    }
+
+                    document.getElementById('route-duration-text').innerText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                }
+            } catch (err) {
+                console.warn("OSRM Routing failed, falling back to straight polyline:", err);
+                const coords = stops.map(s => [s.lat, s.lng]);
+                routePolyline = L.polyline(coords, { color: '#6366f1', weight: 4, opacity: 0.8 }).addTo(map);
+                map.fitBounds(routePolyline.getBounds(), { padding: [30, 30] });
+            }
+        }
+
+        function openSettingsModal() {
+            loadSettingsIntoForm();
+            document.getElementById('modal-settings').classList.remove('hidden');
+        }
+
+        function loadSettingsIntoForm() {
+            document.getElementById('setting-api-key').value = appSettings.apiKey || '';
+            document.getElementById('setting-ai-tone').value = appSettings.aiTone || 'friendly';
+            document.getElementById('setting-map-style').value = appSettings.mapStyle || 'osm';
+            document.getElementById('setting-units').value = appSettings.units || 'km';
+
+            const badge = document.getElementById('api-key-status-badge');
+            if (appSettings.apiKey && appSettings.apiKey.trim().length > 0) {
+                badge.innerText = "Custom Key Active";
+                badge.className = "px-2 py-0.5 text-[10px] rounded-full font-bold bg-emerald-100 text-emerald-700";
+            } else {
+                badge.innerText = "Default Key";
+                badge.className = "px-2 py-0.5 text-[10px] rounded-full font-bold bg-slate-200 text-slate-600";
+            }
+        }
+
+        function toggleApiKeyVisibility() {
+            const input = document.getElementById('setting-api-key');
+            const icon = document.getElementById('api-key-eye');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function saveAppSettings() {
+            appSettings.apiKey = document.getElementById('setting-api-key').value.trim();
+            appSettings.aiTone = document.getElementById('setting-ai-tone').value;
+            const newMapStyle = document.getElementById('setting-map-style').value;
+            appSettings.mapStyle = newMapStyle;
+            appSettings.units = document.getElementById('setting-units').value;
+
+            localStorage.setItem('taiwan_app_settings', JSON.stringify(appSettings));
+
+            applyMapTileStyle(newMapStyle);
+            updateRouteDisplay();
+
+            const toast = document.getElementById('settings-save-toast');
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                closeModal('modal-settings');
+            }, 1200);
+        }
+
+        function resetAllAppData() {
+            savedSpotIds = [];
+            itinerarySpotIds = [];
+            localStorage.removeItem('taiwan_saved_spots');
+            localStorage.removeItem('taiwan_itinerary_spots');
+            updateBadges();
+            renderSpots();
+            updateRouteDisplay();
+            closeModal('modal-settings');
+        }
+
+        function toggleSaveSpot(id) {
+            if (savedSpotIds.includes(id)) {
+                savedSpotIds = savedSpotIds.filter(item => item !== id);
+            } else {
+                savedSpotIds.push(id);
+            }
+            localStorage.setItem('taiwan_saved_spots', JSON.stringify(savedSpotIds));
+            updateBadges();
+            renderSpots();
+            refreshAllMarkers();
+        }
+
+        function toggleItinerary(id) {
+            if (itinerarySpotIds.includes(id)) {
+                itinerarySpotIds = itinerarySpotIds.filter(item => item !== id);
+            } else {
+                itinerarySpotIds.push(id);
+            }
+            localStorage.setItem('taiwan_itinerary_spots', JSON.stringify(itinerarySpotIds));
+            updateBadges();
+            renderSpots();
+            updateRouteDisplay();
+        }
+
+        function moveItineraryStop(fromIndex, toIndex) {
+            const element = itinerarySpotIds.splice(fromIndex, 1)[0];
+            itinerarySpotIds.splice(toIndex, 0, element);
+            localStorage.setItem('taiwan_itinerary_spots', JSON.stringify(itinerarySpotIds));
+            renderItineraryTab();
+            updateRouteDisplay();
+        }
+
+        function clearSaved() {
+            savedSpotIds = [];
+            localStorage.removeItem('taiwan_saved_spots');
+            updateBadges();
+            renderSpots();
+            refreshAllMarkers();
+        }
+
+        function clearItinerary() {
+            itinerarySpotIds = [];
+            localStorage.removeItem('taiwan_itinerary_spots');
+            updateBadges();
+            renderSpots();
+            updateRouteDisplay();
+        }
+
+        function focusOnSpot(id) {
+            const spot = attractionsData.find(s => s.id === id);
+            if (spot) {
+                map.flyTo([spot.lat, spot.lng], 13, { duration: 1.2 });
+                if (markersMap[id]) {
+                    markersMap[id].openPopup();
+                }
+            }
+        }
+
+        function updateBadges() {
+            const savedBadge = document.getElementById('saved-count-badge');
+            const itineraryBadge = document.getElementById('itinerary-count-badge');
+
+            if (savedSpotIds.length > 0) {
+                savedBadge.innerText = savedSpotIds.length;
+                savedBadge.classList.remove('hidden');
+            } else {
+                savedBadge.classList.add('hidden');
+            }
+
+            if (itinerarySpotIds.length > 0) {
+                itineraryBadge.innerText = itinerarySpotIds.length;
+                itineraryBadge.classList.remove('hidden');
+            } else {
+                itineraryBadge.classList.add('hidden');
+            }
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('view-explore').classList.add('hidden');
+            document.getElementById('view-saved').classList.add('hidden');
+            document.getElementById('view-itinerary').classList.add('hidden');
+
+            document.getElementById('tab-explore-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
+            document.getElementById('tab-saved-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
+            document.getElementById('tab-itinerary-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
+
+            if (tab === 'explore') {
+                document.getElementById('view-explore').classList.remove('hidden');
+                document.getElementById('tab-explore-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-600 shadow-sm";
+            } else if (tab === 'saved') {
+                document.getElementById('view-saved').classList.remove('hidden');
+                document.getElementById('tab-saved-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-rose-600 shadow-sm";
+            } else if (tab === 'itinerary') {
+                document.getElementById('view-itinerary').classList.remove('hidden');
+                document.getElementById('tab-itinerary-btn').className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-600 shadow-sm";
+            }
+
+            renderSpots();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            document.getElementById('lang-btn-label').innerText = currentLang === 'en' ? '繁體中文' : 'English';
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) {
+                    el.innerText = i18n[currentLang][key];
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (i18n[currentLang][key]) {
+                    el.placeholder = i18n[currentLang][key];
+                }
+            });
+
+            renderSpots();
+            refreshAllMarkers();
+        }
+
+        function initFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const routeParam = urlParams.get('route');
+            if (routeParam) {
+                const ids = routeParam.split(',').filter(id => attractionsData.some(s => s.id === id));
+                if (ids.length > 0) {
+                    itinerarySpotIds = ids;
+                    localStorage.setItem('taiwan_itinerary_spots', JSON.stringify(itinerarySpotIds));
+                    switchTab('itinerary');
+                }
+            }
+        }
+
+        function openShareModal() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}?route=${itinerarySpotIds.join(',')}`;
+            document.getElementById('share-url-input').value = shareUrl;
+            document.getElementById('copy-toast').classList.add('hidden');
+            document.getElementById('modal-share').classList.remove('hidden');
+        }
+
+        function copyShareUrl() {
+            const input = document.getElementById('share-url-input');
+            input.select();
+            document.execCommand('copy');
+            document.getElementById('copy-toast').classList.remove('hidden');
+        }
+
+        function openExportModal() {
+            document.getElementById('modal-export').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function exportData(type) {
+            const stops = itinerarySpotIds.map(id => attractionsData.find(s => s.id === id)).filter(Boolean);
+
+            if (type === 'json') {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stops, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", "taiwan_trip_itinerary.json");
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            } else if (type === 'geojson') {
+                const geojson = {
+                    type: "FeatureCollection",
+                    features: stops.map((s, idx) => ({
+                        type: "Feature",
+                        geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+                        properties: { stopSequence: idx + 1, name: s.name.en, city: s.city.en }
+                    }))
+                };
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", "taiwan_trip_route.geojson");
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            } else if (type === 'print') {
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    const htmlContent = `
+                        <html>
+                        <head>
+                            <title>Taiwan Trip Summary</title>
+                            <style>
+                                body { font-family: sans-serif; padding: 2rem; color: #1e293b; }
+                                h1 { color: #4338ca; }
+                                .stop { border-bottom: 1px solid #e2e8f0; padding: 1rem 0; }
+                                .num { font-weight: bold; color: #6366f1; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>Taiwan Travel Itinerary Summary</h1>
+                            <p>Total Stops: ${stops.length}</p>
+                            ${stops.map((s, i) => `
+                                <div class="stop">
+                                    <div class="num">Stop ${i + 1}: ${s.name.en} (${s.name.zh})</div>
+                                    <div>Location: ${s.city.en} | Recommended Stay: ${s.recommendedTime}</div>
+                                    <p>${s.desc.en}</p>
+                                </div>
+                            `).join('')}
+                        </body>
+                        </html>
+                    `;
+                    printWindow.document.write(htmlContent);
+                    printWindow.document.close();
+                    printWindow.print();
+                }
+            }
+            closeModal('modal-export');
+        }
+
+        function toggleAiDrawer() {
+            const drawer = document.getElementById('ai-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function sendQuickChat(promptText) {
+            document.getElementById('chat-input').value = promptText;
+            handleChatSubmit(new Event('submit'));
+        }
+
+        async function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const userMsg = input.value.trim();
+            if (!userMsg) return;
+
+            input.value = '';
+            appendChatMessage('user', userMsg);
+
+            const loadingDivId = appendChatMessage('bot', '<i class="fa-solid fa-circle-notch fa-spin"></i> Thinking...');
+
+            try {
+                let systemPrompt = "You are Formosa AI, an expert, enthusiastic Taiwan travel guide assistant. Help travelers plan trips, recommend street food, transport, and local spots in Taiwan. Answer concisely and politely in the user's language.";
+                
+                if (appSettings.aiTone === 'concise') {
+                    systemPrompt = "You are Formosa AI. Provide extremely concise, direct bullet points for Taiwan travel advice in the user's language.";
+                } else if (appSettings.aiTone === 'foodie') {
+                    systemPrompt = "You are Formosa AI, a Taiwanese foodie expert. Highlight night market foods, traditional Taiwanese cuisine, and local snacks in detail.";
+                }
+
+                const apiKey = appSettings.apiKey || "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userMsg }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const result = await response.json();
+                const aiResponseText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't fetch a response right now. Please check your API key or connection!";
+                
+                updateChatMessage(loadingDivId, aiResponseText);
+            } catch (err) {
+                console.error("AI Chatbot Error:", err);
+                updateChatMessage(loadingDivId, "Sorry, my travel database server is currently busy or the custom API key is invalid. Please check your settings.");
+            }
+        }
+
+        function appendChatMessage(sender, text) {
+            const chatWindow = document.getElementById('chat-messages');
+            const msgId = 'msg-' + Date.now();
+            const isUser = sender === 'user';
+
+            const html = `
+                <div id="${msgId}" class="flex gap-2.5 ${isUser ? 'justify-end' : ''}">
+                    ${!isUser ? `
+                        <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                    ` : ''}
+                    <div class="${isUser ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200'} p-3 rounded-2xl shadow-sm leading-relaxed max-w-[85%]">
+                        ${text}
+                    </div>
+                </div>
+            `;
+
+            chatWindow.insertAdjacentHTML('beforeend', html);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return msgId;
+        }
+
+        function updateChatMessage(msgId, newText) {
+            const msgDiv = document.getElementById(msgId);
+            if (msgDiv) {
+                const bubble = msgDiv.querySelector('div:last-child');
+                if (bubble) {
+                    bubble.innerHTML = newText.replace(/\n/g, '<br>');
+                }
+            }
+            const chatWindow = document.getElementById('chat-messages');
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    </script>
+</body>
+</html>

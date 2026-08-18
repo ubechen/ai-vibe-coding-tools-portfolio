@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大樂透・億萬富翁幸運選號器 3D極致搖號版</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            100: '#fffbeb',
+                            300: '#fde047',
+                            400: '#facc15',
+                            500: '#eab308',
+                            600: '#ca8a04',
+                            700: '#a16207',
+                            800: '#854d0e',
+                        },
+                        ruby: '#dc2626',
+                        jade: '#10b981',
+                    },
+                    fontFamily: {
+                        rounded: ['"M PLUS Rounded 1c"', 'Fredoka', '"Noto Sans TC"', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        '3d-gold': '0 8px 0 #b45309, 0 15px 25px rgba(0, 0, 0, 0.5)',
+                        '3d-gold-sm': '0 4px 0 #b45309',
+                        '3d-ruby': '0 8px 0 #991b1b, 0 15px 20px rgba(153, 27, 27, 0.4)',
+                        '3d-jade': '0 8px 0 #065f46, 0 15px 20px rgba(6, 95, 70, 0.4)',
+                        'ball-3d': 'inset -6px -6px 12px rgba(0,0,0,0.5), inset 6px 6px 12px rgba(255,255,255,0.8), 0 10px 15px rgba(0,0,0,0.4)',
+                        'neon-gold': '0 0 30px rgba(250, 204, 21, 0.8), inset 0 0 15px rgba(250, 204, 21, 0.5)',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 2s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'glow': 'glow 1.5s ease-in-out infinite alternate',
+                        'roll': 'roll 0.5s ease-out',
+                        'coin-rotate': 'coinRotate 2s linear infinite',
+                        'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+                        'pulse-fast': 'pulse 0.6s infinite',
+                        'shoot-up': 'shootUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+                            '50%': { transform: 'translateY(-10px) rotate(3deg)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(250, 204, 21, 0.4)' },
+                            '100%': { boxShadow: '0 0 45px rgba(250, 204, 21, 1), 0 0 20px rgba(234, 179, 8, 0.8)' },
+                        },
+                        roll: {
+                            '0%': { transform: 'translateY(-60px) scale(0.2) rotate(-360deg)', opacity: '0' },
+                            '70%': { transform: 'translateY(10px) scale(1.15) rotate(15deg)', opacity: '1' },
+                            '100%': { transform: 'translateY(0) scale(1) rotate(0deg)', opacity: '1' },
+                        },
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-2px, -2px, 0) rotate(-1deg)' },
+                            '20%, 80%': { transform: 'translate3d(3px, 3px, 0) rotate(1.5deg)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-5px, -3px, 0) rotate(-2deg)' },
+                            '40%, 60%': { transform: 'translate3d(5px, 3px, 0) rotate(2deg)' },
+                        },
+                        shootUp: {
+                            '0%': { transform: 'translateY(120px) scale(0.3)', opacity: '0' },
+                            '60%': { transform: 'translateY(-20px) scale(1.2)', opacity: '1' },
+                            '100%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', 'Fredoka', 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle at 50% 15%, #3b0764 0%, #0f172a 65%, #020617 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .gold-text-gradient {
+            background: linear-gradient(180deg, #ffffff 0%, #fde047 30%, #eab308 60%, #a16207 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
+        }
+
+        /* 3D Glossy Sphere Styles for Lottery Balls */
+        .ball-3d {
+            position: relative;
+            background: radial-gradient(circle at 35% 35%, #ffffff 0%, #facc15 25%, #ca8a04 70%, #854d0e 100%);
+            box-shadow: inset -4px -4px 8px rgba(0,0,0,0.6), inset 4px 4px 8px rgba(255,255,255,0.9), 0 8px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .ball-3d::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 20%;
+            width: 40%;
+            height: 25%;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            transform: rotate(-30deg);
+            filter: blur(1px);
+        }
+
+        /* Color variations for ball ranges */
+        .ball-red { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f87171 25%, #dc2626 70%, #7f1d1d 100%); }
+        .ball-blue { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #60a5fa 25%, #2563eb 70%, #1e3a8a 100%); }
+        .ball-green { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #4ade80 25%, #16a34a 70%, #14532d 100%); }
+        .ball-purple { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #c084fc 25%, #9333ea 70%, #581c87 100%); }
+        .ball-special {
+            background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f472b6 20%, #e11d48 60%, #881337 100%);
+            border: 3px solid #fde047;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.8), inset -4px -4px 8px rgba(0,0,0,0.6);
+        }
+
+        /* Glassmorphism containers */
+        .glass-card {
+            background: rgba(23, 15, 50, 0.7);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(250, 204, 21, 0.35);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.25);
+        }
+
+        /* Pipe style for air extraction machine */
+        .pipe-glass {
+            background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.4) 100%);
+            border: 2px solid rgba(250, 204, 21, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #ca8a04; border-radius: 10px; }
+    </style>
+</head>
+<body class="pb-12 text-slate-100 flex flex-col min-h-screen">
+
+    <!-- Top Navigation Header -->
+    <header class="w-full bg-slate-900/90 border-b border-amber-500/30 sticky top-0 z-50 backdrop-blur-md px-4 py-3 shadow-2xl">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <!-- Logo & Brand Name -->
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-200 p-0.5 shadow-lg animate-float">
+                    <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-2xl">
+                        🎰
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black tracking-wider gold-text-gradient flex items-center gap-2">
+                        大樂透・億萬富翁選號器
+                    </h1>
+                    <p class="text-xs text-amber-300/90 flex items-center gap-1 font-semibold">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-400 animate-spin" style="animation-duration: 4s;"></i>
+                        物理3D風壓搖號 ｜ 祝您喜中億萬頭獎!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Sound Toggle Button -->
+                <button id="soundToggleBtn" onclick="toggleSound()" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-amber-500/40 text-amber-300 hover:bg-slate-700 transition text-xs font-bold shadow-md">
+                    <i id="soundIcon" data-lucide="volume-2" class="w-4 h-4 text-yellow-400"></i>
+                    <span id="soundText" class="hidden sm:inline">音效: 開</span>
+                </button>
+
+                <!-- Wallet Simulation Ticker -->
+                <div class="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-950/70 border border-amber-400/60 text-yellow-300 text-xs font-bold shadow-inner">
+                    <span class="animate-pulse text-lg">🧧</span>
+                    <span>預估頭獎總額：</span>
+                    <span class="text-emerald-400 font-black text-base">$ 2.60 億 NTD</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto w-full px-4 pt-6 flex-grow flex flex-col gap-6" id="appMainContainer">
+
+        <!-- Banner & Live Official Draw Schedule / Latest Draw Info -->
+        <section class="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden border-2 border-amber-400/50">
+            <div class="absolute -top-10 -left-10 text-8xl opacity-10 pointer-events-none select-none">🪙</div>
+            <div class="absolute -bottom-10 -right-10 text-8xl opacity-10 pointer-events-none select-none">💎</div>
+
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <!-- Left: Latest Draw Results -->
+                <div class="flex-1 w-full text-center md:text-left">
+                    <div class="flex items-center justify-center md:justify-start gap-2 mb-2">
+                        <span class="px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-extrabold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            最新一期實際開獎號碼 (第 115000024 期)
+                        </span>
+                    </div>
+
+                    <!-- Latest Numbers Display -->
+                    <div class="flex items-center justify-center md:justify-start gap-1.5 sm:gap-2 my-3 flex-wrap">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-red font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">06</div>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-red font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">10</div>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-blue font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">23</div>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-blue font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">27</div>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-purple font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">47</div>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-purple font-black text-slate-950 text-xs sm:text-sm flex items-center justify-center shadow-lg">48</div>
+                        <span class="text-amber-400 font-bold text-xs px-1">+</span>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ball-special font-black text-white text-xs sm:text-sm flex items-center justify-center shadow-xl">30</div>
+                    </div>
+                    <p class="text-[11px] text-slate-400">開獎日期：每週二、五晚間 20:30 (台灣彩券官方開獎)</p>
+                </div>
+
+                <!-- Right: Future Draw Dates & Countdown Clock -->
+                <div class="w-full md:w-auto bg-slate-950/80 p-4 rounded-2xl border border-amber-500/30 flex flex-col items-center md:items-end text-center md:text-right">
+                    <span class="text-xs text-amber-300 font-extrabold flex items-center gap-1">
+                        <i data-lucide="calendar-clock" class="w-4 h-4 text-amber-400"></i>
+                        下一期實際開獎倒數
+                    </span>
+                    <div id="nextDrawCountdown" class="text-xl sm:text-2xl font-black text-amber-400 font-mono my-1 tracking-wider">
+                        --天 --時 --分 --秒
+                    </div>
+                    <div class="text-[11px] text-slate-300 flex items-center gap-2">
+                        <span>預告開獎日：<strong id="nextDrawDateText" class="text-yellow-300">載入中...</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Mode Selection Tabs -->
+            <div class="mt-6 flex justify-center p-1.5 bg-slate-950/80 rounded-2xl border border-amber-500/30 max-w-md mx-auto">
+                <button id="tabSimpleBtn" onclick="switchTab('simple')" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    快捷一鍵爆富 (3D物理風壓)
+                </button>
+                <button id="tabComplexBtn" onclick="switchTab('complex')" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 text-amber-200 hover:text-white">
+                    <i data-lucide="sliders" class="w-4 h-4"></i>
+                    專家極致算號
+                </button>
+            </div>
+        </section>
+
+        <!-- Tab 1: Simple Quick Pick View with Hyper-Dynamic 3D Ball Machine -->
+        <section id="simpleModeSection" class="flex flex-col gap-6">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center relative">
+
+                <!-- Quick Bet Lines Selector -->
+                <div class="w-full max-w-xl flex flex-wrap items-center justify-between gap-3 mb-4 bg-slate-900/80 p-3 rounded-2xl border border-slate-700/60">
+                    <span class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                        快速下注組數：
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="setSimpleLines(1)" class="line-btn px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs transition border border-amber-400 shadow-md active-line" data-lines="1">1注 ($50)</button>
+                        <button onclick="setSimpleLines(5)" class="line-btn px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-amber-500 hover:text-slate-950 transition border border-slate-600" data-lines="5">5注 ($250)</button>
+                        <button onclick="setSimpleLines(10)" class="line-btn px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-amber-500 hover:text-slate-950 transition border border-slate-600" data-lines="10">10注 ($500)</button>
+                    </div>
+                </div>
+
+                <!-- Exaggerated 3D Air Pneumatic Lottery Drum Stage -->
+                <div class="relative w-full max-w-md h-72 sm:h-80 my-2 flex flex-col items-center justify-center">
+
+                    <!-- Pneumatic Suction Tube at Top -->
+                    <div class="w-16 h-12 pipe-glass rounded-t-xl border-t-2 border-amber-400 z-20 flex items-center justify-center relative overflow-hidden shadow-inner">
+                        <div id="pipeSuctionLight" class="w-full h-full bg-amber-400/0 transition-all duration-300 flex items-center justify-center text-xl font-black">
+                            ⚡
+                        </div>
+                    </div>
+
+                    <!-- Main Glass Sphere Drum (Canvas Physics Container) -->
+                    <div id="lotteryDrumContainer" class="w-64 h-64 sm:w-72 sm:h-72 rounded-full border-4 border-amber-300/60 bg-gradient-to-br from-purple-950/90 via-slate-950/90 to-amber-950/80 backdrop-blur-md shadow-[0_0_60px_rgba(250,204,21,0.3)] relative overflow-hidden flex items-center justify-center z-10 transition-transform duration-300">
+                        
+                        <!-- High Speed Physics Canvas -->
+                        <canvas id="lottoCanvas" width="300" height="300" class="w-full h-full rounded-full cursor-pointer"></canvas>
+
+                        <!-- Center Spotlight Aura Overlay -->
+                        <div class="absolute inset-0 bg-radial from-amber-400/10 via-transparent to-black/40 pointer-events-none rounded-full"></div>
+
+                        <!-- Current Ball Extracted Flying Tube Badge -->
+                        <div id="flyingBallDisplay" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 scale-50 transition-all duration-300 z-30">
+                            <div id="activeFlyingBall" class="w-20 h-20 rounded-full ball-3d font-black text-slate-950 text-2xl flex items-center justify-center shadow-neon-gold border-4 border-white animate-pulse">
+                                00
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Machine Base Pedestal -->
+                    <div class="w-56 h-6 bg-gradient-to-r from-amber-800 via-yellow-600 to-amber-900 rounded-b-2xl border-b-2 border-amber-300/80 shadow-2xl z-0 -mt-2"></div>
+                </div>
+
+                <!-- Dynamic Status Message Ticker -->
+                <div id="drawStatusText" class="text-sm font-extrabold text-amber-300 mt-2 h-6 flex items-center gap-2">
+                    <span class="animate-pulse">✨</span> 點擊下方按鈕，啟動風壓氣流滾動搖珠機！
+                </div>
+
+                <!-- One-Click Massive Generate Button -->
+                <button id="quickGenerateBtn" onclick="triggerExaggeratedDraw()" class="mt-4 w-full max-w-md py-4 px-8 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-xl font-black tracking-wider shadow-3d-gold hover:brightness-110 active:translate-y-2 active:shadow-3d-gold-sm transition-all duration-150 flex items-center justify-center gap-3 group">
+                    <span class="text-2xl group-hover:rotate-180 transition-transform duration-500">🎰</span>
+                    一鍵狂暴極速搖號
+                    <span class="text-2xl animate-bounce">⚡</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Tab 2: Complex Settings View -->
+        <section id="complexModeSection" class="hidden flex-col gap-6">
+            <div class="glass-card rounded-3xl p-6 sm:p-8">
+                
+                <div class="flex items-center gap-3 border-b border-amber-500/30 pb-4 mb-6">
+                    <div class="p-2.5 rounded-2xl bg-amber-500/20 text-yellow-400">
+                        <i data-lucide="sliders" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">專家級選號過濾器</h3>
+                        <p class="text-xs text-slate-400">自由設定冷熱號、奇偶比、大小分佈與幸運元素加持</p>
+                    </div>
+                </div>
+
+                <!-- Settings Form Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- 1. Must-Include Numbers -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i>
+                                必選幸運號碼 (最多5個)
+                            </label>
+                            <span id="mustIncludeCount" class="text-xs text-slate-400 font-bold">已選 0 個</span>
+                        </div>
+                        <p class="text-xs text-slate-400">指定一定要出現的幸運數字：</p>
+                        <div id="mustIncludeGrid" class="grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-950/80 rounded-xl border border-slate-800">
+                        </div>
+                    </div>
+
+                    <!-- 2. Must-Exclude Numbers -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                                <i data-lucide="minus-circle" class="w-4 h-4 text-ruby"></i>
+                                避開霉運號碼 (最多15個)
+                            </label>
+                            <span id="mustExcludeCount" class="text-xs text-slate-400 font-bold">已選 0 個</span>
+                        </div>
+                        <p class="text-xs text-slate-400">剔除不想出現的冷門或忌諱數字：</p>
+                        <div id="mustExcludeGrid" class="grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-950/80 rounded-xl border border-slate-800">
+                        </div>
+                    </div>
+
+                    <!-- 3. Odd/Even Ratio -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-4 h-4 text-blue-400"></i>
+                            奇偶數比例偏好
+                        </label>
+                        <select id="oddEvenSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-2.5 focus:border-amber-400 focus:outline-none">
+                            <option value="any">🎲 隨機不限 (全機率公平)</option>
+                            <option value="3:3" selected>⚖️ 3 單 : 3 雙 (黃金平衡比，統計最常開出)</option>
+                            <option value="4:2">🔥 4 單 : 2 雙 (偏陽奇數)</option>
+                            <option value="2:4">❄️ 2 單 : 4 雙 (偏陰偶數)</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. High/Low Distribution -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-purple-400"></i>
+                            大小數分配 (1~24 小 / 25~49 大)
+                        </label>
+                        <select id="highLowSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-2.5 focus:border-amber-400 focus:outline-none">
+                            <option value="any">🎲 隨機不限</option>
+                            <option value="3:3" selected>⚖️ 3小 : 3大 (經典均勻)</option>
+                            <option value="4:2">📉 4小 : 2大 (偏低號碼)</option>
+                            <option value="2:4">📈 2小 : 4大 (偏高號碼)</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Sum Range Filter -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="flex justify-between">
+                            <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                                <i data-lucide="calculator" class="w-4 h-4 text-yellow-400"></i>
+                                6碼總和和值範圍
+                            </label>
+                            <span id="sumRangeLabel" class="text-xs text-amber-400 font-bold">110 ~ 190</span>
+                        </div>
+                        <p class="text-xs text-slate-400">大樂透 6 碼平均和值約 150 左右：</p>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="sumMinInput" min="50" max="150" value="110" oninput="updateSumLabel()" class="w-full accent-amber-400 bg-slate-800">
+                            <span class="text-xs text-slate-400">至</span>
+                            <input type="range" id="sumMaxInput" min="150" max="250" value="190" oninput="updateSumLabel()" class="w-full accent-amber-400 bg-slate-800">
+                        </div>
+                    </div>
+
+                    <!-- 6. Fortune Zodiac -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <label class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-pink-400"></i>
+                            生肖 / 星座財運加持
+                        </label>
+                        <select id="fortuneZodiacSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-2.5 focus:border-amber-400 focus:outline-none">
+                            <option value="none">✨ 無 (純數學機率)</option>
+                            <option value="dragon">🐉 屬龍 / 獅子座 (王者帝王氣場加持)</option>
+                            <option value="snake">🐍 屬蛇 / 天蠍座 (靈敏直覺財富庫)</option>
+                            <option value="rabbit">🐇 屬兔 / 雙魚座 (溫和靈感聚寶盆)</option>
+                            <option value="horse">🐎 屬馬 / 射手座 (一馬當先頭獎命)</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- Complex Mode Bet Lines Selector & Generate Button -->
+                <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-bold text-amber-300">生成注數：</span>
+                        <select id="complexLineCount" class="bg-slate-950 border border-slate-700 text-amber-300 font-bold text-sm rounded-xl px-4 py-2 focus:outline-none">
+                            <option value="1">1 注 ($50)</option>
+                            <option value="3">3 注 ($150)</option>
+                            <option value="5" selected>5 注 ($250)</option>
+                            <option value="10">10 注 ($500)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="generateComplexLotto()" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-lg shadow-3d-jade hover:brightness-110 active:translate-y-1 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="cpu" class="w-5 h-5"></i>
+                        執行精準智能計算選號
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Results Container (Generated Lotto Lines) -->
+        <section id="resultsSection" class="hidden flex-col gap-4">
+            <div class="flex justify-between items-center px-2">
+                <h3 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                    <span>🎟️</span>
+                    <span>幸運注單結果</span>
+                    <span id="ticketCountBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">5注</span>
+                </h3>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="copyAllTickets()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200 transition flex items-center gap-1.5">
+                        <i data-lucide="copy" class="w-3.5 h-3.5 text-amber-400"></i>
+                        複製文字號碼
+                    </button>
+                    <button onclick="clearResults()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950 border border-slate-600 hover:border-red-500/50 text-xs font-bold text-slate-300 hover:text-red-300 transition flex items-center gap-1.5">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        清空
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Ticket Card -->
+            <div id="ticketContainer" class="glass-card rounded-3xl p-6 relative overflow-hidden border-2 border-amber-400/50 flex flex-col gap-4">
+                <div class="absolute -right-10 -bottom-10 text-9xl opacity-5 pointer-events-none">
+                    🎰
+                </div>
+
+                <div id="ticketLinesList" class="flex flex-col gap-4">
+                    <!-- Dynamically injected lottery lines -->
+                </div>
+
+                <!-- Ticket Footer Info -->
+                <div class="mt-4 pt-4 border-t border-dashed border-amber-500/30 flex flex-wrap justify-between items-center text-xs text-slate-400 gap-2">
+                    <div class="flex items-center gap-2">
+                        <span>總金額：<strong id="ticketTotalPrice" class="text-amber-300 font-extrabold text-sm">$ 250</strong> NTD</span>
+                        <span class="text-slate-600">|</span>
+                        <span>預測期別：<span id="lottoDrawPeriod" class="text-slate-300 font-mono">第 115000025 期</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-400 font-bold">已自動與最新一期開獎號碼比對對獎 ✨</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Drawer -->
+        <section class="glass-card rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-md sm:text-lg font-extrabold text-white flex items-center gap-2">
+                    <i data-lucide="history" class="w-5 h-5 text-amber-400"></i>
+                    選號統計與歷史紀錄
+                </h4>
+                <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-400 transition">清除歷史</button>
+            </div>
+
+            <div id="historyList" class="max-h-48 overflow-y-auto flex flex-col gap-2 pr-1">
+                <p id="noHistoryText" class="text-xs text-slate-500 text-center py-4">尚無選號紀錄，快點擊上方按鈕搖出幸運號碼吧！</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="w-full text-center py-6 text-xs text-slate-500 border-t border-slate-800/80 mt-12">
+        <p class="font-medium">大樂透・億萬富翁選號器 &copy; 2026 | 娛樂性質選號與對獎工具，投注請量力而為</p>
+    </footer>
+
+    <script>
+        /* -------------------------------------------------------------
+           Global App State & Latest Official Draw Data
+        ------------------------------------------------------------- */
+        // Latest Taiwan Big Lotto Official Draw Result (第115000024期)
+        const LATEST_OFFICIAL_DRAW = {
+            period: "115000024",
+            date: "2026-02-23",
+            main: [6, 10, 23, 27, 47, 48],
+            special: 30
+        };
+
+        let mustInclude = new Set();
+        let mustExclude = new Set();
+        let isSoundOn = true;
+        let activeTab = 'simple';
+        let simpleSelectedLines = 1;
+        let generatedTickets = [];
+        let historyStore = [];
+
+        // Tone.js Sound Synthesizer Initialization
+        let synth = null;
+        let noiseSynth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.15 }
+                }).toDestination();
+                synth.volume.value = -4;
+
+                noiseSynth = new Tone.NoiseSynth({
+                    noise: { type: 'white' },
+                    envelope: { attack: 0.005, decay: 0.05, sustain: 0 }
+                }).toDestination();
+                noiseSynth.volume.value = -12;
+            }
+        }
+
+        function playBallPopSound(pitchIndex = 0) {
+            if (!isSoundOn) return;
+            initAudio();
+            if (Tone.context.state !== 'running') Tone.start();
+            
+            const scale = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'E6', 'G6'];
+            const note = scale[pitchIndex % scale.length];
+            if (synth) synth.triggerAttackRelease(note, '16n');
+            if (noiseSynth) noiseSynth.triggerAttackRelease('32n');
+        }
+
+        function playTurbulenceSound() {
+            if (!isSoundOn) return;
+            initAudio();
+            if (Tone.context.state !== 'running') Tone.start();
+            if (noiseSynth) noiseSynth.triggerAttackRelease('8n');
+        }
+
+        function playJackpotSound() {
+            if (!isSoundOn) return;
+            initAudio();
+            if (Tone.context.state !== 'running') Tone.start();
+            if (synth) {
+                const now = Tone.now();
+                synth.triggerAttackRelease('C5', '8n', now);
+                synth.triggerAttackRelease('E5', '8n', now + 0.1);
+                synth.triggerAttackRelease('G5', '8n', now + 0.2);
+                synth.triggerAttackRelease('C6', '4n', now + 0.35);
+            }
+        }
+
+        /* -------------------------------------------------------------
+           Live Schedule & Next Draw Countdown Logic
+        ------------------------------------------------------------- */
+        // Calculate next Tuesday or Friday at 20:30
+        function getNextDrawDate() {
+            const now = new Date();
+            let target = new Date(now);
+
+            // Taiwan Lotto draws on Tuesday (2) and Friday (5) at 20:30
+            for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
+                const checkDate = new Date(now.valueOf() + dayOffset * 24 * 60 * 60 * 1000);
+                const dayOfWeek = checkDate.getDay();
+
+                if (dayOfWeek === 2 || dayOfWeek === 5) {
+                    checkDate.setHours(20, 30, 0, 0);
+                    if (checkDate > now) {
+                        return checkDate;
+                    }
+                }
+            }
+            // Fallback
+            target.setDate(target.getDate() + 3);
+            target.setHours(20, 30, 0, 0);
+            return target;
+        }
+
+        function startScheduleCountdown() {
+            const nextDrawTime = getNextDrawDate();
+            
+            const daysOfWeek = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const formattedDateStr = `${nextDrawTime.getFullYear()}/${nextDrawTime.getMonth() + 1}/${nextDrawTime.getDate()} (${daysOfWeek[nextDrawTime.getDay()]}) 20:30`;
+            document.getElementById('nextDrawDateText').innerText = formattedDateStr;
+
+            function updateTimer() {
+                const now = new Date();
+                const diff = nextDrawTime - now;
+
+                if (diff <= 0) {
+                    document.getElementById('nextDrawCountdown').innerText = "開獎中！";
+                    return;
+                }
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const m = Math.floor((diff / 1000 / 60) % 60);
+                const s = Math.floor((diff / 1000) % 60);
+
+                document.getElementById('nextDrawCountdown').innerText = `${d}天 ${String(h).padStart(2,'0')}時 ${String(m).padStart(2,'0')}分 ${String(s).padStart(2,'0')}秒`;
+            }
+
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+
+        /* -------------------------------------------------------------
+           2D Canvas Physics Engine for Bouncing 3D Lottery Balls
+        ------------------------------------------------------------- */
+        let canvas, ctx;
+        let balls = [];
+        let isTurbulent = false;
+        let animationFrameId = null;
+
+        const BALL_COLORS = [
+            '#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ca8a04', '#e11d48'
+        ];
+
+        class Ball2D {
+            constructor(id, radius, maxR) {
+                this.id = id;
+                this.radius = radius;
+                this.maxR = maxR - radius - 5;
+                
+                // Polar coordinates for circular drum
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * (this.maxR * 0.7);
+                
+                this.x = 150 + Math.cos(angle) * dist;
+                this.y = 150 + Math.sin(angle) * dist;
+
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+
+                this.color = BALL_COLORS[id % BALL_COLORS.length];
+                this.numStr = String(id).padStart(2, '0');
+            }
+
+            update(speedMultiplier = 1) {
+                this.x += this.vx * speedMultiplier;
+                this.y += this.vy * speedMultiplier;
+
+                // Bounce off sphere boundary
+                const dx = this.x - 150;
+                const dy = this.y - 150;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist + this.radius > this.maxR) {
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    const dot = this.vx * nx + this.vy * ny;
+                    this.vx -= 2 * dot * nx;
+                    this.vy -= 2 * dot * ny;
+
+                    // Keep inside
+                    this.x = 150 + nx * (this.maxR - this.radius);
+                    this.y = 150 + ny * (this.maxR - this.radius);
+                }
+
+                // Air turbulence force
+                if (isTurbulent) {
+                    this.vx += (Math.random() - 0.5) * 3;
+                    this.vy += (Math.random() - 0.5) * 3 - 0.5; // Slight upward buoyancy
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                
+                // 3D Sphere Radial Gradient
+                const grad = ctx.createRadialGradient(
+                    this.x - this.radius * 0.3, 
+                    this.y - this.radius * 0.3, 
+                    this.radius * 0.1, 
+                    this.x, 
+                    this.y, 
+                    this.radius
+                );
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, this.color);
+                grad.addColorStop(1, '#0f172a');
+
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Highlight gloss
+                ctx.beginPath();
+                ctx.ellipse(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.35, this.radius * 0.2, -Math.PI / 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fill();
+
+                // Number text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.fillText(this.numStr, this.x, this.y + 1);
+
+                ctx.restore();
+            }
+        }
+
+        function initBallPhysics() {
+            canvas = document.getElementById('lottoCanvas');
+            ctx = canvas.getContext('2d');
+
+            balls = [];
+            // Spawn 30 dynamic balls inside drum
+            for (let i = 1; i <= 30; i++) {
+                balls.push(new Ball2D(i, 13, 148));
+            }
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            runCanvasLoop();
+        }
+
+        function runCanvasLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const mult = isTurbulent ? 3.5 : 0.8;
+
+            balls.forEach(ball => {
+                ball.update(mult);
+                ball.draw();
+            });
+
+            animationFrameId = requestAnimationFrame(runCanvasLoop);
+        }
+
+        /* -------------------------------------------------------------
+           UI Switching & Setup Functions
+        ------------------------------------------------------------- */
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            buildNumberGrids();
+            updateSumLabel();
+            startScheduleCountdown();
+            initBallPhysics();
+        });
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            const icon = document.getElementById('soundIcon');
+            const text = document.getElementById('soundText');
+            if (isSoundOn) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                text.innerText = '音效: 開';
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+                text.innerText = '音效: 關';
+            }
+            lucide.createIcons();
+        }
+
+        function switchTab(mode) {
+            activeTab = mode;
+            const btnSimple = document.getElementById('tabSimpleBtn');
+            const btnComplex = document.getElementById('tabComplexBtn');
+            const secSimple = document.getElementById('simpleModeSection');
+            const secComplex = document.getElementById('complexModeSection');
+
+            if (mode === 'simple') {
+                btnSimple.className = "flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg";
+                btnComplex.className = "flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 text-amber-200 hover:text-white";
+                secSimple.classList.remove('hidden');
+                secComplex.classList.add('hidden');
+            } else {
+                btnComplex.className = "flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-lg";
+                btnSimple.className = "flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 text-amber-200 hover:text-white";
+                secComplex.classList.remove('hidden');
+                secSimple.classList.add('hidden');
+            }
+        }
+
+        function setSimpleLines(num) {
+            simpleSelectedLines = num;
+            document.querySelectorAll('.line-btn').forEach(btn => {
+                if (parseInt(btn.getAttribute('data-lines')) === num) {
+                    btn.className = "line-btn px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs transition border border-amber-400 shadow-md active-line";
+                } else {
+                    btn.className = "line-btn px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-amber-500 hover:text-slate-950 transition border border-slate-600";
+                }
+            });
+        }
+
+        /* -------------------------------------------------------------
+           Complex Mode Grid Builders
+        ------------------------------------------------------------- */
+        function buildNumberGrids() {
+            const incGrid = document.getElementById('mustIncludeGrid');
+            const excGrid = document.getElementById('mustExcludeGrid');
+
+            incGrid.innerHTML = '';
+            excGrid.innerHTML = '';
+
+            for (let i = 1; i <= 49; i++) {
+                const numStr = String(i).padStart(2, '0');
+
+                // Must Include
+                const incBtn = document.createElement('button');
+                incBtn.type = 'button';
+                incBtn.innerText = numStr;
+                incBtn.dataset.num = i;
+                incBtn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-emerald-400 transition flex items-center justify-center";
+                incBtn.onclick = () => toggleMustInclude(i, incBtn);
+                incGrid.appendChild(incBtn);
+
+                // Must Exclude
+                const excBtn = document.createElement('button');
+                excBtn.type = 'button';
+                excBtn.innerText = numStr;
+                excBtn.dataset.num = i;
+                excBtn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-red-400 transition flex items-center justify-center";
+                excBtn.onclick = () => toggleMustExclude(i, excBtn);
+                excGrid.appendChild(excBtn);
+            }
+        }
+
+        function toggleMustInclude(num, btn) {
+            if (mustInclude.has(num)) {
+                mustInclude.delete(num);
+                btn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-emerald-400 transition flex items-center justify-center";
+            } else {
+                if (mustInclude.size >= 5) {
+                    alert("最多只能指定 5 個必選號碼！");
+                    return;
+                }
+                if (mustExclude.has(num)) {
+                    mustExclude.delete(num);
+                    refreshExcludeGridUI();
+                }
+                mustInclude.add(num);
+                btn.className = "h-7 w-7 rounded-lg bg-emerald-500 border border-emerald-300 text-slate-950 font-black text-xs transition flex items-center justify-center shadow-sm";
+            }
+            document.getElementById('mustIncludeCount').innerText = `已選 ${mustInclude.size} 個`;
+        }
+
+        function toggleMustExclude(num, btn) {
+            if (mustExclude.has(num)) {
+                mustExclude.delete(num);
+                btn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-red-400 transition flex items-center justify-center";
+            } else {
+                if (mustExclude.size >= 15) {
+                    alert("最多只能指定 15 個排除號碼！");
+                    return;
+                }
+                if (mustInclude.has(num)) {
+                    mustInclude.delete(num);
+                    refreshIncludeGridUI();
+                }
+                mustExclude.add(num);
+                btn.className = "h-7 w-7 rounded-lg bg-red-600 border border-red-400 text-white font-black text-xs transition flex items-center justify-center shadow-sm";
+            }
+            document.getElementById('mustExcludeCount').innerText = `已選 ${mustExclude.size} 個`;
+        }
+
+        function refreshIncludeGridUI() {
+            document.querySelectorAll('#mustIncludeGrid button').forEach(btn => {
+                const num = parseInt(btn.dataset.num);
+                if (!mustInclude.has(num)) {
+                    btn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-emerald-400 transition flex items-center justify-center";
+                }
+            });
+            document.getElementById('mustIncludeCount').innerText = `已選 ${mustInclude.size} 個`;
+        }
+
+        function refreshExcludeGridUI() {
+            document.querySelectorAll('#mustExcludeGrid button').forEach(btn => {
+                const num = parseInt(btn.dataset.num);
+                if (!mustExclude.has(num)) {
+                    btn.className = "h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-extrabold hover:border-red-400 transition flex items-center justify-center";
+                }
+            });
+            document.getElementById('mustExcludeCount').innerText = `已選 ${mustExclude.size} 個`;
+        }
+
+        function updateSumLabel() {
+            const min = document.getElementById('sumMinInput').value;
+            const max = document.getElementById('sumMaxInput').value;
+            document.getElementById('sumRangeLabel').innerText = `${min} ~ ${max}`;
+        }
+
+        /* -------------------------------------------------------------
+           Taiwan Big Lotto Random Generation Algorithms
+        ------------------------------------------------------------- */
+        function getBallColorClass(num) {
+            if (num <= 10) return 'ball-red';
+            if (num <= 20) return 'ball-blue';
+            if (num <= 30) return 'ball-green';
+            if (num <= 40) return 'ball-purple';
+            return 'ball-3d';
+        }
+
+        function generateSingleLineRaw() {
+            const numbers = [];
+            while (numbers.length < 6) {
+                const rand = Math.floor(Math.random() * 49) + 1;
+                if (!numbers.includes(rand)) numbers.push(rand);
+            }
+            numbers.sort((a, b) => a - b);
+            
+            let specialNum;
+            do {
+                specialNum = Math.floor(Math.random() * 49) + 1;
+            } while (numbers.includes(specialNum));
+
+            return { main: numbers, special: specialNum };
+        }
+
+        function generateComplexLineRaw() {
+            const oddEvenPref = document.getElementById('oddEvenSelect').value;
+            const highLowPref = document.getElementById('highLowSelect').value;
+            const minSum = parseInt(document.getElementById('sumMinInput').value);
+            const maxSum = parseInt(document.getElementById('sumMaxInput').value);
+
+            let retries = 0;
+            while (retries < 1000) {
+                retries++;
+                const candidate = [];
+                mustInclude.forEach(n => candidate.push(n));
+
+                const availablePool = [];
+                for (let i = 1; i <= 49; i++) {
+                    if (!candidate.includes(i) && !mustExclude.has(i)) availablePool.push(i);
+                }
+
+                if (availablePool.length < (6 - candidate.length)) break;
+
+                // Shuffle
+                for (let i = availablePool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availablePool[i], availablePool[j]] = [availablePool[j], availablePool[i]];
+                }
+
+                while (candidate.length < 6) candidate.push(availablePool.pop());
+
+                candidate.sort((a, b) => a - b);
+
+                // Odd/Even check
+                if (oddEvenPref !== 'any') {
+                    const oddCount = candidate.filter(n => n % 2 !== 0).length;
+                    const evenCount = 6 - oddCount;
+                    if (oddEvenPref === '3:3' && (oddCount !== 3 || evenCount !== 3)) continue;
+                    if (oddEvenPref === '4:2' && (oddCount !== 4 || evenCount !== 2)) continue;
+                    if (oddEvenPref === '2:4' && (oddCount !== 2 || evenCount !== 4)) continue;
+                }
+
+                // High/Low check
+                if (highLowPref !== 'any') {
+                    const lowCount = candidate.filter(n => n <= 24).length;
+                    const highCount = 6 - lowCount;
+                    if (highLowPref === '3:3' && (lowCount !== 3 || highCount !== 3)) continue;
+                    if (highLowPref === '4:2' && (lowCount !== 4 || highCount !== 2)) continue;
+                    if (highLowPref === '2:4' && (lowCount !== 2 || highCount !== 4)) continue;
+                }
+
+                // Sum check
+                const sum = candidate.reduce((acc, curr) => acc + curr, 0);
+                if (sum < minSum || sum > maxSum) continue;
+
+                let specialNum;
+                do {
+                    specialNum = Math.floor(Math.random() * 49) + 1;
+                } while (candidate.includes(specialNum) || mustExclude.has(specialNum));
+
+                return { main: candidate, special: specialNum };
+            }
+
+            return generateSingleLineRaw();
+        }
+
+        /* -------------------------------------------------------------
+           EXAGGERATED 3D BALL DRAWING ANIMATION SEQUENCE
+        ------------------------------------------------------------- */
+        let isDrawingNow = false;
+
+        function triggerExaggeratedDraw() {
+            if (isDrawingNow) return;
+            isDrawingNow = true;
+
+            const drumContainer = document.getElementById('lotteryDrumContainer');
+            const mainContainer = document.getElementById('appMainContainer');
+            const pipeLight = document.getElementById('pipeSuctionLight');
+            const flyingDisplay = document.getElementById('flyingBallDisplay');
+            const flyingBall = document.getElementById('activeFlyingBall');
+            const statusText = document.getElementById('drawStatusText');
+            const generateBtn = document.getElementById('quickGenerateBtn');
+
+            // Lock Button
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // 1. Start Turbulence & Sound
+            isTurbulent = true;
+            drumContainer.classList.add('animate-shake', 'border-amber-400');
+            mainContainer.classList.add('animate-shake');
+            pipeLight.className = "w-full h-full bg-amber-400/80 transition-all duration-300 flex items-center justify-center text-xl font-black text-slate-950 animate-pulse";
+            statusText.innerHTML = '<span class="text-yellow-400 animate-spin">🌪️</span> 風壓氣流極速漩渦啟動中...';
+
+            playTurbulenceSound();
+
+            const tickets = [];
+            for (let i = 0; i < simpleSelectedLines; i++) {
+                tickets.push(generateSingleLineRaw());
+            }
+
+            // Pop out key preview numbers sequentially
+            const sampleNumbers = [...tickets[0].main, tickets[0].special];
+            let popIdx = 0;
+
+            const popInterval = setInterval(() => {
+                if (popIdx < sampleNumbers.length) {
+                    const currentNum = sampleNumbers[popIdx];
+                    const numStr = String(currentNum).padStart(2, '0');
+
+                    // Flying Ball Popup
+                    flyingBall.innerText = numStr;
+                    flyingBall.className = `w-20 h-20 rounded-full ${getBallColorClass(currentNum)} font-black text-slate-950 text-2xl flex items-center justify-center shadow-neon-gold border-4 border-white animate-shoot-up`;
+                    
+                    flyingDisplay.classList.remove('opacity-0', 'scale-50');
+                    flyingDisplay.classList.add('opacity-100', 'scale-100');
+
+                    playBallPopSound(popIdx);
+
+                    setTimeout(() => {
+                        flyingDisplay.classList.add('opacity-0', 'scale-50');
+                        flyingDisplay.classList.remove('opacity-100', 'scale-100');
+                    }, 350);
+
+                    popIdx++;
+                } else {
+                    clearInterval(popInterval);
+                    
+                    // Reset Animation
+                    isTurbulent = false;
+                    drumContainer.classList.remove('animate-shake', 'border-amber-400');
+                    mainContainer.classList.remove('animate-shake');
+                    pipeLight.className = "w-full h-full bg-amber-400/0 transition-all duration-300 flex items-center justify-center text-xl font-black";
+                    statusText.innerHTML = '🎉 幸運號碼完美吸出！即刻對獎～';
+
+                    generateBtn.disabled = false;
+                    generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    isDrawingNow = false;
+
+                    // Render Results
+                    renderTicketResults(tickets);
+                }
+            }, 300);
+        }
+
+        function generateComplexLotto() {
+            const lineCount = parseInt(document.getElementById('complexLineCount').value);
+            const tickets = [];
+            for (let i = 0; i < lineCount; i++) {
+                tickets.push(generateComplexLineRaw());
+            }
+            renderTicketResults(tickets);
+        }
+
+        /* -------------------------------------------------------------
+           Auto-Check Match Against Official Draw Numbers
+        ------------------------------------------------------------- */
+        function checkMatchedNumbers(ticket) {
+            const matchedMain = ticket.main.filter(n => LATEST_OFFICIAL_DRAW.main.includes(n));
+            const matchedSpecial = ticket.special === LATEST_OFFICIAL_DRAW.special;
+
+            const mainCount = matchedMain.length;
+
+            let prizeName = "";
+            let badgeColor = "bg-slate-800 text-slate-400 border-slate-700";
+
+            if (mainCount === 6) {
+                prizeName = "🔥 恭喜中頭獎 (6碼全中)!";
+                badgeColor = "bg-amber-400 text-slate-950 font-black border-amber-300 animate-pulse";
+            } else if (mainCount === 5 && matchedSpecial) {
+                prizeName = "🎉 中貳獎 (5碼+特別號)!";
+                badgeColor = "bg-yellow-500 text-slate-950 font-black border-yellow-300";
+            } else if (mainCount === 5) {
+                prizeName = "✨ 中參獎 (5碼)!";
+                badgeColor = "bg-purple-600 text-white font-bold border-purple-400";
+            } else if (mainCount === 4 && matchedSpecial) {
+                prizeName = "✨ 中肆獎 (4碼+特別號)!";
+                badgeColor = "bg-blue-600 text-white font-bold border-blue-400";
+            } else if (mainCount === 4) {
+                prizeName = "👍 中伍獎 (4碼)";
+                badgeColor = "bg-emerald-600 text-white font-bold border-emerald-400";
+            } else if (mainCount === 3 && matchedSpecial) {
+                prizeName = "👍 中陸獎 (3碼+特別號)";
+                badgeColor = "bg-emerald-700 text-white font-bold border-emerald-500";
+            } else if (mainCount === 2 && matchedSpecial) {
+                prizeName = "🎁 中柒獎 (2碼+特別號)";
+                badgeColor = "bg-teal-700 text-white font-bold border-teal-500";
+            } else if (mainCount === 3) {
+                prizeName = "🎁 中普獎 (3碼)";
+                badgeColor = "bg-slate-700 text-amber-300 font-bold border-slate-600";
+            } else {
+                prizeName = `對中 ${mainCount} 碼 ${matchedSpecial ? '+ 特別號' : ''}`;
+            }
+
+            return { matchedMain, matchedSpecial, prizeName, badgeColor };
+        }
+
+        /* -------------------------------------------------------------
+           Render Ticket Results & Golden Confetti Effect
+        ------------------------------------------------------------- */
+        function renderTicketResults(tickets) {
+            generatedTickets = tickets;
+            const container = document.getElementById('ticketLinesList');
+            const resultSection = document.getElementById('resultsSection');
+            
+            container.innerHTML = '';
+            resultSection.classList.remove('hidden');
+
+            const lineLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+
+            tickets.forEach((ticket, idx) => {
+                const matchInfo = checkMatchedNumbers(ticket);
+
+                const lineRow = document.createElement('div');
+                lineRow.className = "flex flex-col lg:flex-row items-center justify-between p-3.5 bg-slate-900/90 rounded-2xl border border-amber-500/30 gap-3 hover:border-amber-400/70 transition shadow-inner";
+
+                const label = lineLabels[idx] || (idx + 1);
+                
+                let mainBallsHTML = ticket.main.map((num, i) => {
+                    const colorClass = getBallColorClass(num);
+                    const formattedNum = String(num).padStart(2, '0');
+                    const isMatched = LATEST_OFFICIAL_DRAW.main.includes(num);
+
+                    const matchRing = isMatched ? 'ring-4 ring-yellow-400 ring-offset-2 ring-offset-slate-900 scale-110 z-10' : '';
+
+                    return `
+                        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full ${colorClass} ${matchRing} font-black text-slate-950 text-sm sm:text-base flex items-center justify-center shadow-3d-gold animate-roll transition-all" style="animation-delay: ${i * 0.08}s">
+                            ${formattedNum}
+                        </div>
+                    `;
+                }).join('');
+
+                const isSpecMatched = ticket.special === LATEST_OFFICIAL_DRAW.special;
+                const specMatchRing = isSpecMatched ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-slate-900 scale-110 z-10' : '';
+                const specialNumStr = String(ticket.special).padStart(2, '0');
+
+                lineRow.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+                            ${label}
+                        </span>
+                        <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                            ${mainBallsHTML}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800 w-full lg:w-auto justify-between lg:justify-end">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold text-pink-300 uppercase tracking-wider">特別號:</span>
+                            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full ball-special ${specMatchRing} font-black text-white text-sm sm:text-base flex items-center justify-center shadow-lg animate-roll" style="animation-delay: 0.5s">
+                                ${specialNumStr}
+                            </div>
+                        </div>
+
+                        <!-- Match Result Badge -->
+                        <span class="text-xs px-2.5 py-1 rounded-xl border ${matchInfo.badgeColor}">
+                            ${matchInfo.prizeName}
+                        </span>
+                    </div>
+                `;
+
+                container.appendChild(lineRow);
+            });
+
+            // Update Price Ticker
+            const totalCost = tickets.length * 50;
+            document.getElementById('ticketTotalPrice').innerText = `$ ${totalCost}`;
+            document.getElementById('ticketCountBadge').innerText = `${tickets.length}注`;
+
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            triggerGoldConfetti();
+            playJackpotSound();
+
+            saveToHistory(tickets);
+        }
+
+        /* -------------------------------------------------------------
+           Confetti & Utility Functions
+        ------------------------------------------------------------- */
+        function triggerGoldConfetti() {
+            if (typeof confetti !== 'undefined') {
+                confetti({
+                    particleCount: 80,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#facc15', '#eab308', '#fde047', '#ffffff', '#10b981']
+                });
+            }
+        }
+
+        function saveToHistory(tickets) {
+            const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            historyStore.unshift({ time: timeStr, tickets: tickets });
+            if (historyStore.length > 10) historyStore.pop();
+            renderHistoryUI();
+        }
+
+        function renderHistoryUI() {
+            const historyList = document.getElementById('historyList');
+            const noHist = document.getElementById('noHistoryText');
+
+            if (historyStore.length === 0) {
+                if (noHist) noHist.style.display = 'block';
+                historyList.innerHTML = '<p id="noHistoryText" class="text-xs text-slate-500 text-center py-4">尚無選號紀錄</p>';
+                return;
+            }
+
+            historyList.innerHTML = '';
+            historyStore.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex justify-between items-center text-xs";
+                
+                const summary = item.tickets.map(t => t.main.map(n => String(n).padStart(2,'0')).join(', ') + ` [特:${String(t.special).padStart(2,'0')}]`).join(' | ');
+
+                div.innerHTML = `
+                    <div class="flex flex-col gap-1 overflow-hidden pr-2">
+                        <span class="text-amber-400 font-bold">⏰ ${item.time} (${item.tickets.length}注)</span>
+                        <span class="text-slate-300 font-mono truncate max-w-md">${summary}</span>
+                    </div>
+                    <button onclick="copyHistoryItem(${index})" class="text-amber-400 hover:text-yellow-300 font-bold flex items-center gap-1 shrink-0 bg-slate-800 px-2 py-1 rounded-lg">
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                        複製
+                    </button>
+                `;
+                historyList.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function copyAllTickets() {
+            if (generatedTickets.length === 0) return;
+            let copyText = `【大樂透億萬幸運選號】\n`;
+            generatedTickets.forEach((t, i) => {
+                const mainStr = t.main.map(n => String(n).padStart(2, '0')).join(', ');
+                const specStr = String(t.special).padStart(2, '0');
+                copyText += `第 ${i+1} 注: ${mainStr}  特別號: ${specStr}\n`;
+            });
+            copyText += `祝您喜中頭獎！🎉`;
+
+            copyToClipboard(copyText);
+        }
+
+        function copyHistoryItem(index) {
+            const item = historyStore[index];
+            if (!item) return;
+            let copyText = `【大樂透億萬幸運選號】\n`;
+            item.tickets.forEach((t, i) => {
+                const mainStr = t.main.map(n => String(n).padStart(2, '0')).join(', ');
+                const specStr = String(t.special).padStart(2, '0');
+                copyText += `第 ${i+1} 注: ${mainStr}  特別號: ${specStr}\n`;
+            });
+
+            copyToClipboard(copyText);
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                alert("已成功複製號碼至剪貼簿！");
+            } catch (err) {
+                console.error("Copy failed", err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function clearResults() {
+            generatedTickets = [];
+            document.getElementById('resultsSection').classList.add('hidden');
+        }
+
+        function clearHistory() {
+            historyStore = [];
+            renderHistoryUI();
+        }
+    </script>
+</body>
+</html>
