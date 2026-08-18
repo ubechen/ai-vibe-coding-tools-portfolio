@@ -1,5 +1,9 @@
 # 🚀 AI Vibe Coding 工具作品集 (AI Vibe Coding Collection)
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/c2a9c703-7fd6-438c-98ee-f93094a6a941/deploy-status)](https://app.netlify.com/projects/ai-vibe-coding-tools-portfolio/deploys)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/ubechen/ai-vibe-coding-tools-portfolio)
+
+> 🔗 **線上即時預覽 (Live Demo)**：[https://ai-vibe-coding-tools-portfolio.netlify.app](https://ai-vibe-coding-tools-portfolio.netlify.app)  
 > 本專案為 **【AI時代的專案管理師養成班】AI 協作式網站應用 MVP 實作** 之作品成果展示入口。  
 > 透過 AI 協作與 Vibe Coding 模式，打造出 16 款高質感、純前端、無依賴且支援 RWD 響應式的 Web 應用程式。
 
